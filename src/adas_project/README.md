@@ -13,31 +13,27 @@ A research-oriented ADAS framework that merges deterministic classical safety me
 The project is built on a modular **ROS2 Humble** backend, designed for high-frequency control (20Hz) and real-time deep learning inference (10Hz).
 
 ```mermaid
-graph TD
-    subgraph "Simulation (Gazebo)"
-        V["Ego Vehicle"] --> S["LiDAR / Camera / Odometry"]
+flowchart TD
+    subgraph "Simulation Environment"
+        V["Ego Vehicle"] --> S["Integrated Sensors"]
         T["Traffic Actors"] --> S
     end
 
-    subgraph "Perception & Feature Engine"
-        S --> INF["Inference Node (GRU Model)"]
-        S --> CAD["Classical ADAS Analytics"]
+    subgraph "Perception Layer"
+        S --> INF["Inference Node"]
+        S --> CAD["Classical ADAS"]
     end
 
     subgraph "Intelligence Layer"
-        INF -- "Intent Probabilities" --> MAD["ML-Adaptive ADAS Logic"]
-        CAD -- "Safety Thresholds" --> ARB["Control Arbitration (FSM)"]
+        INF -- "Intent Probabilities" --> MAD["ML-Adaptive ADAS"]
+        CAD -- "Safety Thresholds" --> ARB["Control Arbitration"]
         MAD -- "Dynamic TTC Scaling" --> ARB
     end
 
     subgraph "Control Layer"
         ARB -- "Arbitrated cmd_vel" --> V
-        U["User Inputs (WASD)"] -- "Control Request" --> ARB
+        U["User Keyboard Input"] -- "Control Request" --> ARB
     end
-
-    style INF fill:#f96,stroke:#333,stroke-width:2px
-    style MAD fill:#bbf,stroke:#333,stroke-width:2px
-    style ARB fill:#bfb,stroke:#333,stroke-width:2px
 ```
 
 ---
@@ -46,7 +42,7 @@ graph TD
 
 The system's core intelligence resides in the `inference_node.py`, which uses a sequence model to predict near-future behavior.
 
-### � Feature Engineering (7-Dimensional Vector)
+### 🛠️ Feature Engineering (7-Dimensional Vector)
 The model consumes a temporal window of 10 samples (1 second of state) across 7 critical features:
 
 | Feature | Source | Rationale |
@@ -116,7 +112,7 @@ Each experiment generates a complete statistical report in `/evaluation`:
 
 ---
 
-## � 6. Setup and Usage
+## 🛠️ 6. Setup and Usage
 
 ### Build
 ```bash
