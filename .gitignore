@@ -1,0 +1,27 @@
+# ROS2 Build Artifacts
+build/
+install/
+log/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Evaluation results (optional to exclude, but often preferred to keep repo clean)
+src/adas_project/evaluation/
+adas_results.csv
+metrics_summary.csv
+safety_report.txt
+*.png
+
+# IDE settings
+.vscode/
+.idea/
+
+# Local model weights if you don't want to push large binaries (but usually needed for run)
+# *.pt 

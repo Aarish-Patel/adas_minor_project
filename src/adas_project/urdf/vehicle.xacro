@@ -1,0 +1,251 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="adas_vehicle">
+
+  <!-- Base Link -->
+  <link name="base_link">
+    <!-- Base link must be dummy for Gazebo to work correctly with plugins sometimes -->
+  </link>
+
+  <joint name="chassis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis"/>
+    <origin xyz="0 0 0.15" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Chassis -->
+  <link name="chassis">
+    <visual>
+      <geometry>
+        <box size="1.0 0.5 0.2"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.1 0.1 0.8 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="1.0 0.5 0.2"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="50.0"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="1.2" ixy="0.0" ixz="0.0" iyy="4.3" iyz="0.0" izz="5.3"/>
+    </inertial>
+  </link>
+
+  <!-- Wheels -->
+  <xacro:macro name="wheel" params="prefix is_front x y z:=0">
+    <link name="${prefix}_wheel">
+      <visual>
+        <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+        <geometry>
+          <cylinder radius="0.15" length="0.1"/>
+        </geometry>
+        <material name="black">
+          <color rgba="0.1 0.1 0.1 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+        <geometry>
+          <cylinder radius="0.15" length="0.1"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="5.0"/>
+        <inertia ixx="0.03" ixy="0" ixz="0" iyy="0.03" iyz="0" izz="0.05"/>
+      </inertial>
+    </link>
+
+    <xacro:if value="${is_front}">
+      <link name="${prefix}_steer">
+        <inertial>
+          <mass value="1.0"/>
+          <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+        </inertial>
+      </link>
+      <joint name="${prefix}_steer_joint" type="revolute">
+        <parent link="chassis"/>
+        <child link="${prefix}_steer"/>
+        <origin xyz="${x} ${y} ${z}"/>
+        <axis xyz="0 0 1"/>
+        <limit lower="-0.6" upper="0.6" effort="100.0" velocity="2.0"/>
+      </joint>
+      <joint name="${prefix}_wheel_joint" type="continuous">
+        <parent link="${prefix}_steer"/>
+        <child link="${prefix}_wheel"/>
+        <origin xyz="0 0 0"/>
+        <axis xyz="0 1 0"/>
+      </joint>
+    </xacro:if>
+
+    <xacro:unless value="${is_front}">
+      <joint name="${prefix}_wheel_joint" type="continuous">
+        <parent link="chassis"/>
+        <child link="${prefix}_wheel"/>
+        <origin xyz="${x} ${y} ${z}"/>
+        <axis xyz="0 1 0"/>
+        <limit effort="500.0" velocity="20.0"/>
+      </joint>
+    </xacro:unless>
+  </xacro:macro>
+
+  <xacro:wheel prefix="front_left" is_front="true" x="0.4" y="0.3"/>
+  <xacro:wheel prefix="front_right" is_front="true" x="0.4" y="-0.3"/>
+  <xacro:wheel prefix="rear_left" is_front="false" x="-0.4" y="0.3"/>
+  <xacro:wheel prefix="rear_right" is_front="false" x="-0.4" y="-0.3"/>
+
+  <!-- Sensors -->
+  <!-- Lidar -->
+  <link name="lidar_link">
+    <visual>
+      <geometry><cylinder radius="0.05" length="0.05"/></geometry>
+    </visual>
+  </link>
+  <joint name="lidar_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="lidar_link"/>
+    <origin xyz="0.4 0 0.15" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Camera -->
+  <link name="camera_link">
+    <visual>
+      <geometry><box size="0.05 0.05 0.05"/></geometry>
+    </visual>
+  </link>
+  <joint name="camera_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="camera_link"/>
+    <!-- Cockpit view: raised above roof, tilted 12° down so front wheels are visible -->
+    <origin xyz="0.2 0 0.35" rpy="0 0.21 0"/>
+  </joint>
+
+  <!-- IMU -->
+  <link name="imu_link"/>
+  <joint name="imu_joint" type="fixed">
+    <parent link="chassis"/>
+    <child link="imu_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Ackermann Drive Plugin — proper front-wheel steering + rear-wheel drive -->
+  <gazebo>
+    <plugin name="ackermann_drive" filename="libgazebo_ros_ackermann_drive.so">
+      <ros>
+        <remapping>cmd_vel:=cmd_vel</remapping>
+        <remapping>odom:=odom</remapping>
+        <remapping>distance:=distance</remapping>
+      </ros>
+
+      <update_rate>50</update_rate>
+
+      <!-- Front steering joints -->
+      <front_left_joint>front_left_wheel_joint</front_left_joint>
+      <front_right_joint>front_right_wheel_joint</front_right_joint>
+      <left_steering_joint>front_left_steer_joint</left_steering_joint>
+      <right_steering_joint>front_right_steer_joint</right_steering_joint>
+
+      <!-- Rear drive joints -->
+      <rear_left_joint>rear_left_wheel_joint</rear_left_joint>
+      <rear_right_joint>rear_right_wheel_joint</rear_right_joint>
+
+      <!-- Geometry -->
+      <max_steer>0.6</max_steer>
+      <max_speed>20</max_speed>
+
+      <!-- PID tuning -->
+      <left_steering_pid_gain>1500 0 1</left_steering_pid_gain>
+      <left_steering_i_range>0 0</left_steering_i_range>
+      <right_steering_pid_gain>1500 0 1</right_steering_pid_gain>
+      <right_steering_i_range>0 0</right_steering_i_range>
+      <linear_velocity_pid_gain>1000 0 1</linear_velocity_pid_gain>
+      <linear_velocity_i_range>0 0</linear_velocity_i_range>
+
+      <!-- Output -->
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>false</publish_odom_tf>
+      <publish_wheel_tf>false</publish_wheel_tf>
+      <publish_distance>true</publish_distance>
+
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_link</robot_base_frame>
+    </plugin>
+  </gazebo>
+
+  <!-- Joint State Publisher — for RViz visualization -->
+  <gazebo>
+    <plugin name="joint_state_pub" filename="libgazebo_ros_joint_state_publisher.so">
+      <ros>
+        <remapping>~/out:=joint_states</remapping>
+      </ros>
+      <update_rate>50</update_rate>
+      <joint_name>front_left_steer_joint</joint_name>
+      <joint_name>front_right_steer_joint</joint_name>
+      <joint_name>rear_left_wheel_joint</joint_name>
+      <joint_name>rear_right_wheel_joint</joint_name>
+    </plugin>
+  </gazebo>
+
+  <!-- Gazebo Sensor Plugins -->
+  <gazebo reference="lidar_link">
+    <sensor type="ray" name="lidar_sensor">
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>720</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159</min_angle>
+            <max_angle>3.14159</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.15</min>
+          <max>50.0</max>
+        </range>
+      </ray>
+      <plugin name="gazebo_ros_laser" filename="libgazebo_ros_ray_sensor.so">
+        <ros>
+          <remapping>~/out:=scan</remapping>
+        </ros>
+        <output_type>sensor_msgs/LaserScan</output_type>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="camera_link">
+    <sensor type="camera" name="camera_sensor">
+      <camera>
+        <horizontal_fov>1.745</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+        </image>
+        <clip>
+          <near>0.1</near>
+          <far>100</far>
+        </clip>
+      </camera>
+      <plugin name="gazebo_ros_camera" filename="libgazebo_ros_camera.so">
+        <ros>
+          <remapping>~/image_raw:=image_raw</remapping>
+          <remapping>~/camera_info:=camera_info</remapping>
+        </ros>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="imu_link">
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <plugin name="gazebo_ros_imu" filename="libgazebo_ros_imu_sensor.so">
+        <ros>
+          <remapping>~/out:=imu/data</remapping>
+        </ros>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+</robot>

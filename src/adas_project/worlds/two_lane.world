@@ -1,0 +1,78 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="default">
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    
+    <model name="road_oval">
+      <static>true</static>
+      
+      <!-- Right Circle -->
+      <link name="right_circle">
+        <pose>100 0 0.05 0 0 0</pose>
+        <visual name="asphalt"><geometry><cylinder><radius>52.5</radius><length>0.001</length></cylinder></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+        <visual name="yellow"><pose>0 0 0.001 0 0 0</pose><geometry><cylinder><radius>48.6</radius><length>0.001</length></cylinder></geometry><material><ambient>1 1 0 1</ambient></material></visual>
+        <visual name="yellow_mask"><pose>0 0 0.002 0 0 0</pose><geometry><cylinder><radius>48.4</radius><length>0.001</length></cylinder></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+      </link>
+
+      <!-- Left Circle -->
+      <link name="left_circle">
+        <pose>-100 0 0.05 0 0 0</pose>
+        <visual name="asphalt"><geometry><cylinder><radius>52.5</radius><length>0.001</length></cylinder></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+        <visual name="yellow"><pose>0 0 0.001 0 0 0</pose><geometry><cylinder><radius>48.6</radius><length>0.001</length></cylinder></geometry><material><ambient>1 1 0 1</ambient></material></visual>
+        <visual name="yellow_mask"><pose>0 0 0.002 0 0 0</pose><geometry><cylinder><radius>48.4</radius><length>0.001</length></cylinder></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+      </link>
+
+      <!-- Bottom Straight -->
+      <link name="straight_bottom">
+        <pose>0 -48.5 0.05 0 0 0</pose>
+        <visual name="asphalt"><geometry><plane><normal>0 0 1</normal><size>200 8</size></plane></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+        <visual name="yellow"><pose>0 0 0.001 0 0 0</pose><geometry><plane><normal>0 0 1</normal><size>200 0.2</size></plane></geometry><material><ambient>1 1 0 1</ambient></material></visual>
+      </link>
+
+      <!-- Top Straight -->
+      <link name="straight_top">
+        <pose>0 48.5 0.05 0 0 0</pose>
+        <visual name="asphalt"><geometry><plane><normal>0 0 1</normal><size>200 8</size></plane></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+        <visual name="yellow"><pose>0 0 0.001 0 0 0</pose><geometry><plane><normal>0 0 1</normal><size>200 0.2</size></plane></geometry><material><ambient>1 1 0 1</ambient></material></visual>
+      </link>
+
+      <!-- Inner Grass (covers up the inner halves of the circles leaving only the outer turns) -->
+      <link name="inner_grass">
+        <pose>0 0 0.053 0 0 0</pose>
+        <visual name="grass_rect"><geometry><box><size>200 89 0.001</size></box></geometry><material><ambient>0.1 0.4 0.1 1</ambient></material></visual>
+        <visual name="grass_right_circ"><pose>100 0 0 0 0</pose><geometry><cylinder><radius>44.5</radius><length>0.001</length></cylinder></geometry><material><ambient>0.1 0.4 0.1 1</ambient></material></visual>
+        <visual name="grass_left_circ"><pose>-100 0 0 0 0</pose><geometry><cylinder><radius>44.5</radius><length>0.001</length></cylinder></geometry><material><ambient>0.1 0.4 0.1 1</ambient></material></visual>
+      </link>
+
+      <!-- Tarmac (below everything) -->
+      <link name="tarmac">
+        <pose>0 0 0.04 0 0 0</pose>
+        <visual name="tarmac_vis">
+          <geometry><plane><normal>0 0 1</normal><size>500 500</size></plane></geometry>
+          <material><ambient>0.15 0.15 0.15 1.0</ambient></material>
+        </visual>
+      </link>
+    </model>
+    
+    <gui fullscreen='0'>
+      <camera name='user_camera'>
+        <pose>0 0 350 0 1.570796 1.570796</pose>
+        <view_controller>ortho</view_controller>
+        <projection_type>orthographic</projection_type>
+      </camera>
+    </gui>
+
+    <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
+      <ros>
+        <namespace>/gazebo</namespace>
+      </ros>
+      <update_rate>50.0</update_rate>
+    </plugin>
+
+  </world>
+</sdf>
