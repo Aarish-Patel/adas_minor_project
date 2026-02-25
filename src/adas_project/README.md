@@ -13,24 +13,24 @@ The system follows a modular ROS2-based architecture, bridging high-fidelity sim
 ```mermaid
 graph TD
     subgraph "Simulation (Gazebo)"
-        V[Ego Vehicle] --> S[LiDAR / Camera / Odometry]
-        T[Traffic Actors] --> S
+        V["Ego Vehicle"] --> S["LiDAR / Camera / Odometry"]
+        T["Traffic Actors"] --> S
     end
 
     subgraph "Perception Layer"
-        S --> INF[Inference Node (GRU Model)]
-        S --> CAD[Classical ADAS Node]
+        S --> INF["Inference Node (GRU Model)"]
+        S --> CAD["Classical ADAS Node"]
     end
 
     subgraph "Intelligence Layer"
-        INF -- "Intent Probabilities" --> MAD[ML-Adaptive ADAS]
-        CAD -- "Fixed Threshold Alerts" --> ARB[Control Arbitration]
+        INF -- "Intent Probabilities" --> MAD["ML-Adaptive ADAS"]
+        CAD -- "Fixed Threshold Alerts" --> ARB["Control Arbitration"]
         MAD -- "Dynamic Threshold Alerts" --> ARB
     end
 
     subgraph "Control Layer"
         ARB -- "Safe cmd_vel" --> V
-        U[User Keyboard] -- "Requested Motion" --> ARB
+        U["User Keyboard"] -- "Requested Motion" --> ARB
     end
 
     click INF "scripts/inference_node.py"
