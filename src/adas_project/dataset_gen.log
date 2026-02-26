@@ -1,0 +1,178 @@
+nohup: ignoring input
+[INFO] [1772050018.602495043] [dataset_orchestrator]: Orchestrator online. Target: 25 eps of 'AGGRESSIVE'
+[INFO] [1772050018.602751125] [dataset_orchestrator]: Resetting Episode 1/25
+[INFO] [1772050023.093827845] [dataset_orchestrator]: Resetting Episode 2/25
+[WARN] [1772050025.094668501] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772050030.694110229] [dataset_orchestrator]: Resetting Episode 3/25
+[WARN] [1772050032.695091434] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772050046.098234354] [dataset_orchestrator]: Resetting Episode 4/25
+[WARN] [1772050048.099559630] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772050052.597228392] [dataset_orchestrator]: Resetting Episode 5/25
+[WARN] [1772050054.598069295] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772050057.696017950] [dataset_orchestrator]: Resetting Episode 6/25
+[WARN] [1772050059.698191942] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772050065.798087630] [dataset_orchestrator]: Resetting Episode 7/25
+[WARN] [1772050067.799151121] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772050069.818838037] [dataset_orchestrator]: Resetting Episode 8/25
+[WARN] [1772050071.820141291] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772050073.834275516] [dataset_orchestrator]: Resetting Episode 9/25
+[WARN] [1772050075.835516601] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772050077.844700159] [dataset_orchestrator]: Resetting Episode 10/25
+[WARN] [1772050079.845665551] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772050097.148679988] [dataset_orchestrator]: Resetting Episode 11/25
+[WARN] [1772050099.149699256] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079685.898607264] [dataset_orchestrator]: Resetting Episode 12/25
+[WARN] [1772079687.899996704] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079689.920125824] [dataset_orchestrator]: Resetting Episode 13/25
+[WARN] [1772079691.921340289] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079693.929694384] [dataset_orchestrator]: Resetting Episode 14/25
+[WARN] [1772079695.930768874] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079697.938136638] [dataset_orchestrator]: Resetting Episode 15/25
+[WARN] [1772079699.938953817] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079710.951594437] [dataset_orchestrator]: Resetting Episode 16/25
+[WARN] [1772079712.952383427] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079716.553623968] [dataset_orchestrator]: Resetting Episode 17/25
+[WARN] [1772079718.554764535] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079729.751273138] [dataset_orchestrator]: Resetting Episode 18/25
+[WARN] [1772079731.752084006] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079743.403769640] [dataset_orchestrator]: Resetting Episode 19/25
+[WARN] [1772079745.404684993] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079747.418845940] [dataset_orchestrator]: Resetting Episode 20/25
+[WARN] [1772079749.419777125] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079755.820081335] [dataset_orchestrator]: Resetting Episode 21/25
+[WARN] [1772079757.821413292] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079760.403806320] [dataset_orchestrator]: Resetting Episode 22/25
+[WARN] [1772079762.404658277] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079767.254638057] [dataset_orchestrator]: Resetting Episode 23/25
+[WARN] [1772079769.255563382] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079771.302150819] [dataset_orchestrator]: Resetting Episode 24/25
+[WARN] [1772079773.303666393] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079775.320763082] [dataset_orchestrator]: Resetting Episode 25/25
+[WARN] [1772079777.322213227] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079780.206491299] [dataset_orchestrator]: Resetting Episode 26/25
+[WARN] [1772079782.207398801] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079784.209629114] [dataset_orchestrator]: Target Reached. Shutting down orchestrator.
+[INFO] [1772079789.359958551] [dataset_orchestrator]: Orchestrator online. Target: 25 eps of 'NORMAL'
+[INFO] [1772079789.360211929] [dataset_orchestrator]: Resetting Episode 1/25
+[INFO] [1772079799.678814597] [dataset_orchestrator]: Resetting Episode 2/25
+[WARN] [1772079801.679882713] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079803.684852654] [dataset_orchestrator]: Resetting Episode 3/25
+[WARN] [1772079805.685721366] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079807.688791683] [dataset_orchestrator]: Resetting Episode 4/25
+[WARN] [1772079809.689743422] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079811.728810622] [dataset_orchestrator]: Resetting Episode 5/25
+[WARN] [1772079813.730100826] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079816.627095939] [dataset_orchestrator]: Resetting Episode 6/25
+[WARN] [1772079818.628348571] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079820.640844790] [dataset_orchestrator]: Resetting Episode 7/25
+[WARN] [1772079822.641643473] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079828.629566981] [dataset_orchestrator]: Resetting Episode 8/25
+[WARN] [1772079830.630460494] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079832.635933444] [dataset_orchestrator]: Resetting Episode 9/25
+[WARN] [1772079834.636860882] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079838.531216161] [dataset_orchestrator]: Resetting Episode 10/25
+[WARN] [1772079840.532212838] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079842.538030650] [dataset_orchestrator]: Resetting Episode 11/25
+[WARN] [1772079844.538933981] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079849.681927939] [dataset_orchestrator]: Resetting Episode 12/25
+[WARN] [1772079851.682768726] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079855.178848965] [dataset_orchestrator]: Resetting Episode 13/25
+[WARN] [1772079857.180133814] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079866.979435138] [dataset_orchestrator]: Resetting Episode 14/25
+[WARN] [1772079868.980410227] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079876.280536057] [dataset_orchestrator]: Resetting Episode 15/25
+[WARN] [1772079878.281335267] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079899.684216954] [dataset_orchestrator]: Resetting Episode 16/25
+[WARN] [1772079901.685003344] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079906.937464871] [dataset_orchestrator]: Resetting Episode 17/25
+[WARN] [1772079908.938893683] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079910.960775667] [dataset_orchestrator]: Resetting Episode 18/25
+[WARN] [1772079912.962222712] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079914.975051336] [dataset_orchestrator]: Resetting Episode 19/25
+[WARN] [1772079916.976269896] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079919.433916383] [dataset_orchestrator]: Resetting Episode 20/25
+[WARN] [1772079921.434708529] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079923.450469686] [dataset_orchestrator]: Resetting Episode 21/25
+[WARN] [1772079925.451304712] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079931.287960527] [dataset_orchestrator]: Resetting Episode 22/25
+[WARN] [1772079933.289848678] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079935.308135307] [dataset_orchestrator]: Resetting Episode 23/25
+[WARN] [1772079937.309947436] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079940.987564416] [dataset_orchestrator]: Resetting Episode 24/25
+[WARN] [1772079942.988427399] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079945.095414562] [dataset_orchestrator]: Resetting Episode 25/25
+[WARN] [1772079947.096758166] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079949.110581649] [dataset_orchestrator]: Resetting Episode 26/25
+[WARN] [1772079951.112392099] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079953.114600230] [dataset_orchestrator]: Target Reached. Shutting down orchestrator.
+[INFO] [1772079957.947515771] [dataset_orchestrator]: Orchestrator online. Target: 25 eps of 'DEFENSIVE'
+[INFO] [1772079957.947813859] [dataset_orchestrator]: Resetting Episode 1/25
+[INFO] [1772079967.344324168] [dataset_orchestrator]: Resetting Episode 2/25
+[WARN] [1772079969.345662957] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079971.543015147] [dataset_orchestrator]: Resetting Episode 3/25
+[WARN] [1772079973.544277677] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079976.545033661] [dataset_orchestrator]: Resetting Episode 4/25
+[WARN] [1772079978.545916959] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079980.693623096] [dataset_orchestrator]: Resetting Episode 5/25
+[WARN] [1772079982.695271195] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772079998.296658692] [dataset_orchestrator]: Resetting Episode 6/25
+[WARN] [1772080000.297595073] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080002.303538446] [dataset_orchestrator]: Resetting Episode 7/25
+[WARN] [1772080004.304746004] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080007.946360188] [dataset_orchestrator]: Resetting Episode 8/25
+[WARN] [1772080009.947490444] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080011.954903610] [dataset_orchestrator]: Resetting Episode 9/25
+[WARN] [1772080013.955883077] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080030.799746210] [dataset_orchestrator]: Resetting Episode 10/25
+[WARN] [1772080032.800649714] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080034.809982732] [dataset_orchestrator]: Resetting Episode 11/25
+[WARN] [1772080036.811133814] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080042.600425013] [dataset_orchestrator]: Resetting Episode 12/25
+[WARN] [1772080044.601477712] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080049.853313321] [dataset_orchestrator]: Resetting Episode 13/25
+[WARN] [1772080051.855051978] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080057.650163029] [dataset_orchestrator]: Resetting Episode 14/25
+[WARN] [1772080059.651178722] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080061.661215650] [dataset_orchestrator]: Resetting Episode 15/25
+[WARN] [1772080063.662025001] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080069.608413513] [dataset_orchestrator]: Resetting Episode 16/25
+[WARN] [1772080071.609296398] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080082.604129803] [dataset_orchestrator]: Resetting Episode 17/25
+[WARN] [1772080084.605517107] [dataset_orchestrator]: Failed to reset simulation, will retry next tick.
+[INFO] [1772080086.618129040] [dataset_orchestrator]: Resetting Episode 18/25
+Traceback (most recent call last):
+  File "/home/hsiraa/adas_ws/src/adas_project/scripts/dataset_orchestrator.py", line 123, in <module>
+    main()
+  File "/home/hsiraa/adas_ws/src/adas_project/scripts/dataset_orchestrator.py", line 116, in main
+    rclpy.spin(node)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+    executor.spin_once()
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 776, in spin_once
+    self._spin_once_impl(timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 773, in _spin_once_impl
+    raise handler.exception()
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 254, in __call__
+    self._handler.send(None)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 463, in handler
+    await call_coroutine(entity, arg)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 382, in _execute_subscription
+    await await_or_execute(sub.callback, msg)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 107, in await_or_execute
+    return callback(*args)
+  File "/home/hsiraa/adas_ws/src/adas_project/scripts/dataset_orchestrator.py", line 106, in telemetry_cb
+    self.reset_simulation()
+  File "/home/hsiraa/adas_ws/src/adas_project/scripts/dataset_orchestrator.py", line 68, in reset_simulation
+    rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 256, in spin_until_future_complete
+    executor.spin_until_future_complete(future, timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 324, in spin_until_future_complete
+    self.spin_once_until_future_complete(future, timeout_left)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 783, in spin_once_until_future_complete
+    self._spin_once_impl(timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 765, in _spin_once_impl
+    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 748, in wait_for_ready_callbacks
+    return next(self._cb_iter)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 649, in _wait_for_ready_callbacks
+    raise ExternalShutdownException()
+rclpy.executors.ExternalShutdownException

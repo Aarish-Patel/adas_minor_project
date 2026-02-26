@@ -15,6 +15,7 @@ install(
 install(
   PROGRAMS
   scripts/behavior_generator.py
+  scripts/supervisor.py
   scripts/dataset_exporter.py
   scripts/train_model.py
   scripts/inference_node.py

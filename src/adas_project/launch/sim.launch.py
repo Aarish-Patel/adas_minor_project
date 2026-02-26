@@ -41,16 +41,8 @@ def generate_launch_description():
         output='screen'
     )
 
-    # No controller_manager needed — native Gazebo plugins handle
-    # velocity (/cmd_vel) and steering (/steer_cmd) directly.
-    track_vehicle_cmd = ExecuteProcess(
-        cmd=['gz', 'camera', '-c', 'gzclient_camera', '-f', 'adas_vehicle'],
-        output='screen'
-    )
-
     return LaunchDescription([
         gazebo,
         robot_state_publisher,
         spawn_entity,
-        TimerAction(period=5.0, actions=[track_vehicle_cmd]),
     ])

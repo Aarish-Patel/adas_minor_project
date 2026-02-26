@@ -86,7 +86,7 @@
         <child link="${prefix}_wheel"/>
         <origin xyz="${x} ${y} ${z}"/>
         <axis xyz="0 1 0"/>
-        <limit effort="500.0" velocity="20.0"/>
+        <limit effort="500.0" velocity="150.0"/>
       </joint>
     </xacro:unless>
   </xacro:macro>
@@ -106,7 +106,7 @@
   <joint name="lidar_joint" type="fixed">
     <parent link="chassis"/>
     <child link="lidar_link"/>
-    <origin xyz="0.4 0 0.15" rpy="0 0 0"/>
+    <origin xyz="0.4 0 0.5" rpy="0 0 0"/>
   </joint>
 
   <!-- Camera -->
@@ -150,6 +150,11 @@
       <!-- Rear drive joints -->
       <rear_left_joint>rear_left_wheel_joint</rear_left_joint>
       <rear_right_joint>rear_right_wheel_joint</rear_right_joint>
+
+      <!-- Kinematics -->
+      <wheel_separation>0.6</wheel_separation>
+      <wheel_base>0.8</wheel_base>
+      <wheel_diameter>0.3</wheel_diameter>
 
       <!-- Geometry -->
       <max_steer>0.6</max_steer>
@@ -201,8 +206,8 @@
           </horizontal>
         </scan>
         <range>
-          <min>0.15</min>
-          <max>50.0</max>
+          <min>0.8</min>
+          <max>100.0</max>
         </range>
       </ray>
       <plugin name="gazebo_ros_laser" filename="libgazebo_ros_ray_sensor.so">

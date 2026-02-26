@@ -2,13 +2,61 @@
 
 [![ROS2 Humble](https://img.shields.io/badge/ROS2-Humble-blue.svg)](https://docs.ros.org/en/humble/index.html)
 [![Gazebo](https://img.shields.io/badge/Simulation-Gazebo-orange.svg)](https://gazebosim.org/)
-[![Deep Learning](https://img.shields.io/badge/AI-PyTorch-red.svg)](https://pytorch.org/)
 
 A research-oriented ADAS framework that merges deterministic classical safety metrics with **Deep Temporal Intent Prediction**. This system minimizes "Nuisance Alerts" by dynamically modulating safety thresholds based on real-time classification of driver behavior and surrounding traffic patterns.
 
 ---
 
-## 🏎️ 1. System Architecture
+## 🏎️ 1. Aggressive Driver Simulation
+
+The "Aggressive Driver" project focuses on a high-performance, LiDAR-driven autonomous agent that navigate a 2-lane oval track in real-time.
+
+### 🌟 Key Features
+- **Real-Time Physics**: Simulation operates at 1.0 Real-Time Factor (RTF) for accurate physical modeling.
+- **Pure LiDAR Perception**: The driver uses a 360° LiDAR array divided into sectors to detect and avoid obstacles without "cheating" via ground-truth data.
+- **Dynamic Overtaking**: Aggressive behavior logic triggers lane changes when forward paths are blocked and returns to the primary lane once clear.
+- **Auto-Reset Supervisor**: A dedicated supervisor node monitors the vehicle's state and automatically resets the Gazebo world if a collision or off-road event persists.
+- **Dynamic Traffic**: Automatic spawning of multiple traffic vehicles to test avoidance and merging stability.
+
+---
+
+## 🛠️ 2. Setup and Usage
+
+### Build the Workspace
+```bash
+cd ~/adas_ws
+colcon build --packages-select adas_project
+source install/setup.bash
+```
+
+### Launch the Aggressive Simulation
+To start the full pipeline (Gazebo, Aggressive Driver, Traffic, and Supervisor):
+```bash
+ros2 launch adas_project aggressive_sim.launch.py
+```
+
+### Manual Controls & Visualization
+- **RViz Visualization**: `ros2 run rviz2 rviz2 -d src/adas_project/rviz/lidar_view.rviz`
+- **Telemetry Monitor**: `ros2 topic echo /driver_telemetry`
+
+---
+
+## 📂 3. File Descriptions
+
+| File Path | Purpose |
+| :--- | :--- |
+| **`launch/aggressive_sim.launch.py`** | Unified launcher for the entire aggressive driver pipeline. |
+| **`scripts/behavior_generator.py`** | Core driver logic using LiDAR sector mapping for lane-keeping and avoidance. |
+| **`scripts/supervisor.py`** | Monitoring node that handles automatic `/reset_world` on collisions. |
+| **`scripts/scenario_controller.py`** | Orchestrates the spawning and placement of traffic vehicles. |
+| **`urdf/vehicle.xacro`** | Vehicle model with a raised LiDAR mount to prevent self-scanning interference. |
+| **`worlds/two_lane.world`** | Gazebo world file tuned for 1.0 RTF simulation. |
+| **`scripts/fixed_adas.py`** | Classical threshold-based ADAS implementation for comparison. |
+| **`scripts/ml_adas.py`** | Neural-network-enhanced ADAS logic (Inference-driven). |
+
+---
+
+## 🧠 4. System Architecture
 
 The project is built on a modular **ROS2 Humble** backend, designed for high-frequency control (20Hz) and real-time deep learning inference (10Hz).
 
@@ -35,96 +83,6 @@ flowchart TD
         U["User Keyboard Input"] -- "Control Request" --> ARB
     end
 ```
-
----
-
-## 🧠 2. Deep Intent classification (ML)
-
-The system's core intelligence resides in the `inference_node.py`, which uses a sequence model to predict near-future behavior.
-
-### 🛠️ Feature Engineering (7-Dimensional Vector)
-The model consumes a temporal window of 10 samples (1 second of state) across 7 critical features:
-
-| Feature | Source | Rationale |
-| :--- | :--- | :--- |
-| **Yaw Rate** | IMU | Detects rapid directional changes / erratic swerving. |
-| **Longitudinal Accel** | IMU/Odom | Captures aggressive throttle or "Late Braking" patterns. |
-| **Steering Rate** | JointState | Distinguishes between gentle lane keeping and sharp evasion. |
-| **Velocity Gradient** | Derived | Monitors acceleration/deceleration trends for TTC forecasting. |
-| **Lane Deviation** | Odometry | Quantifies the distance from the target track centerline. |
-| **Joint Effort** | JointState | Measures motor load/torque, indicating high-stress maneuvers. |
-| **Proximity Range** | LiDAR | Ground truth distance to the closest frontal obstacle. |
-
-### 🏗️ Model Architecture
-- **Model Type**: 2-Layer Gated Recurrent Unit (GRU).
-- **Sequence Length**: 10 samples (100ms interval).
-- **Hidden Dim**: 64 units per layer.
-- **Classification Classes**:
-    1. `Aggressive`: High-speed tailgating/weaving.
-    2. `Inconsistent`: Erratic steering/unstable lane keeping.
-    3. `Late Braking`: High-deceleration approach to obstacles.
-    4. `Defensive`: Stable, predictive driving (Baseline).
-
----
-
-## 🛡️ 3. ML-Adaptive ADAS Logic
-
-Unlike traditional systems with static thresholds, this logic dynamically shrinks or expands the safety envelope based on intent.
-
-### 📉 The Dynamic TTC Equation
-The safety threshold for Time-to-Collision ($TTC_{threshold}$) is modulated by the "Aggressive Intent" probability ($P_{intent}$):
-
-$$TTC_{dynamic} = TTC_{base} \times (1.0 - \alpha \times P_{intent})$$
-
-Where:
-- **$\alpha$ (Sensitivity Factor)**: Scales the impact of the ML model on the safety system.
-- **Result**: When $P_{intent}$ is high, the system becomes **proactively sensitive**, triggering warnings earlier to compensate for high-risk behavior.
-
-### 👁️ Explainable AI (XAI)
-The system publishes interactive explainability markers:
-- **RViz Text Markers**: Real-time intent classification hover above vehicles.
-- **Adaptive HUD**: Changes color grading based on safety state (Green ➔ Yellow ➔ Orange ➔ Red).
-
----
-
-## 🚦 4. Safety Arbitration (FSM)
-
-The `control_arbitration_node.py` manages the actual intervention using a **Hysteresis-Aware Finite State Machine**.
-
-| State | Condition | Action |
-| :--- | :--- | :--- |
-| **MANUAL_ONLY** | $TTC > 4.0s$ | Full user control; soft Lane-Keep Assist (LKA) active. |
-| **WARNING** | $TTC < 2.5s$ | Visual HUD alerts; user speed capped via software limit. |
-| **ASSIST** | $TTC < 1.5s$ | Active evasion steering; autonomous speed reduction. |
-| **EMERGENCY** | $TTC < 0.8s$ | **DEAD STOP**. Full safety override to prevent collision. |
-
-> [!IMPORTANT]
-> **Hysteresis Guard**: To prevent "State Flapping," the FSM enforces a `0.3s` cooldown before allowing de-escalation to a lower safety tier.
-
----
-
-## 📊 5. Evaluation Framework
-
-Each experiment generates a complete statistical report in `/evaluation`:
-- **ROC Curves**: Comparison of True Positive Rate vs. False Positive Rate for Fixed vs ML modes.
-- **Confusion Matrices**: Evaluating the accuracy of the Intent Classifier.
-- **Safety Exposure**: Cumulative seconds spent in "Close Call" zones (<2.5m).
-
----
-
-## 🛠️ 6. Setup and Usage
-
-### Build
-```bash
-cd ~/adas_ws
-colcon build --symlink-install
-source install/setup.bash
-```
-
-### Modes of Operation
-- **Fixed ADAS (Classic)**: `./src/adas_project/scripts/auto_fixed.sh`
-- **ML-Adaptive (Research)**: `./src/adas_project/scripts/auto_ml.sh`
-- **Data Collection**: `ros2 run adas_project behavior_generator.py` (Records training data).
 
 ---
 **Maintained by Aarish Patel — ADAS Minor Project.**
