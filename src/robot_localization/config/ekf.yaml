@@ -1,0 +1,74 @@
+# =============================================================
+# EV Robot — EKF Sensor Fusion Configuration
+# =============================================================
+# Fuses wheel odometry from the Ackermann controller and IMU
+# data to produce a robust odom -> base_footprint transform.
+# =============================================================
+
+### ekf_filter_node ###
+ekf_filter_node:
+  ros__parameters:
+    # Frames
+    odom_frame: odom
+    base_link_frame: base_footprint
+    world_frame: odom
+
+    # How often to publish the filtered state (Hz)
+    frequency: 30.0
+
+    # Allow two sensor sources to have the same timestamp
+    permit_corrected_publication: false
+
+    # Publish the transform from odom_frame to base_link_frame
+    publish_tf: true
+
+    # -------------------------------------------------------
+    # Sensor 0: Wheel Odometry (from Ackermann controller)
+    # -------------------------------------------------------
+    odom0: /wheel_odom
+    odom0_config: [true,  true,  false,  # x, y, z
+                   false, false, false,   # roll, pitch, yaw
+                   true,  true,  false,   # vx, vy, vz
+                   false, false, true,    # vroll, vpitch, vyaw
+                   false, false, false]   # ax, ay, az
+    odom0_differential: false
+    odom0_relative: false
+    odom0_queue_size: 10
+
+    # -------------------------------------------------------
+    # Sensor 1: IMU
+    # -------------------------------------------------------
+    imu0: /imu
+    imu0_config: [false, false, false,    # x, y, z
+                  true,  true,  true,     # roll, pitch, yaw
+                  false, false, false,    # vx, vy, vz
+                  true,  true,  true,     # vroll, vpitch, vyaw
+                  false, false, false]    # ax, ay, az
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 10
+    imu0_remove_gravitational_acceleration: true
+
+    # Constrain to 2D plane — prevents z, roll, pitch drift
+    two_d_mode: true
+
+    # -------------------------------------------------------
+    # Process noise covariance (Q) — tune for your robot
+    # -------------------------------------------------------
+    process_noise_covariance: [0.05,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.05,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.06,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.03,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.03,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.06,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.025,0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.025,0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.04,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.02,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.015]
+
+    use_sim_time: true

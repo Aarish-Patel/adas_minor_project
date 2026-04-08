@@ -1,0 +1,60 @@
+# =============================================================
+# EV Robot — ros2_control Controller Configuration
+# =============================================================
+# This file configures the Ackermann Steering Controller and
+# Joint State Broadcaster for the Gazebo simulation. The
+# ackermann_steering_controller accepts /cmd_vel (Twist msg)
+# and converts it to rear wheel velocities + front steer angles.
+# =============================================================
+
+controller_manager:
+  ros__parameters:
+    update_rate: 50  # Hz
+
+    ackermann_steering_controller:
+      type: ackermann_steering_controller/AckermannSteeringController
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+ackermann_steering_controller:
+  ros__parameters:
+    # --- Kinematics ---
+    wheelbase: 0.20          # distance between front and rear axles [m]
+    front_wheels_radius: 0.035
+    rear_wheels_radius: 0.035
+
+    # Rear (traction) wheel joints — velocity-controlled
+    rear_wheels_names:
+      - rear_left_wheel_joint
+      - rear_right_wheel_joint
+
+    # Front (steering) joints — position-controlled
+    front_wheels_names:
+      - front_left_steer_joint
+      - front_right_steer_joint
+
+    # Wheel separation (track width)
+    front_wheel_track: 0.15
+    rear_wheel_track: 0.15
+
+    # Command interface
+    open_loop: false
+    velocity_rolling_window_size: 10
+    use_stamped_vel: false
+
+    # Publish odometry (this becomes /wheel_odom via remapping)
+    enable_odom_tf: false  # EKF will publish odom->base_link TF
+    odom_frame_id: odom
+    base_frame_id: base_footprint
+    pose_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+    twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+
+    # Limits
+    linear.x.has_velocity_limits: true
+    linear.x.max_velocity: 1.0
+    linear.x.min_velocity: -0.5
+    linear.x.has_acceleration_limits: true
+    linear.x.max_acceleration: 2.0
+    angular.z.has_velocity_limits: true
+    angular.z.max_velocity: 1.5
