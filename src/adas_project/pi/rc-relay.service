@@ -1,0 +1,16 @@
+[Unit]
+Description=RC car WiFi drive safety relay (LiDAR obstacle blocking)
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi
+ExecStart=/usr/bin/python3 -u /home/pi/wifi_drive_safety.py
+Restart=on-failure
+RestartSec=2
+StandardOutput=append:/home/pi/relay.log
+StandardError=append:/home/pi/relay.log
+
+[Install]
+WantedBy=multi-user.target

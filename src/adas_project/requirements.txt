@@ -1,0 +1,11 @@
+numpy
+scipy
+scikit-learn
+joblib
+matplotlib
+opencv-python
+websockets
+pygame
+pyserial
+playwright      # only for the screenshot / camera-validation tools in tools/
+# On the Raspberry Pi also: rplidar-roboticia (RPLIDAR driver)

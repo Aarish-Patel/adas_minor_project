@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+models/*.joblib
+models/*.pkl
+models/*.npy
+models/warning_data.pkl
+reports/*.png
+web/data/results.json
+*.log
+tuning_suggested.json

@@ -1,0 +1,23 @@
+[
+ {
+  "mode": "off",
+  "reached_m": 9.0,
+  "worst_offset_cm": 30.0,
+  "warning_share": 0.0,
+  "crashed": false
+ },
+ {
+  "mode": "warn",
+  "reached_m": 9.0,
+  "worst_offset_cm": 30.0,
+  "warning_share": 0.85,
+  "crashed": false
+ },
+ {
+  "mode": "assist",
+  "reached_m": 9.0,
+  "worst_offset_cm": 1.7,
+  "warning_share": 0.0,
+  "crashed": false
+ }
+]

@@ -1,0 +1,293 @@
+"""Drive the car over WiFi from rc_controller.py, with the Pi blocking motion ONLY toward
+a nearby obstacle. Steering is never touched, and the other direction of travel (e.g.
+reverse, if forward is blocked) always stays available.
+
+Architecture:
+    laptop (rc_controller.py, TRANSPORT="wifi")  --UDP-->  this relay, on the Pi
+    this relay  --USB serial-->  ESP32  (the already-proven-reliable link)
+
+On the laptop, point rc_controller.py at the Pi instead of the ESP32:
+    ESP32_IP = "192.168.1.3"     # the Pi's address, not the ESP32's
+
+Direction convention: rc_controller.py's build_command() already applies MOTOR_REVERSED
+before putting a value on the wire, so the WIRE value's sign is the OPPOSITE of the
+physical direction on this car. Everything below converts wire -> physical once on
+receipt, reasons about physical direction only, then converts back once before sending.
+"""
+
+import glob
+import signal
+import socket
+import threading
+import time
+
+import serial
+from rplidar import RPLidar
+
+UDP_PORT = 4210
+
+FRONT_OFFSET_DEG = 96.5    # raw LiDAR angle that is the car's straight-ahead (measured)
+CONE_DEG = 15              # +/- around straight ahead / straight behind
+FRONT_OVERHANG_M = 0.16    # LiDAR to front bumper (measured)
+REAR_OVERHANG_M = 0.17     # LiDAR to rear bumper (measured)
+MIN_VALID_RANGE_M = 0.20   # ignore raw readings closer than this (self-hits/mount clutter)
+HOLD_AFTER_LOST_READING_S = 1.0   # a lost reading right after a block does NOT mean "clear"
+
+# Stop distance now SCALES with how fast the gap is closing (measured straight from
+# consecutive LiDAR readings, no PWM/speed calibration needed): a fast approach needs a
+# bigger margin than a slow creep, because the car covers more ground during the
+# LiDAR/relay/motor reaction delay and while coasting to a stop.
+BASE_MARGIN_M = 0.10        # margin kept even at ~zero speed (must stay above the ~0.04 m
+                            # sensor blind-zone floor: MIN_VALID_RANGE_M - overhang)
+REACTION_TIME_S = 0.25      # LiDAR scan interval + relay loop + motor response, combined
+ASSUMED_DECEL = 1.0         # m/s^2 the car can coast-stop at - NOT calibrated, conservative
+                            # guess; recalibrate with pi/calibrate.py once you have a real
+                            # number, and tighten this if it proves too cautious.
+MAX_CLOSING_SPEED_M_S = 3.0  # clip absurd speed spikes from noise
+
+WIRE_MOTOR_REVERSED = True  # must match rc_controller.py's MOTOR_REVERSED for this car
+
+
+def find_ports(retries=5, delay=1.5):
+    """Probe each /dev/ttyUSB* for the RPLIDAR reply. Retries: right after a restart the
+    port can still be settling (e.g. from the previous process's shutdown) and briefly
+    fail to answer, which looks identical to "not the LiDAR" unless we just try again."""
+    for attempt in range(retries):
+        lidar_port, esp_port = None, None
+        for p in sorted(glob.glob("/dev/ttyUSB*")):
+            try:
+                s = serial.Serial(p, 256000, timeout=1)
+                s.dtr = False
+                s.rts = False
+                time.sleep(0.3)
+                s.reset_input_buffer()
+                s.write(bytes([0xA5, 0x50]))
+                time.sleep(0.3)
+                resp = s.read(s.in_waiting or 1)
+                s.close()
+                if resp[:2] == bytes([0xA5, 0x5A]):
+                    lidar_port = p
+                else:
+                    esp_port = p
+            except Exception as e:
+                print(f"  {p}: could not probe ({e})")
+        if lidar_port and esp_port:
+            return lidar_port, esp_port
+        print(f"  attempt {attempt + 1}/{retries}: LiDAR={lidar_port}, ESP32={esp_port}, retrying...")
+        time.sleep(delay)
+    return lidar_port, esp_port
+
+
+class DirectionTrack:
+    """One direction's (front or rear) distance + a smoothed closing-speed estimate,
+    computed straight from how fast consecutive LiDAR readings shrink."""
+
+    def __init__(self):
+        self.dist = None
+        self.speed = 0.0        # m/s, positive = closing in
+        self._prev_dist = None
+        self._prev_t = None
+
+    def update(self, dist, t):
+        if dist is not None and self._prev_dist is not None and self._prev_t is not None:
+            dt = t - self._prev_t
+            if 0.01 < dt < 0.5:
+                raw = (self._prev_dist - dist) / dt
+                raw = max(0.0, min(raw, MAX_CLOSING_SPEED_M_S))
+                self.speed = 0.5 * self.speed + 0.5 * raw
+        elif dist is None:
+            self.speed = 0.0     # lost the reading: don't keep assuming the old closing speed
+        self.dist = dist
+        if dist is not None:
+            self._prev_dist, self._prev_t = dist, t
+
+    def required_margin(self):
+        """Stopping distance needed at the current closing speed (bigger when approaching fast)."""
+        v = self.speed
+        return BASE_MARGIN_M + v * REACTION_TIME_S + (v * v) / (2.0 * ASSUMED_DECEL)
+
+
+class Clearance:
+    """Background thread: keeps the latest min clearance + closing speed, ahead and behind."""
+
+    def __init__(self, port):
+        self.lidar = RPLidar(port, baudrate=256000, timeout=3)
+        self.front_track = DirectionTrack()
+        self.rear_track = DirectionTrack()
+        self.lock = threading.Lock()
+        self.running = True
+        self.thread = threading.Thread(target=self._loop, daemon=True)
+
+    def start(self):
+        print("LiDAR info:", self.lidar.get_info())
+        print("LiDAR health:", self.lidar.get_health())
+        self.thread.start()
+
+    def _loop(self):
+        try:
+            for scan in self.lidar.iter_scans(max_buf_meas=6000, min_len=5):
+                if not self.running:
+                    break
+                best_front = best_rear = None
+                for _, angle, dist in scan:
+                    if dist <= 0 or dist / 1000.0 < MIN_VALID_RANGE_M:
+                        continue
+                    a = (angle - FRONT_OFFSET_DEG) % 360
+                    a = a if a <= 180 else a - 360   # -180..180, 0 = car's straight ahead
+
+                    if abs(a) <= CONE_DEG:
+                        d = dist / 1000.0 - FRONT_OVERHANG_M
+                        if best_front is None or d < best_front:
+                            best_front = d
+
+                    ra = a - 180 if a > 0 else a + 180   # angle relative to straight behind
+                    if abs(ra) <= CONE_DEG:
+                        d = dist / 1000.0 - REAR_OVERHANG_M
+                        if best_rear is None or d < best_rear:
+                            best_rear = d
+
+                now = time.time()
+                with self.lock:
+                    self.front_track.update(best_front, now)
+                    self.rear_track.update(best_rear, now)
+        except Exception as e:
+            print("LiDAR thread stopped:", e)
+
+    def read(self):
+        with self.lock:
+            return self.front_track, self.rear_track
+
+    def stop(self):
+        self.running = False
+        try:
+            self.lidar.stop()
+            self.lidar.stop_motor()
+            self.lidar.disconnect()
+        except Exception:
+            pass
+
+
+class SafetyGate:
+    """Turns direction tracks into block/allow decisions: blocked when the clearance is
+    under the SPEED-SCALED required margin, held briefly if the reading is lost right
+    after a block (see obstacle_stop.py for why)."""
+
+    def __init__(self):
+        self.last_blocked = {"front": None, "rear": None}
+
+    def blocked(self, which, track, now):
+        if track.dist is not None and track.dist < track.required_margin():
+            self.last_blocked[which] = now
+            return True
+        last = self.last_blocked[which]
+        if track.dist is None and last is not None and now - last < HOLD_AFTER_LOST_READING_S:
+            return True
+        return False
+
+
+def main():
+    # systemctl restart/stop sends SIGTERM; without this, cleanup only ran on Ctrl+C (SIGINT),
+    # so the motor and LiDAR were never stopped cleanly on a service restart.
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+
+    print("looking for LiDAR and ESP32 on /dev/ttyUSB*...")
+    lidar_port, esp_port = find_ports()
+    print(f"LiDAR on {lidar_port}, ESP32 on {esp_port}")
+    if not lidar_port or not esp_port:
+        print("Could not identify both devices, aborting.")
+        return
+
+    esp = serial.Serial()
+    esp.port = esp_port
+    esp.baudrate = 115200
+    esp.timeout = 0.2
+    esp.dtr = False
+    esp.rts = False
+    esp.open()
+    time.sleep(1.0)
+    esp.write(b"A 90 90\nM 0\n")
+
+    clr = Clearance(lidar_port)
+    clr.start()
+    time.sleep(2.0)
+
+    gate = SafetyGate()
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(("0.0.0.0", UDP_PORT))
+    sock.settimeout(0.5)
+    print(f"\nlistening for driver commands on UDP :{UDP_PORT}")
+    print("point rc_controller.py's ESP32_IP at this Pi's address to drive.\n")
+
+    last_packet_time = time.time()
+    last_status_print = 0.0
+
+    try:
+        while True:
+            try:
+                data, addr = sock.recvfrom(256)
+            except socket.timeout:
+                # failsafe: if the driver link drops, stop the car (belt-and-suspenders;
+                # the ESP32 firmware also has its own 500 ms timeout).
+                if time.time() - last_packet_time > 0.6:
+                    esp.write(b"M 0\n")
+                continue
+
+            last_packet_time = time.time()
+            text = data.decode(errors="ignore")
+
+            if text.strip() == "PING":
+                esp.reset_input_buffer()
+                esp.write(b"PING\n")
+                time.sleep(0.05)
+                reply = esp.read(esp.in_waiting or 1)
+                sock.sendto(reply or b"PONG", addr)
+                continue
+
+            front_track, rear_track = clr.read()
+            now = time.time()
+            front_blocked = gate.blocked("front", front_track, now)
+            rear_blocked = gate.blocked("rear", rear_track, now)
+
+            out_lines = []
+            for line in text.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith("M "):
+                    try:
+                        wire_val = int(float(line.split()[1]))
+                    except (IndexError, ValueError):
+                        out_lines.append(line)
+                        continue
+                    physical = -wire_val if WIRE_MOTOR_REVERSED else wire_val
+                    if (physical > 0 and front_blocked) or (physical < 0 and rear_blocked):
+                        physical = 0
+                    wire_out = -physical if WIRE_MOTOR_REVERSED else physical
+                    out_lines.append(f"M {wire_out}")
+                else:
+                    out_lines.append(line)   # steering ("A ...") and anything else: untouched
+
+            esp.write(("\n".join(out_lines) + "\n").encode())
+
+            if now - last_status_print > 0.5:
+                last_status_print = now
+                ftxt = f"{front_track.dist:.2f}m@{front_track.speed:.1f}m/s" if front_track.dist is not None else "--"
+                rtxt = f"{rear_track.dist:.2f}m@{rear_track.speed:.1f}m/s" if rear_track.dist is not None else "--"
+                print(f"  front {ftxt:>16s} {'[BLOCKED]' if front_blocked else '         '}   "
+                      f"rear {rtxt:>16s} {'[BLOCKED]' if rear_blocked else '         '}   "
+                      f"-> {' '.join(out_lines)}", end="\r")
+
+    except KeyboardInterrupt:
+        print("\nstopping")
+    finally:
+        esp.write(b"M 0\nSTOP\n")
+        time.sleep(0.1)
+        esp.close()
+        clr.stop()
+        sock.close()
+        print("motor stopped, LiDAR stopped, exiting.")
+
+
+if __name__ == "__main__":
+    main()

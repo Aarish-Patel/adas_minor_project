@@ -1,0 +1,47 @@
+[
+ {
+  "name": "LiDAR unplugged at speed",
+  "pass": true,
+  "detail": "stopped 93 cm short; watchdog stops the car"
+ },
+ {
+  "name": "LiDAR drops 40% of readings",
+  "pass": true,
+  "detail": "stopped 11 cm short"
+ },
+ {
+  "name": "LiDAR noise rises to 5 cm",
+  "pass": true,
+  "detail": "stopped 22 cm short"
+ },
+ {
+  "name": "Link delay rises to 150 ms",
+  "pass": true,
+  "detail": "stopped 10 cm short"
+ },
+ {
+  "name": "Controller disconnects at full speed",
+  "pass": true,
+  "detail": "stopped 93 cm short"
+ },
+ {
+  "name": "Real car 40% faster than calibrated",
+  "pass": true,
+  "detail": "stopped 11 cm short"
+ },
+ {
+  "name": "Real car 40% slower than calibrated",
+  "pass": true,
+  "detail": "stopped 16 cm short"
+ },
+ {
+  "name": "Camera lost while auto-parking",
+  "pass": true,
+  "detail": "stopped 12 cm short; parking state: approach"
+ },
+ {
+  "name": "Pi program dies (ESP32 failsafe)",
+  "pass": true,
+  "detail": "motor -200 -> 0 within 0.8 s of the last command"
+ }
+]
