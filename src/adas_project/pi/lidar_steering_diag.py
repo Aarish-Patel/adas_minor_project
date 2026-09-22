@@ -120,6 +120,9 @@ class Rig:
         self._lock = threading.Lock()
         self._front = self._rear = self._bearing = None
         self._floor = self._floor_bearing = None   # closest point anywhere in the 360 scan
+        self._profile = {}    # angle_bin(10deg) -> min body clearance, full 360 - the actual
+                               # room map, used to pick a genuinely open escape direction
+                               # instead of guessing/cycling blind
         self._pwm_now = 0.0   # ramped PWM state (physical convention: +forward, -reverse)
         self._running = True
         self._thread = threading.Thread(target=self._scan_loop, daemon=True)
@@ -135,6 +138,7 @@ class Rig:
                 front = rear = None
                 bear_best_d, bear_best_a = None, None
                 floor_d, floor_a = None, None
+                profile = {}
                 for _, angle, dist in scan:
                     if dist <= 0 or dist / 1000.0 < MOUNT.min_valid_range_m:
                         continue
@@ -158,9 +162,17 @@ class Rig:
                     body_d = d_m - min(MOUNT.front_overhang_m, MOUNT.rear_overhang_m)
                     if floor_d is None or body_d < floor_d:
                         floor_d, floor_a = body_d, a
+                    # the actual room map: coarse 10deg bins, min body clearance in each -
+                    # this is what lets repositioning pick a real open direction instead of
+                    # guessing and checking after the fact
+                    bin_a = int(round(a / 10.0)) * 10
+                    if bin_a not in profile or body_d < profile[bin_a]:
+                        profile[bin_a] = body_d
                 with self._lock:
                     self._front, self._rear = front, rear
                     self._floor, self._floor_bearing = floor_d, floor_a
+                    if profile:
+                        self._profile = profile
                     if bear_best_a is not None:
                         self._bearing = bear_best_a
         except Exception as e:
@@ -187,6 +199,11 @@ class Rig:
     def bearing(self):
         with self._lock:
             return self._bearing
+
+    def profile(self):
+        """Full 360 clearance-by-angle map (10deg bins), the actual room layout right now."""
+        with self._lock:
+            return dict(self._profile)
 
     def steer(self, raw_angle):
         raw_angle = max(35, min(145, int(round(raw_angle))))
@@ -247,32 +264,52 @@ def _clearance_ok(rig):
            (rear_c is None or rear_c >= CLEARANCE_MIN_M)
 
 
-# Escape maneuvers tried in order, cycling if none of them clear it in one pass. Straight
-# reverse/forward alone can oscillate forever between two obstacles on opposite corners (seen
-# live: the car ping-ponged between a front-right and a rear-left obstacle without ever
-# escaping). Steered diagonal options let it actually work sideways out of a corner instead
-# of just bouncing along one axis. Short bursts (well under REPOSITION_REVERSE_S's old 0.8s)
-# limit how far it can overshoot into the opposite hazard on any single attempt.
-ESCAPE_MOVES = [
-    (0, "reverse"), (0, "forward"),
-    (25, "reverse"), (-25, "reverse"),
-    (25, "forward"), (-25, "forward"),
-]
 ESCAPE_BURST_S = 0.35
+PROFILE_MIN_SAMPLES_DEG = 30   # need at least this much of the ring mapped before trusting it
 
 
-def reposition_away_from_nearest(rig, log, max_attempts=14):
-    """Try a sequence of escape maneuvers (straight and diagonal, both directions), keeping
-    whichever one actually improved clearance and reverting+trying the next one if it made
-    things worse. Cycles through ESCAPE_MOVES rather than committing to one fixed strategy."""
+def choose_escape_move(rig, purpose_bearing=None, purpose_half_width=45, purpose_weight=1.6):
+    """Use the actual 360 room map (not a guess) to pick where to go: the angle bin with the
+    best clearance, weighted toward `purpose_bearing` when given (e.g. 0deg for an upcoming
+    straight-forward speed test, or the turn's own offset angle for an upcoming turn test -
+    "if the test is a right turn, maximise front+right distance", not just anywhere open).
+    Falls back to a plain reverse if the scan doesn't have enough of the ring mapped yet."""
+    profile = rig.profile()
+    if len(profile) * 10 < PROFILE_MIN_SAMPLES_DEG:
+        return (0, "reverse", None)
+
+    def score(angle_bin, dist):
+        if purpose_bearing is None:
+            return dist
+        ang_dist = abs(angle_bin - purpose_bearing)
+        ang_dist = min(ang_dist, 360 - ang_dist)
+        return dist * purpose_weight if ang_dist <= purpose_half_width else dist
+
+    best_bin = max(profile, key=lambda b: score(b, profile[b]))
+    if abs(best_bin) <= 90:
+        direction = "forward"
+        steer_offset = max(-35, min(35, best_bin))
+    else:
+        direction = "reverse"
+        rear_relative = best_bin - 180 if best_bin > 0 else best_bin + 180
+        steer_offset = max(-35, min(35, -rear_relative))
+    return (steer_offset, direction, best_bin)
+
+
+def reposition_away_from_nearest(rig, log, max_attempts=14, purpose_bearing=None):
+    """Drive toward the most open direction in the current room map (biased toward
+    `purpose_bearing` when the caller knows what the next test actually needs clear),
+    re-scanning and re-choosing after every short burst. Keeps a move only if it measurably
+    helped; undoes roughly half of it and re-picks from the fresh map otherwise - this
+    replaces a fixed cycle of blind guesses with an actual read of the room."""
     if _clearance_ok(rig):
         return True
     for attempt in range(max_attempts):
-        move = ESCAPE_MOVES[attempt % len(ESCAPE_MOVES)]
-        steer_offset, direction = move
+        steer_offset, direction, target_bin = choose_escape_move(rig, purpose_bearing)
         before = _clearance_score(rig)
         d, a = rig.floor()
-        log.append({"event": "reposition", "attempt": attempt, "move": move,
+        log.append({"event": "reposition", "attempt": attempt, "steer_offset": steer_offset,
+                     "direction": direction, "target_bin": target_bin,
                      "floor": d, "floor_bearing": a, "front": rig.front(), "rear": rig.rear()})
 
         rig.steer(90 + steer_offset)
@@ -291,8 +328,8 @@ def reposition_away_from_nearest(rig, log, max_attempts=14):
             return True
         after = _clearance_score(rig)
         if after < before:
-            # this move made it worse - undo roughly half of it before trying the next
-            # candidate, so a bad guess doesn't compound across attempts
+            # that guess made it worse - undo roughly half before the map gets re-read and
+            # a fresh direction gets picked next attempt
             rig.steer(90 + steer_offset)
             undo_end = time.time() + ESCAPE_BURST_S * 0.5
             opposite = "forward" if direction == "reverse" else "reverse"
@@ -308,8 +345,8 @@ def reposition_away_from_nearest(rig, log, max_attempts=14):
     return _clearance_ok(rig)
 
 
-def ensure_clearance(rig, log, need_front=True):
-    ok = reposition_away_from_nearest(rig, log)
+def ensure_clearance(rig, log, need_front=True, purpose_bearing=None):
+    ok = reposition_away_from_nearest(rig, log, purpose_bearing=purpose_bearing)
     if not ok:
         return False
     c = rig.front() if need_front else rig.rear()
@@ -403,7 +440,7 @@ def main():
     result = {"started": time.time(), "center0": CENTER0}
     rig = Rig()
     try:
-        if not ensure_clearance(rig, log):
+        if not ensure_clearance(rig, log, purpose_bearing=0):
             result["aborted"] = "insufficient front clearance at start"
             return
 
@@ -412,7 +449,7 @@ def main():
         for pwm in PWM_LEVELS:
             trial_speeds = []
             for trial in range(TRIALS):
-                if not ensure_clearance(rig, log):
+                if not ensure_clearance(rig, log, purpose_bearing=0):   # straight test needs front clear
                     break
                 v = measure_speed(rig, pwm, log)
                 reset_forward_drift(rig, 1.0)
@@ -432,7 +469,7 @@ def main():
                                           "v_max_at_255": slope * 255 + intercept}
 
         # --- Phase 2: servo center calibration ---
-        if not ensure_clearance(rig, log):
+        if not ensure_clearance(rig, log, purpose_bearing=25):   # about to test a +25deg offset
             result["center_skipped"] = "insufficient clearance"
         else:
             probe = measure_turn(rig, CENTER0 + 25, TURN_TEST_PWM, log, duration_s=0.5)
@@ -445,7 +482,7 @@ def main():
                 center = float(CENTER0)
                 centers_tried = []
                 for it in range(4):
-                    if not ensure_clearance(rig, log):
+                    if not ensure_clearance(rig, log, purpose_bearing=0):   # near-straight test
                         break
                     t = measure_turn(rig, round(center), TURN_TEST_PWM, log, duration_s=0.5)
                     reset_forward_drift(rig, 0.8)
@@ -478,7 +515,9 @@ def main():
             raw = center_used + offset
             trials = []
             for trial in range(TRIALS):
-                if not ensure_clearance(rig, log):
+                # this test will swing the front toward `offset` - make sure that side (and
+                # front generally) is actually the open direction, not just "somewhere is open"
+                if not ensure_clearance(rig, log, purpose_bearing=offset):
                     break
                 t = measure_turn(rig, raw, TURN_TEST_PWM, log, duration_s=0.7)
                 reset_forward_drift(rig, 1.0)
