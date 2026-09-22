@@ -15,6 +15,7 @@ physical direction on this car. Everything below converts wire -> physical once 
 receipt, reasons about physical direction only, then converts back once before sending.
 """
 
+import csv
 import glob
 import os
 import signal
@@ -53,6 +54,11 @@ ASSUMED_DECEL = 1.0         # m/s^2 the car can coast-stop at - NOT calibrated, 
                             # guess; recalibrate with pi/calibrate.py once you have a real
                             # number, and tighten this if it proves too cautious.
 MAX_CLOSING_SPEED_M_S = 3.0  # clip absurd speed spikes from noise
+
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "drive_logs")
+LOG_RATE_HZ = 10.0   # raw driving data, for later real-world intent-model training
+                     # (see adas/intent.py for the eventual feature/label pipeline;
+                     # this just captures ground truth cheaply for now)
 
 WIRE_MOTOR_REVERSED = TUNING.servo.motor_reversed  # must match rc_controller.py's MOTOR_REVERSED
 
@@ -176,6 +182,41 @@ class Clearance:
             pass
 
 
+class DriveLogger:
+    """Cheap raw-data recorder: one row per tick, a fresh timestamped file per service run.
+    No feature engineering here on purpose - keep the raw numbers, decide what to do with
+    them later (see adas/intent.py for the real feature/label pipeline this feeds into
+    once there's enough real driving data to be worth it)."""
+
+    FIELDS = ["t", "steer_a1", "steer_a2", "pwm_commanded", "pwm_sent",
+              "front_dist", "front_speed", "front_blocked",
+              "rear_dist", "rear_speed", "rear_blocked"]
+
+    def __init__(self, directory):
+        os.makedirs(directory, exist_ok=True)
+        path = os.path.join(directory, time.strftime("drive_%Y%m%d_%H%M%S.csv"))
+        self.file = open(path, "w", newline="", encoding="utf-8")
+        self.writer = csv.DictWriter(self.file, fieldnames=self.FIELDS)
+        self.writer.writeheader()
+        self.path = path
+        self.period = 1.0 / LOG_RATE_HZ
+        self.next_t = 0.0
+        print(f"logging raw drive data to {path}")
+
+    def maybe_log(self, now, row):
+        if now < self.next_t:
+            return
+        self.next_t = now + self.period
+        self.writer.writerow(row)
+        self.file.flush()   # small, infrequent writes: fine to flush every row on an SD card
+
+    def close(self):
+        try:
+            self.file.close()
+        except Exception:
+            pass
+
+
 class SafetyGate:
     """Turns direction tracks into block/allow decisions: blocked when the clearance is
     under the SPEED-SCALED required margin, held briefly if the reading is lost right
@@ -221,6 +262,7 @@ def main():
     time.sleep(2.0)
 
     gate = SafetyGate()
+    logger = DriveLogger(LOG_DIR)
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", UDP_PORT))
@@ -259,6 +301,8 @@ def main():
             rear_blocked = gate.blocked("rear", rear_track, now)
 
             out_lines = []
+            steer_a1 = steer_a2 = None
+            pwm_commanded = pwm_sent = 0
             for line in text.splitlines():
                 line = line.strip()
                 if not line:
@@ -269,15 +313,34 @@ def main():
                     except (IndexError, ValueError):
                         out_lines.append(line)
                         continue
+                    pwm_commanded = wire_val
                     physical = -wire_val if WIRE_MOTOR_REVERSED else wire_val
                     if (physical > 0 and front_blocked) or (physical < 0 and rear_blocked):
                         physical = 0
                     wire_out = -physical if WIRE_MOTOR_REVERSED else physical
+                    pwm_sent = wire_out
                     out_lines.append(f"M {wire_out}")
+                elif line.startswith("A "):
+                    parts = line.split()
+                    if len(parts) == 3:
+                        try:
+                            steer_a1, steer_a2 = float(parts[1]), float(parts[2])
+                        except ValueError:
+                            pass
+                    out_lines.append(line)   # steering is never modified by the safety gate
                 else:
-                    out_lines.append(line)   # steering ("A ...") and anything else: untouched
+                    out_lines.append(line)
 
             esp.write(("\n".join(out_lines) + "\n").encode())
+
+            logger.maybe_log(now, {
+                "t": round(now, 3), "steer_a1": steer_a1, "steer_a2": steer_a2,
+                "pwm_commanded": pwm_commanded, "pwm_sent": pwm_sent,
+                "front_dist": front_track.dist, "front_speed": round(front_track.speed, 3),
+                "front_blocked": int(front_blocked),
+                "rear_dist": rear_track.dist, "rear_speed": round(rear_track.speed, 3),
+                "rear_blocked": int(rear_blocked),
+            })
 
             if now - last_status_print > 0.5:
                 last_status_print = now
@@ -295,6 +358,7 @@ def main():
         esp.close()
         clr.stop()
         sock.close()
+        logger.close()
         print("motor stopped, LiDAR stopped, exiting.")
 
 
