@@ -110,6 +110,18 @@ BRAKE_PWM_MAX = 140         # cap on the reverse pulse magnitude
 INTENT_WINDOW = 5           # recent commanded-magnitude samples used to judge driver intent
 INTENT_EASE_SCALE = 0.5     # brake intensity multiplier when the driver is already easing off
 
+# Inside required_margin used to mean a hard stop, full throttle cancel, no matter what was
+# commanded. That's needlessly restrictive for a driver who's deliberately trying to nose up
+# close to something (parking, squeezing past): a genuinely slow, low-power creep is not the
+# same risk as gunning it toward an obstacle you're already close to. So: a LOW-pwm command
+# is still allowed through inside the margin (down to an absolute floor), but a HIGH-pwm
+# command in that same zone is cancelled outright rather than just capped - the driver asked
+# for a fast approach to something already close, which is exactly the case this gate exists
+# to refuse, not soften.
+CREEP_PWM_MAX = 90          # commands at or below this magnitude may still creep inside the margin
+CREEP_FLOOR_M = 0.05        # absolute minimum standoff - never creep closer than this regardless
+                            # of commanded pwm (must stay above the sensor's own blind-zone floor)
+
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "drive_logs")
 LOG_RATE_HZ = 10.0   # raw driving data, for later real-world intent-model training
                      # (see adas/intent.py for the eventual feature/label pipeline;
@@ -579,27 +591,39 @@ def main():
                         if body_alert_front and not front_blocked:
                             physical = 0   # wide backstop only - no direction-specific speed
                                            # data to size a brake pulse from, just coast
+                        elif front_track.dist is None:
+                            physical = 0   # lost the reading while blocked - no fresh distance
+                                           # to safely creep against
                         else:
                             req = front_track.required_margin()
-                            if front_track.dist is not None and front_track.dist < req * BRAKE_ZONE_FRAC:
+                            deep = front_track.dist < req * BRAKE_ZONE_FRAC
+                            high_pwm = abs(physical) > CREEP_PWM_MAX
+                            if front_track.dist < CREEP_FLOOR_M or (deep and high_pwm):
                                 speed_scale = min(1.0, front_track.speed / max(0.3, MAX_CLOSING_SPEED_M_S * 0.5))
                                 intent_scale = INTENT_EASE_SCALE if intent.easing_off("front") else 1.0
                                 physical = -int(BRAKE_PWM_MAX * speed_scale * intent_scale)
                                 braking = True
-                            else:
-                                physical = 0
+                            elif high_pwm:
+                                physical = 0   # committing hard while already inside the
+                                               # margin - cancelled, not softened to a cap
+                            # else: low pwm, still above the floor - let the creep through
                     elif physical < 0 and (rear_blocked or body_alert_rear):
                         if body_alert_rear and not rear_blocked:
                             physical = 0
+                        elif rear_track.dist is None:
+                            physical = 0
                         else:
                             req = rear_track.required_margin()
-                            if rear_track.dist is not None and rear_track.dist < req * BRAKE_ZONE_FRAC:
+                            deep = rear_track.dist < req * BRAKE_ZONE_FRAC
+                            high_pwm = abs(physical) > CREEP_PWM_MAX
+                            if rear_track.dist < CREEP_FLOOR_M or (deep and high_pwm):
                                 speed_scale = min(1.0, rear_track.speed / max(0.3, MAX_CLOSING_SPEED_M_S * 0.5))
                                 intent_scale = INTENT_EASE_SCALE if intent.easing_off("rear") else 1.0
                                 physical = int(BRAKE_PWM_MAX * speed_scale * intent_scale)
                                 braking = True
-                            else:
+                            elif high_pwm:
                                 physical = 0
+                            # else: low pwm, still above the floor - let the creep through
                     wire_out = -physical if WIRE_MOTOR_REVERSED else physical
                     pwm_sent = wire_out
                     out_lines.append(f"M {wire_out}")

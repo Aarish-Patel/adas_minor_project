@@ -129,6 +129,8 @@ class Rig:
         self._profile = {}    # angle_bin(10deg) -> min body clearance, full 360 - the actual
                                # room map, used to pick a genuinely open escape direction
                                # instead of guessing/cycling blind
+        self._points = []     # latest full scan, raw (angle_deg, dist_m) - for arc-sweep
+                               # predicted-path checks (pi/path_predict.py), full resolution
         self._last_scan_t = None   # staleness guard: a dead scan thread must not leave every
                                     # sensor read silently returning frozen old data forever
         self._pwm_now = 0.0   # ramped PWM state (physical convention: +forward, -reverse)
@@ -164,11 +166,13 @@ class Rig:
                     bear_best_d, bear_best_a = None, None
                     floor_d, floor_a = None, None
                     profile = {}
+                    pts = []
                     for _, angle, dist in scan:
                         if dist <= 0 or dist / 1000.0 < MOUNT.min_valid_range_m:
                             continue
                         a = to_car_angle(angle)
                         d_m = dist / 1000.0
+                        pts.append((round(a, 1), round(d_m, 3)))
                         if abs(a) <= 25:
                             fd = d_m - MOUNT.front_overhang_m
                             if front is None or fd < front:
@@ -198,6 +202,7 @@ class Rig:
                         self._floor, self._floor_bearing = floor_d, floor_a
                         if profile:
                             self._profile = profile
+                        self._points = pts
                         if bear_best_a is not None:
                             self._bearing = bear_best_a
                         self._last_scan_t = self.now()
@@ -258,6 +263,12 @@ class Rig:
         """Full 360 clearance-by-angle map (10deg bins), the actual room layout right now."""
         with self._lock:
             return dict(self._profile) if self._fresh() else {}
+
+    def points(self):
+        """Latest full-resolution scan, raw (angle_deg, dist_m) - for arc-sweep predicted-
+        path checks, which need real point positions, not the coarse 10deg profile bins."""
+        with self._lock:
+            return list(self._points) if self._fresh() else []
 
     def home_bearing(self):
         """Rough dead-reckoning bearing (car frame, degrees) back toward wherever this run
