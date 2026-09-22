@@ -256,7 +256,11 @@ class RealPlatform(Platform):
         return time.time() - self._t0
 
     def send_pwm(self, pwm):
-        self.esp.write(f"M {int(pwm)}\n".encode())
+        # Raw ESP32 M is reversed on this car (confirmed live: negative wire value drives
+        # forward) - same convention as WIRE_MOTOR_REVERSED in wifi_drive_safety.py and
+        # MOTOR_REVERSED in rc_controller.py. `pwm` here is always the physical-forward
+        # magnitude the calibration procedure wants, so flip it before writing to the ESP32.
+        self.esp.write(f"M {-int(pwm)}\n".encode())
 
     def range_ahead(self):
         with self._lock:

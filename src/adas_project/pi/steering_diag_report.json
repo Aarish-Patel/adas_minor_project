@@ -1,0 +1,207 @@
+{
+  "started": 1790070344.4231224,
+  "center0": 90.0,
+  "speed_table": [
+    {
+      "pwm": 110,
+      "speed_m_s": 0.0350373204664721
+    },
+    {
+      "pwm": 140,
+      "speed_m_s": 0.10967664508293626
+    },
+    {
+      "pwm": 170,
+      "speed_m_s": 0.10126052752194943
+    },
+    {
+      "pwm": 200,
+      "speed_m_s": 0.12959021611859037
+    },
+    {
+      "pwm": 230,
+      "speed_m_s": 0.13215987511002822
+    }
+  ],
+  "speed_model_fit": {
+    "slope_m_s_per_pwm": 0.0007138622677425543,
+    "deadband_pwm": 27.752788670130133,
+    "v_max_at_255": 0.16222320961811237
+  },
+  "sign_probe": {
+    "raw_angle": 115.0,
+    "bearing_before": 12.015625,
+    "bearing_after": 7.671875,
+    "turn_rate_deg_s": -8.669212057998378,
+    "duration_s": 0.5010547637939453
+  },
+  "centers_tried": [
+    {
+      "center": 90.0,
+      "drift_deg": -0.53125
+    }
+  ],
+  "center_final": 90,
+  "turn_table": [
+    {
+      "offset_from_center": -35,
+      "raw_angle": 55,
+      "turn": {
+        "raw_angle": 55,
+        "bearing_before": 2.890625,
+        "bearing_after": 8.890625,
+        "turn_rate_deg_s": 8.556020807126101,
+        "duration_s": 0.7012605667114258
+      },
+      "turn_radius_m": 0.7344546049202252
+    },
+    {
+      "offset_from_center": -20,
+      "raw_angle": 70,
+      "turn": {
+        "raw_angle": 70,
+        "bearing_before": 6.5625,
+        "bearing_after": 9.203125,
+        "turn_rate_deg_s": 3.7651166988653575,
+        "duration_s": 0.7013394832611084
+      },
+      "turn_radius_m": 1.6690077318136658
+    },
+    {
+      "offset_from_center": 20,
+      "raw_angle": 110,
+      "turn": {
+        "raw_angle": 110,
+        "bearing_before": 8.828125,
+        "bearing_after": 2.703125,
+        "turn_rate_deg_s": -8.733781296054858,
+        "duration_s": 0.7012999057769775
+      },
+      "turn_radius_m": 0.7195060957646812
+    },
+    {
+      "offset_from_center": 35,
+      "raw_angle": 125,
+      "turn": {
+        "raw_angle": 125,
+        "bearing_before": -39.265625,
+        "bearing_after": 34.09375,
+        "turn_rate_deg_s": 104.59077434317936,
+        "duration_s": 0.7013943195343018
+      },
+      "turn_radius_m": 0.06008186592985889
+    }
+  ],
+  "v_at_test_pwm": 0.10967664508293626,
+  "asymmetry_ratio_20deg": 0.7950564280481139,
+  "log": [
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "clearance": 0.29600000000000004,
+      "front": true
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "clearance": 0.3484999999999999,
+      "front": true
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "clearance": 0.33499999999999996,
+      "front": true
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "clearance": 0.25775000000000003,
+      "front": true
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "speed_m_s": 0.0350373204664721
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "clearance": 0.23850000000000002,
+      "front": true
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "speed_m_s": 0.10967664508293626
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "speed_m_s": 0.10126052752194943
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "speed_m_s": 0.12959021611859037
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "speed_m_s": 0.13215987511002822
+    },
+    {
+      "event": "turn_sample",
+      "offset_from_center": -35,
+      "raw_angle": 55,
+      "turn": {
+        "raw_angle": 55,
+        "bearing_before": 2.890625,
+        "bearing_after": 8.890625,
+        "turn_rate_deg_s": 8.556020807126101,
+        "duration_s": 0.7012605667114258
+      },
+      "turn_radius_m": 0.7344546049202252
+    },
+    {
+      "event": "turn_sample",
+      "offset_from_center": -20,
+      "raw_angle": 70,
+      "turn": {
+        "raw_angle": 70,
+        "bearing_before": 6.5625,
+        "bearing_after": 9.203125,
+        "turn_rate_deg_s": 3.7651166988653575,
+        "duration_s": 0.7013394832611084
+      },
+      "turn_radius_m": 1.6690077318136658
+    },
+    {
+      "event": "turn_sample",
+      "offset_from_center": 20,
+      "raw_angle": 110,
+      "turn": {
+        "raw_angle": 110,
+        "bearing_before": 8.828125,
+        "bearing_after": 2.703125,
+        "turn_rate_deg_s": -8.733781296054858,
+        "duration_s": 0.7012999057769775
+      },
+      "turn_radius_m": 0.7195060957646812
+    },
+    {
+      "event": "turn_sample",
+      "offset_from_center": 35,
+      "raw_angle": 125,
+      "turn": {
+        "raw_angle": 125,
+        "bearing_before": -39.265625,
+        "bearing_after": 34.09375,
+        "turn_rate_deg_s": 104.59077434317936,
+        "duration_s": 0.7013943195343018
+      },
+      "turn_radius_m": 0.06008186592985889
+    }
+  ],
+  "finished": 1790070396.6441538
+}
