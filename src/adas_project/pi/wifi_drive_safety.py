@@ -32,6 +32,7 @@ from rplidar import RPLidar
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from adas.config import load_tuning  # noqa: E402
 from adas.tracking import Tracker, moving_object_contact  # noqa: E402
+from adas.acc import FollowController  # noqa: E402
 from pi.path_predict import VP, delta_for_offset  # noqa: E402
 
 TUNING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuning_real_car.json")
@@ -230,6 +231,8 @@ class Clearance:
         self.points = []       # latest full scan, car-frame (angle_deg, dist_m) - for the GUI
         self.tracker = Tracker()   # moving-object tracking (adas/tracking.py, LiDAR-only)
         self.tracks_info = []      # [{"id","x","y","moving"}] - for the GUI overlay
+        self.raw_tracks = []       # the actual Track objects - FollowController needs these,
+                                    # not the serialized dicts above
         self.moving_contact = (math.inf, math.inf, None)   # (dist_m, time_s, track_id)
         self._motion_v = 0.0       # ego speed estimate (signed, +forward), set by the main
         self._motion_offset = 0.0  # loop from the last commanded pwm/steer so the tracker
@@ -322,6 +325,7 @@ class Clearance:
                     self.tracks_info = [{"id": tr.id, "x": round(tr.pos[0], 3),
                                           "y": round(tr.pos[1], 3), "moving": tr.moving}
                                          for tr in tracks]
+                    self.raw_tracks = tracks
         except Exception as e:
             print("LiDAR thread stopped:", e)
 
@@ -332,6 +336,10 @@ class Clearance:
     def read_tracks(self):
         with self.lock:
             return list(self.tracks_info), self.moving_contact
+
+    def read_raw_tracks(self):
+        with self.lock:
+            return list(self.raw_tracks)
 
     def read(self):
         with self.lock:
@@ -429,13 +437,14 @@ GUI_STATE = {"lock": threading.Lock(), "data": {
     "body_alert_front": False, "body_alert_rear": False,
     "steer_a1": None, "steer_a2": None, "pwm_sent": 0,
     "mode": "manual", "braking": False, "tracks": [], "moving_blocked": False,
+    "follow_enabled": False, "follow_lead": None,
 }}
 
 
 def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_blocked,
                   rear_blocked, body_alert_front, body_alert_rear,
                   steer_a1, steer_a2, pwm_sent, mode, braking=False, tracks=None,
-                  moving_blocked=False):
+                  moving_blocked=False, follow_enabled=False, follow_lead=None):
     """Full update, called whenever a real driver packet is processed - this is the
     authoritative blocked/braking decision, since that's the only time it actually matters
     for control."""
@@ -451,6 +460,7 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
             "steer_a1": steer_a1, "steer_a2": steer_a2, "pwm_sent": pwm_sent,
             "mode": mode, "braking": bool(braking),
             "tracks": tracks or [], "moving_blocked": bool(moving_blocked),
+            "follow_enabled": bool(follow_enabled), "follow_lead": follow_lead,
         }
 
 
@@ -503,11 +513,13 @@ def start_gui_server(clr):
                 self.end_headers()
 
         def do_POST(self):
-            if self.path.startswith("/api/override/"):
-                on = self.path.endswith("/on")
+            routes = {"/api/override/on": b"ADAS_OVERRIDE_ON", "/api/override/off": b"ADAS_OVERRIDE_OFF",
+                      "/api/follow/on": b"FOLLOW_ON", "/api/follow/off": b"FOLLOW_OFF"}
+            cmd = routes.get(self.path)
+            if cmd is not None:
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    s.sendto(b"ADAS_OVERRIDE_ON" if on else b"ADAS_OVERRIDE_OFF", ("127.0.0.1", UDP_PORT))
+                    s.sendto(cmd, ("127.0.0.1", UDP_PORT))
                     s.close()
                     body = b'{"ok": true}'
                     self.send_response(200)
@@ -573,6 +585,8 @@ def main():
     gate = SafetyGate()
     intent = IntentTracker()
     adas_override = False
+    follow = FollowController(VP, TUNING.speed_model)   # adaptive cruise / follow-the-leader,
+                                                          # opt-in via FOLLOW_ON/FOLLOW_OFF
     logger = DriveLogger(LOG_DIR)
     start_gui_server(clr)
 
@@ -619,6 +633,12 @@ def main():
                 adas_override = text.strip() == "ADAS_OVERRIDE_ON"
                 print(f"\nADAS override {'ENABLED (driver has full control)' if adas_override else 'disabled (safety gate active)'}")
                 gui_set_mode("override" if adas_override else "manual")
+                sock.sendto(b"OK", addr)
+                continue
+
+            if text.strip() in ("FOLLOW_ON", "FOLLOW_OFF"):
+                follow.enabled = text.strip() == "FOLLOW_ON"
+                print(f"\nFollow-the-leader {'ENABLED' if follow.enabled else 'disabled'}")
                 sock.sendto(b"OK", addr)
                 continue
 
@@ -721,6 +741,16 @@ def main():
                                 physical = 0
                                 moving_blocked = True
 
+                    # Adaptive cruise / follow-the-leader (adas/acc.py) - opt-in, driver
+                    # toggles it on; caps forward throttle to hold a time-gap behind whatever
+                    # the tracker sees moving ahead in the car's own lane, never raises it.
+                    if not adas_override and physical > 0:
+                        raw_tracks = clr.read_raw_tracks()
+                        v_ego = TUNING.speed_model.speed(physical)
+                        cap_v_pwm = follow.limit(raw_tracks, v_ego, physical)
+                        if cap_v_pwm is not None:
+                            physical = min(physical, int(cap_v_pwm))
+
                     wire_out = -physical if WIRE_MOTOR_REVERSED else physical
                     pwm_sent = wire_out
                     final_physical = physical
@@ -756,7 +786,7 @@ def main():
             gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_blocked,
                          rear_blocked, body_alert_front, body_alert_rear, steer_a1, steer_a2,
                          pwm_sent, "override" if adas_override else "manual", braking,
-                         tracks_info, moving_blocked)
+                         tracks_info, moving_blocked, follow.enabled, follow.lead)
 
             if now - last_status_print > 0.5:
                 last_status_print = now
