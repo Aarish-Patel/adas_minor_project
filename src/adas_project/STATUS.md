@@ -73,11 +73,14 @@ individually. This file is the handoff between sessions — read it first.
   traffic-sign ISA, lane keeping) is blocked until one's plugged in. `pi/devices.py`'s
   `WebcamMarkers` and `adas/markers.py` are ready and simulator-tested; untested on real
   video.
-- **`pi/calibrate.py --real`'s `Platform` class is unfinished** (needs `send_pwm` wired to
-  the ESP32 link and `range_ahead` wired to the LiDAR's forward sector) — the procedure
-  logic itself is rehearsed and correct in `--sim` mode, just needs the real-hardware glue.
-  Until this runs, `SpeedModel` (`v_max`, `deadband`) and `AEBConfig.decel` are still
-  simulator defaults, not measured for this car.
+- **`pi/calibrate.py --real` now has a working `RealPlatform`** (ESP32 over serial, LiDAR
+  forward sector, manual `rewind()` that waits for you to push the car back and press
+  Enter). Deployed to the Pi (`/home/pi/rc_car/pi/calibrate.py`) but **not yet run** — it
+  needs the LiDAR/ESP32 ports free, which means stopping `rc-relay` first
+  (`sudo systemctl stop rc-relay`), and it drives the car repeatedly and automatically at a
+  wall, so it needs your direct supervision and a clear, open floor. Run it, sanity-check
+  the numbers in `tuning_suggested.json`, then merge `speed_model`/`aeb` into
+  `tuning_real_car.json` by hand.
 - **`pi/main.py` / `pi/runtime.py` (the "proper" `AdasPipeline`-based architecture) is not
   what's actually running.** `wifi_drive_safety.py` is a deliberately simpler, independently
   built relay — faster to get right and verify live, but it duplicates some logic instead of
@@ -87,9 +90,10 @@ individually. This file is the handoff between sessions — read it first.
 
 ## Suggested order for next session
 
-1. Measure LiDAR-to-rear-axle distance -> unlock steering-aware curved-path checking.
-2. Run `pi/calibrate.py --real` (finish the `Platform` glue first) -> real speed/braking
-   numbers instead of guesses.
+1. **Run `pi/calibrate.py --real`** (stop `rc-relay` first, clear floor, stay ready to
+   intervene) -> real speed/braking numbers instead of guesses. Merge the result into
+   `tuning_real_car.json`.
+2. Measure LiDAR-to-rear-axle distance -> unlock steering-aware curved-path checking.
 3. Plug in a webcam -> test `pi/devices.py`'s `WebcamMarkers` on real ArUco markers, then
    revisit auto-parking / ISA.
 4. Decide whether to port `adas/tracking.py` for real multi-object prediction, now that

@@ -13,8 +13,13 @@ Both the rehearsal and the real run use the same procedure code; only the Platfo
 """
 
 import argparse
+import glob
 import json
 import math
+import os
+import sys
+import threading
+import time
 
 import numpy as np
 
@@ -161,14 +166,149 @@ class SimPlatform(Platform):
         self.sim.queue.clear()
 
 
+class RealPlatform(Platform):
+    """The real car: ESP32 over serial for motor commands, RPLIDAR forward sector for range.
+
+    SAFETY: this drives the motor repeatedly and automatically once started (that's the
+    whole point of the procedure - it needs many timed runs at different PWM levels). Only
+    run this with a clear, open floor ahead and someone watching. `rewind()` is a manual
+    step: it prints a prompt and waits for Enter, since nothing can push the car back
+    for you.
+    """
+
+    def __init__(self, wall_hint_m=3.0):
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from adas.config import load_tuning
+        from rplidar import RPLidar
+        import serial
+
+        tuning_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuning_real_car.json")
+        self.mount = load_tuning(tuning_path).mount
+        self.wall_hint_m = wall_hint_m   # used only to sanity-check we're seeing the wall, not noise
+
+        lidar_port, esp_port = self._find_ports()
+        if not lidar_port or not esp_port:
+            raise RuntimeError(f"could not identify both devices (LiDAR={lidar_port}, ESP32={esp_port})")
+
+        self.esp = serial.Serial()
+        self.esp.port = esp_port
+        self.esp.baudrate = 115200
+        self.esp.timeout = 0.2
+        self.esp.dtr = False
+        self.esp.rts = False
+        self.esp.open()
+        time.sleep(1.0)
+        self.esp.write(b"A 90 90\nM 0\n")
+
+        self.lidar = RPLidar(lidar_port, baudrate=256000, timeout=3)
+        self._front = None
+        self._lock = threading.Lock()
+        self._running = True
+        self._thread = threading.Thread(target=self._scan_loop, daemon=True)
+        self._thread.start()
+        time.sleep(2.0)   # let the motor spin up and a few scans accumulate
+        self._t0 = time.time()
+
+    @staticmethod
+    def _find_ports(retries=5, delay=1.5):
+        import serial
+        for attempt in range(retries):
+            lidar_port, esp_port = None, None
+            for p in sorted(glob.glob("/dev/ttyUSB*")):
+                try:
+                    s = serial.Serial(p, 256000, timeout=1)
+                    s.dtr = False
+                    s.rts = False
+                    time.sleep(0.3)
+                    s.reset_input_buffer()
+                    s.write(bytes([0xA5, 0x50]))
+                    time.sleep(0.3)
+                    resp = s.read(s.in_waiting or 1)
+                    s.close()
+                    (lidar_port := p) if resp[:2] == bytes([0xA5, 0x5A]) else (esp_port := p)
+                except Exception:
+                    pass
+            if lidar_port and esp_port:
+                return lidar_port, esp_port
+            time.sleep(delay)
+        return lidar_port, esp_port
+
+    def _scan_loop(self):
+        try:
+            for scan in self.lidar.iter_scans(max_buf_meas=6000, min_len=5):
+                if not self._running:
+                    break
+                best = None
+                for _, angle, dist in scan:
+                    if dist <= 0 or dist / 1000.0 < self.mount.min_valid_range_m:
+                        continue
+                    a = self.mount.to_car_angle(angle)
+                    if abs(a) <= 15:
+                        d = dist / 1000.0 - self.mount.front_overhang_m
+                        if best is None or d < best:
+                            best = d
+                with self._lock:
+                    self._front = best
+        except Exception as e:
+            print("LiDAR thread stopped:", e)
+
+    def now(self):
+        return time.time() - self._t0
+
+    def send_pwm(self, pwm):
+        self.esp.write(f"M {int(pwm)}\n".encode())
+
+    def range_ahead(self):
+        with self._lock:
+            return self._front if self._front is not None else 0.0
+
+    def wait(self, seconds):
+        time.sleep(seconds)
+
+    def rewind(self):
+        self.esp.write(b"M 0\n")
+        input("  >> move the car back to the start line, keep the path clear, then press Enter... ")
+
+    def close(self):
+        self._running = False
+        self.esp.write(b"M 0\nSTOP\n")
+        time.sleep(0.1)
+        self.esp.close()
+        try:
+            self.lidar.stop()
+            self.lidar.stop_motor()
+            self.lidar.disconnect()
+        except Exception:
+            pass
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sim", action="store_true", help="rehearse on the simulator")
     ap.add_argument("--real", action="store_true", help="run on the car")
     args = ap.parse_args()
     if args.real:
-        raise SystemExit("Real-car platform: implement RealPlatform (send_pwm via the ESP32 link, range_ahead from the "
-                         "LiDAR's forward sector, rewind = you push the car back) - the procedures above are unchanged.")
+        print("REAL CALIBRATION: the car will drive itself repeatedly at a wall, at increasing")
+        print("speed, and coast/reverse to measure braking. Make sure the floor ahead is clear")
+        print("and open (several metres), and stay ready to cut power if anything looks wrong.")
+        if input("Type 'yes' to continue: ").strip().lower() != "yes":
+            print("aborted")
+            return
+        plat = RealPlatform()
+        try:
+            result = run_calibration(plat)
+        finally:
+            plat.close()
+        print("measured speed model:", result["speed_model"])
+        print("measured braking:", result["measured"])
+        print("suggested AEB settings:", result["aeb"])
+        out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuning_suggested.json")
+        with open(out_path, "w") as f:
+            json.dump({k: result[k] for k in ("speed_model", "aeb")}, f, indent=2)
+        print(f"wrote {out_path} - merge these numbers into tuning_real_car.json by hand once you've")
+        print("sanity-checked them (they overwrite v_max/deadband/decel/latency only).")
+        return
+
     np.random.seed(0)
     plat = SimPlatform()
     result = run_calibration(plat)
