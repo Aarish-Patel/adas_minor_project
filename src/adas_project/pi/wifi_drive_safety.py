@@ -589,8 +589,15 @@ def main():
                         pass   # driver has explicitly taken full control - pass through as-is
                     elif physical > 0 and (front_blocked or body_alert_front):
                         if body_alert_front and not front_blocked:
-                            physical = 0   # wide backstop only - no direction-specific speed
-                                           # data to size a brake pulse from, just coast
+                            # wide backstop only - no closing-speed data here to size a brake
+                            # pulse from, but the same creep-vs-cancel split still applies: a
+                            # low-pwm nudge is allowed down to the absolute floor, a high-pwm
+                            # command gets cancelled rather than an unconditional hard block
+                            if body_min_front is not None and body_min_front < CREEP_FLOOR_M:
+                                physical = 0
+                            elif abs(physical) > CREEP_PWM_MAX:
+                                physical = 0
+                            # else: low pwm, still above the floor - let the creep through
                         elif front_track.dist is None:
                             physical = 0   # lost the reading while blocked - no fresh distance
                                            # to safely creep against
@@ -609,7 +616,11 @@ def main():
                             # else: low pwm, still above the floor - let the creep through
                     elif physical < 0 and (rear_blocked or body_alert_rear):
                         if body_alert_rear and not rear_blocked:
-                            physical = 0
+                            if body_min_rear is not None and body_min_rear < CREEP_FLOOR_M:
+                                physical = 0
+                            elif abs(physical) > CREEP_PWM_MAX:
+                                physical = 0
+                            # else: low pwm, still above the floor - let the creep through
                         elif rear_track.dist is None:
                             physical = 0
                         else:
