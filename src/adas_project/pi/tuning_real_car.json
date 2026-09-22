@@ -18,8 +18,8 @@
     "alert_ttc": 1.0
   },
   "speed_model": {
-    "v_max": 1.0,
-    "deadband": 40.0
+    "v_max": 0.68,
+    "deadband": 0.0
   },
   "vehicle": {
     "wheelbase": 0.2,
