@@ -58,6 +58,15 @@ ASSUMED_DECEL = 1.0         # m/s^2 the car can coast-stop at - NOT calibrated, 
                             # number, and tighten this if it proves too cautious.
 MAX_CLOSING_SPEED_M_S = 3.0  # clip absurd speed spikes from noise
 
+# The front/rear cones above only cover straight-ahead/straight-behind motion. They are
+# blind to something close off to the SIDE that a turning front (or rear) corner can swing
+# into - confirmed live: the car's front-right corner clipped an obstacle that never showed
+# up in either cone. This is a static, direction-independent backstop: if anything, anywhere
+# around the car, gets this close, throttle is blocked in BOTH directions (we don't model the
+# exact footprint sweep for the current steering angle, so we can't tell which way is safe -
+# see STATUS.md's "no steering-aware curved-path prediction" gap for the real fix).
+BODY_HARD_FLOOR_M = 0.30
+
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "drive_logs")
 LOG_RATE_HZ = 10.0   # raw driving data, for later real-world intent-model training
                      # (see adas/intent.py for the eventual feature/label pipeline;
@@ -132,6 +141,7 @@ class Clearance:
         self.lidar = RPLidar(port, baudrate=256000, timeout=3)
         self.front_track = DirectionTrack()
         self.rear_track = DirectionTrack()
+        self.body_min = None   # closest point anywhere around the car (360deg), body-adjusted
         self.lock = threading.Lock()
         self.running = True
         self.thread = threading.Thread(target=self._loop, daemon=True)
@@ -146,34 +156,42 @@ class Clearance:
             for scan in self.lidar.iter_scans(max_buf_meas=6000, min_len=5):
                 if not self.running:
                     break
-                best_front = best_rear = None
+                best_front = best_rear = best_body = None
                 for _, angle, dist in scan:
                     if dist <= 0 or dist / 1000.0 < MIN_VALID_RANGE_M:
                         continue
                     a = (angle - FRONT_OFFSET_DEG) % 360
                     a = a if a <= 180 else a - 360   # -180..180, 0 = car's straight ahead
+                    d_m = dist / 1000.0
 
                     if abs(a) <= CONE_DEG:
-                        d = dist / 1000.0 - FRONT_OVERHANG_M
+                        d = d_m - FRONT_OVERHANG_M
                         if best_front is None or d < best_front:
                             best_front = d
 
                     ra = a - 180 if a > 0 else a + 180   # angle relative to straight behind
                     if abs(ra) <= CONE_DEG:
-                        d = dist / 1000.0 - REAR_OVERHANG_M
+                        d = d_m - REAR_OVERHANG_M
                         if best_rear is None or d < best_rear:
                             best_rear = d
+
+                    # full-360, direction-independent: use the smaller overhang so this stays
+                    # conservative (an underestimate of true clearance) at any bearing
+                    body_d = d_m - min(FRONT_OVERHANG_M, REAR_OVERHANG_M)
+                    if best_body is None or body_d < best_body:
+                        best_body = body_d
 
                 now = time.time()
                 with self.lock:
                     self.front_track.update(best_front, now)
                     self.rear_track.update(best_rear, now)
+                    self.body_min = best_body
         except Exception as e:
             print("LiDAR thread stopped:", e)
 
     def read(self):
         with self.lock:
-            return self.front_track, self.rear_track
+            return self.front_track, self.rear_track, self.body_min
 
     def stop(self):
         self.running = False
@@ -193,7 +211,8 @@ class DriveLogger:
 
     FIELDS = ["t", "steer_a1", "steer_a2", "pwm_commanded", "pwm_sent",
               "front_dist", "front_speed", "front_blocked",
-              "rear_dist", "rear_speed", "rear_blocked"]
+              "rear_dist", "rear_speed", "rear_blocked",
+              "body_min", "body_alert"]
 
     def __init__(self, directory):
         os.makedirs(directory, exist_ok=True)
@@ -298,10 +317,11 @@ def main():
                 sock.sendto(reply or b"PONG", addr)
                 continue
 
-            front_track, rear_track = clr.read()
+            front_track, rear_track, body_min = clr.read()
             now = time.time()
             front_blocked = gate.blocked("front", front_track, now)
             rear_blocked = gate.blocked("rear", rear_track, now)
+            body_alert = body_min is not None and body_min < BODY_HARD_FLOOR_M
 
             out_lines = []
             steer_a1 = steer_a2 = None
@@ -318,7 +338,8 @@ def main():
                         continue
                     pwm_commanded = wire_val
                     physical = -wire_val if WIRE_MOTOR_REVERSED else wire_val
-                    if (physical > 0 and front_blocked) or (physical < 0 and rear_blocked):
+                    if (physical > 0 and (front_blocked or body_alert)) or \
+                       (physical < 0 and (rear_blocked or body_alert)):
                         physical = 0
                     wire_out = -physical if WIRE_MOTOR_REVERSED else physical
                     pwm_sent = wire_out
@@ -343,14 +364,17 @@ def main():
                 "front_blocked": int(front_blocked),
                 "rear_dist": rear_track.dist, "rear_speed": round(rear_track.speed, 3),
                 "rear_blocked": int(rear_blocked),
+                "body_min": body_min, "body_alert": int(body_alert),
             })
 
             if now - last_status_print > 0.5:
                 last_status_print = now
                 ftxt = f"{front_track.dist:.2f}m@{front_track.speed:.1f}m/s" if front_track.dist is not None else "--"
                 rtxt = f"{rear_track.dist:.2f}m@{rear_track.speed:.1f}m/s" if rear_track.dist is not None else "--"
+                btxt = f"{body_min:.2f}m" if body_min is not None else "--"
                 print(f"  front {ftxt:>16s} {'[BLOCKED]' if front_blocked else '         '}   "
                       f"rear {rtxt:>16s} {'[BLOCKED]' if rear_blocked else '         '}   "
+                      f"body {btxt:>6s} {'[ALERT]' if body_alert else '       '}   "
                       f"-> {' '.join(out_lines)}", end="\r")
 
     except KeyboardInterrupt:

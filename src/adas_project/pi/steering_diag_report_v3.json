@@ -1,0 +1,741 @@
+{
+  "started": 1790108375.2444196,
+  "center0": 90.0,
+  "speed_table": [
+    {
+      "pwm": 110,
+      "speed_m_s": 0.15059732717498683,
+      "trials": [
+        0.10313714979407297,
+        0.15059732717498683,
+        0.17072882313466617
+      ]
+    },
+    {
+      "pwm": 140,
+      "speed_m_s": 0.23222021814272287,
+      "trials": [
+        0.23222021814272287,
+        0.21724176538320206,
+        0.33332898567366526
+      ]
+    },
+    {
+      "pwm": 170,
+      "speed_m_s": 0.3416002014670413,
+      "trials": [
+        0.22595173119041673,
+        0.3416002014670413,
+        0.4028453262973413
+      ]
+    },
+    {
+      "pwm": 200,
+      "speed_m_s": 0.48910256560640275,
+      "trials": [
+        0.48910256560640275,
+        0.387207756260605,
+        0.5141077405222617
+      ]
+    },
+    {
+      "pwm": 230,
+      "speed_m_s": 0.4109492952441433,
+      "trials": [
+        0.4260422181594776,
+        0.4109492952441433,
+        0.37223401717144194
+      ]
+    }
+  ],
+  "speed_model_fit": {
+    "slope_m_s_per_pwm": 0.0025919542786733084,
+    "deadband_pwm": 44.65291182012819,
+    "v_max_at_255": 0.5452100352142905
+  },
+  "sign_probe": {
+    "raw_angle": 115.0,
+    "bearing_before": 13.953125,
+    "bearing_after": 1.5625,
+    "turn_rate_deg_s": -24.733779210413974,
+    "duration_s": 0.5009596347808838
+  },
+  "centers_tried": [],
+  "center_final": 90,
+  "turn_table": [
+    {
+      "offset_from_center": -35,
+      "raw_angle": 55,
+      "n_trials": 0,
+      "n_kept": 0,
+      "turn_rate_deg_s_median": null,
+      "trials": []
+    },
+    {
+      "offset_from_center": -20,
+      "raw_angle": 70,
+      "n_trials": 0,
+      "n_kept": 0,
+      "turn_rate_deg_s_median": null,
+      "trials": []
+    },
+    {
+      "offset_from_center": 20,
+      "raw_angle": 110,
+      "n_trials": 0,
+      "n_kept": 0,
+      "turn_rate_deg_s_median": null,
+      "trials": []
+    },
+    {
+      "offset_from_center": 35,
+      "raw_angle": 125,
+      "n_trials": 0,
+      "n_kept": 0,
+      "turn_rate_deg_s_median": null,
+      "trials": []
+    }
+  ],
+  "v_at_test_pwm": 0.23222021814272287,
+  "log": [
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 0,
+      "speed_m_s": 0.10313714979407297
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 1,
+      "speed_m_s": 0.15059732717498683
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.33599999999999997,
+      "floor_bearing": 46.203125,
+      "front": 0.4065,
+      "rear": 0.9369999999999999
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 2,
+      "speed_m_s": 0.17072882313466617
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.34675,
+      "floor_bearing": 44.984375,
+      "front": 0.41774999999999995,
+      "rear": 0.9334999999999999
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 0,
+      "speed_m_s": 0.23222021814272287
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.32399999999999995,
+      "floor_bearing": 50.5625,
+      "front": 0.368,
+      "rear": 0.969
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 1,
+      "speed_m_s": 0.21724176538320206
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.273,
+      "floor_bearing": 51.59375,
+      "front": 0.29900000000000004,
+      "rear": 1.042
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.49124999999999996,
+      "floor_bearing": 27.21875,
+      "front": 0.512,
+      "rear": 0.9482499999999999
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 2,
+      "speed_m_s": 0.33332898567366526
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 0,
+      "speed_m_s": 0.22595173119041673
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.30874999999999997,
+      "floor_bearing": 43.546875,
+      "front": 0.37324999999999997,
+      "rear": 0.9692500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.5309999999999999,
+      "floor_bearing": 23.65625,
+      "front": 0.5309999999999999,
+      "rear": 0.89925
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 1,
+      "speed_m_s": 0.3416002014670413
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 2,
+      "speed_m_s": 0.4028453262973413
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.24625,
+      "floor_bearing": 30.125,
+      "front": 0.272,
+      "rear": 1.01625
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.5185,
+      "floor_bearing": 16.046875,
+      "front": 0.5185,
+      "rear": 0.8909999999999999
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 0,
+      "speed_m_s": 0.48910256560640275
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.27525,
+      "floor_bearing": 15.4375,
+      "front": 0.27525,
+      "rear": 0.969
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 200,
+      "floor": 0.3385,
+      "bearing": 3.390625
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 1,
+      "speed_m_s": 0.387207756260605
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.1625,
+      "floor_bearing": 9.625,
+      "front": 0.1625,
+      "rear": 1.087
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.3484999999999999,
+      "floor_bearing": 4.234375,
+      "front": 0.3484999999999999,
+      "rear": 0.91175
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 200,
+      "floor": 0.32699999999999996,
+      "bearing": -3.078125
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 2,
+      "speed_m_s": 0.5141077405222617
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.15324999999999997,
+      "floor_bearing": -1.328125,
+      "front": 0.15324999999999997,
+      "rear": 1.1022500000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.473,
+      "floor_bearing": -3.8125,
+      "front": 0.473,
+      "rear": 0.8922499999999999
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 0,
+      "speed_m_s": 0.4260422181594776
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.20875000000000002,
+      "floor_bearing": -17.75,
+      "front": 0.20875000000000002,
+      "rear": 1.0710000000000002
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 230,
+      "floor": 0.26675000000000004,
+      "bearing": -22.703125
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 1,
+      "speed_m_s": 0.4109492952441433
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.08274999999999999,
+      "floor_bearing": -28.765625,
+      "front": 0.08875,
+      "rear": 1.27925
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.33775,
+      "floor_bearing": 41.203125,
+      "front": 0.36575,
+      "rear": 0.987
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 230,
+      "floor": 0.34324999999999994,
+      "bearing": 30.859375
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 2,
+      "speed_m_s": 0.37223401717144194
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.2285,
+      "floor_bearing": 50.453125,
+      "front": 0.24675,
+      "rear": 1.13575
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.3195,
+      "floor_bearing": 34.90625,
+      "front": 0.42399999999999993,
+      "rear": 0.9314999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "floor": 0.49249999999999994,
+      "floor_bearing": 60.390625,
+      "front": 0.495,
+      "rear": 0.65775
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "floor": 0.40549999999999997,
+      "floor_bearing": 157.828125,
+      "front": 0.711,
+      "rear": 0.39549999999999996
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "floor": 0.469,
+      "floor_bearing": 62.234375,
+      "front": 0.47324999999999995,
+      "rear": 0.65975
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "floor": 0.379,
+      "floor_bearing": 156.109375,
+      "front": 0.71475,
+      "rear": 0.369
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "floor": 0.45024999999999993,
+      "floor_bearing": 59.8125,
+      "front": 0.46575,
+      "rear": 0.6485
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "floor": 0.3544999999999999,
+      "floor_bearing": 156.75,
+      "front": 0.7062499999999999,
+      "rear": 0.3444999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.3385,
+      "floor_bearing": 0.328125,
+      "front": 0.3385,
+      "rear": 0.8109999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.45775,
+      "floor_bearing": 51.5,
+      "front": 0.54125,
+      "rear": 0.5499999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "floor": 0.27825,
+      "floor_bearing": 147.09375,
+      "front": 0.67725,
+      "rear": 0.27574999999999994
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "floor": 0.42274999999999996,
+      "floor_bearing": 51.578125,
+      "front": 0.50725,
+      "rear": 0.53375
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "floor": 0.27874999999999994,
+      "floor_bearing": 144.234375,
+      "front": 0.63025,
+      "rear": 0.276
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "floor": 0.38249999999999995,
+      "floor_bearing": 51.015625,
+      "front": 0.4545,
+      "rear": 0.5512499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "floor": 0.27525,
+      "floor_bearing": 144.78125,
+      "front": 0.60775,
+      "rear": 0.27349999999999997
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "floor": 0.3807499999999999,
+      "floor_bearing": 53.75,
+      "front": 0.4595,
+      "rear": 0.515
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.2285,
+      "floor_bearing": 145.3125,
+      "front": 0.59775,
+      "rear": 0.2245
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.345,
+      "floor_bearing": 53.390625,
+      "front": 0.4129999999999999,
+      "rear": 0.54725
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "floor": 0.28974999999999995,
+      "floor_bearing": 145.0,
+      "front": 0.5489999999999999,
+      "rear": 0.28600000000000003
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "floor": 0.30925,
+      "floor_bearing": 51.75,
+      "front": 0.37049999999999994,
+      "rear": 0.59375
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "floor": 0.25349999999999995,
+      "floor_bearing": 144.5,
+      "front": 0.5459999999999999,
+      "rear": 0.24999999999999997
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "floor": 0.3335,
+      "floor_bearing": 53.65625,
+      "front": 0.4135,
+      "rear": 0.48349999999999993
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "floor": 0.227,
+      "floor_bearing": 146.609375,
+      "front": 0.53375,
+      "rear": 0.2225
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "floor": 0.30400000000000005,
+      "floor_bearing": 55.484375,
+      "front": 0.384,
+      "rear": 0.491
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.19699999999999998,
+      "floor_bearing": 145.765625,
+      "front": 0.5197499999999999,
+      "rear": 0.19199999999999998
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.30225,
+      "floor_bearing": 54.375,
+      "front": 0.39049999999999996,
+      "rear": 0.44399999999999995
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "floor": 0.1445,
+      "floor_bearing": 148.671875,
+      "front": 0.54575,
+      "rear": 0.13549999999999998
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "floor": 0.29574999999999996,
+      "floor_bearing": 60.78125,
+      "front": 0.40074999999999994,
+      "rear": 0.42499999999999993
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "floor": 0.13475,
+      "floor_bearing": 152.375,
+      "front": 0.5409999999999999,
+      "rear": 0.12499999999999997
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "floor": 0.27974999999999994,
+      "floor_bearing": 60.078125,
+      "front": 0.38049999999999995,
+      "rear": 0.4472499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "floor": 0.19925,
+      "floor_bearing": 153.296875,
+      "front": 0.49375,
+      "rear": 0.19049999999999997
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "floor": 0.25275000000000003,
+      "floor_bearing": 59.1875,
+      "front": 0.35475,
+      "rear": 0.4967499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.19925,
+      "floor_bearing": 154.359375,
+      "front": 0.48875,
+      "rear": 0.18949999999999997
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.24400000000000002,
+      "floor_bearing": 59.90625,
+      "front": 0.33525000000000005,
+      "rear": 0.5095
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "floor": 0.23424999999999999,
+      "floor_bearing": 149.84375,
+      "front": 0.45299999999999996,
+      "rear": 0.22524999999999998
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "floor": 0.24250000000000002,
+      "floor_bearing": 59.046875,
+      "front": 0.33725000000000005,
+      "rear": 0.4714999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "floor": 0.15974999999999998,
+      "floor_bearing": 152.03125,
+      "front": 0.47275,
+      "rear": 0.15
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "floor": 0.25349999999999995,
+      "floor_bearing": 62.859375,
+      "front": 0.36349999999999993,
+      "rear": 0.40225
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "floor": 0.11800000000000002,
+      "floor_bearing": 153.765625,
+      "front": 0.47975,
+      "rear": 0.10800000000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "floor": 0.24975,
+      "floor_bearing": 65.578125,
+      "front": 0.37649999999999995,
+      "rear": 0.371
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "floor": 0.13449999999999998,
+      "floor_bearing": 156.859375,
+      "front": 0.46875,
+      "rear": 0.12449999999999997
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "floor": 0.24775,
+      "floor_bearing": 66.6875,
+      "front": 0.39374999999999993,
+      "rear": 0.33924999999999994
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "floor": 0.11374999999999999,
+      "floor_bearing": 159.046875,
+      "front": 0.482,
+      "rear": 0.10374999999999998
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "floor": 0.25049999999999994,
+      "floor_bearing": 69.671875,
+      "front": 0.41925,
+      "rear": 0.26725
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "floor": 0.11124999999999999,
+      "floor_bearing": 160.234375,
+      "front": 0.49375,
+      "rear": 0.10124999999999998
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "floor": 0.22924999999999998,
+      "floor_bearing": 67.796875,
+      "front": 0.39174999999999993,
+      "rear": 0.4135
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "floor": 0.23950000000000002,
+      "floor_bearing": 71.03125,
+      "front": 0.44675,
+      "rear": 0.29774999999999996
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "floor": 0.06675,
+      "floor_bearing": 167.296875,
+      "front": 0.5265,
+      "rear": 0.056749999999999995
+    }
+  ],
+  "finished": 1790108505.1630914
+}

@@ -202,6 +202,7 @@ class RealPlatform(Platform):
 
         self.lidar = RPLidar(lidar_port, baudrate=256000, timeout=3)
         self._front = None
+        self._pwm_now = 0.0
         self._lock = threading.Lock()
         self._running = True
         self._thread = threading.Thread(target=self._scan_loop, daemon=True)
@@ -255,12 +256,28 @@ class RealPlatform(Platform):
     def now(self):
         return time.time() - self._t0
 
+    RAMP_STEP_PWM = 15    # max PWM change per ramp tick - gradual ramp instead of jumping
+                          # straight to target, to reduce mechanical shock on the drivetrain
+                          # (the wheel came loose twice under instant full-power commands)
+    RAMP_TICK_S = 0.05
+
     def send_pwm(self, pwm):
         # Raw ESP32 M is reversed on this car (confirmed live: negative wire value drives
         # forward) - same convention as WIRE_MOTOR_REVERSED in wifi_drive_safety.py and
         # MOTOR_REVERSED in rc_controller.py. `pwm` here is always the physical-forward
         # magnitude the calibration procedure wants, so flip it before writing to the ESP32.
-        self.esp.write(f"M {-int(pwm)}\n".encode())
+        target = float(pwm)
+        if target <= 0:
+            self._pwm_now = 0.0
+            self.esp.write(b"M 0\n")   # stopping is immediate, only ramp acceleration
+            return
+        while abs(self._pwm_now - target) > 1e-6:
+            if self._pwm_now < target:
+                self._pwm_now = min(target, self._pwm_now + self.RAMP_STEP_PWM)
+            else:
+                self._pwm_now = max(target, self._pwm_now - self.RAMP_STEP_PWM)
+            self.esp.write(f"M {-int(round(self._pwm_now))}\n".encode())
+            time.sleep(self.RAMP_TICK_S)
 
     def range_ahead(self):
         with self._lock:
