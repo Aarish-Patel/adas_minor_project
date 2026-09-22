@@ -67,6 +67,16 @@ MAX_CLOSING_SPEED_M_S = 3.0  # clip absurd speed spikes from noise
 # see STATUS.md's "no steering-aware curved-path prediction" gap for the real fix).
 BODY_HARD_FLOOR_M = 0.30
 
+# Active braking: below this, cutting throttle to 0 (coast) is not enough - actively brake
+# with a reverse pulse. Speed-scaled (faster closing = harder pulse) and intent-aware (if the
+# driver's own recent commands already show them easing off toward this obstacle, we trust
+# them and brake more gently instead of stacking a hard jolt on top of what they're already
+# doing - full intensity only kicks in if they're still committing to it).
+BRAKE_ZONE_FRAC = 0.55      # fraction of required_margin() below which we brake instead of coast
+BRAKE_PWM_MAX = 140         # cap on the reverse pulse magnitude
+INTENT_WINDOW = 5           # recent commanded-magnitude samples used to judge driver intent
+INTENT_EASE_SCALE = 0.5     # brake intensity multiplier when the driver is already easing off
+
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "drive_logs")
 LOG_RATE_HZ = 10.0   # raw driving data, for later real-world intent-model training
                      # (see adas/intent.py for the eventual feature/label pipeline;
@@ -134,6 +144,32 @@ class DirectionTrack:
         return BASE_MARGIN_M + v * REACTION_TIME_S + (v * v) / (2.0 * ASSUMED_DECEL)
 
 
+class IntentTracker:
+    """Cheap, real-time proxy for driver intent - not the trained ML model in adas/intent.py
+    (that needs more real driving data than exists yet to be trustworthy), just: is the
+    driver's own recent commanded throttle toward this obstacle trending down (they're
+    already easing off - trust them, brake gently) or flat/up (they're still committing to
+    it - brake at full intensity)."""
+
+    def __init__(self):
+        self.front_hist = []
+        self.rear_hist = []
+
+    def update(self, physical_pwm):
+        hist = self.front_hist if physical_pwm > 0 else self.rear_hist
+        hist.append(abs(physical_pwm))
+        del hist[:-INTENT_WINDOW]
+
+    def easing_off(self, which):
+        hist = self.front_hist if which == "front" else self.rear_hist
+        if len(hist) < INTENT_WINDOW:
+            return False
+        half = INTENT_WINDOW // 2
+        recent = sum(hist[-half:]) / half
+        earlier = sum(hist[:half]) / half
+        return recent < earlier * 0.85   # meaningfully lower, not just noise
+
+
 class Clearance:
     """Background thread: keeps the latest min clearance + closing speed, ahead and behind."""
 
@@ -142,6 +178,7 @@ class Clearance:
         self.front_track = DirectionTrack()
         self.rear_track = DirectionTrack()
         self.body_min = None   # closest point anywhere around the car (360deg), body-adjusted
+        self.points = []       # latest full scan, car-frame (angle_deg, dist_m) - for the GUI
         self.lock = threading.Lock()
         self.running = True
         self.thread = threading.Thread(target=self._loop, daemon=True)
@@ -157,12 +194,14 @@ class Clearance:
                 if not self.running:
                     break
                 best_front = best_rear = best_body = None
+                pts = []
                 for _, angle, dist in scan:
                     if dist <= 0 or dist / 1000.0 < MIN_VALID_RANGE_M:
                         continue
                     a = (angle - FRONT_OFFSET_DEG) % 360
                     a = a if a <= 180 else a - 360   # -180..180, 0 = car's straight ahead
                     d_m = dist / 1000.0
+                    pts.append((round(a, 1), round(d_m, 3)))
 
                     if abs(a) <= CONE_DEG:
                         d = d_m - FRONT_OVERHANG_M
@@ -186,8 +225,13 @@ class Clearance:
                     self.front_track.update(best_front, now)
                     self.rear_track.update(best_rear, now)
                     self.body_min = best_body
+                    self.points = pts
         except Exception as e:
             print("LiDAR thread stopped:", e)
+
+    def read_points(self):
+        with self.lock:
+            return list(self.points)
 
     def read(self):
         with self.lock:
@@ -212,7 +256,7 @@ class DriveLogger:
     FIELDS = ["t", "steer_a1", "steer_a2", "pwm_commanded", "pwm_sent",
               "front_dist", "front_speed", "front_blocked",
               "rear_dist", "rear_speed", "rear_blocked",
-              "body_min", "body_alert"]
+              "body_min", "body_alert", "braking", "adas_override"]
 
     def __init__(self, directory):
         os.makedirs(directory, exist_ok=True)
@@ -257,6 +301,126 @@ class SafetyGate:
         return False
 
 
+# --- live LiDAR GUI: a small HTTP server sharing the relay's already-open LiDAR connection,
+# instead of a second process fighting it for the serial port. Read-only - it never sends
+# motor commands, just visualizes what the safety gate is currently seeing/deciding.
+GUI_PORT = 8090
+GUI_STATE = {"lock": threading.Lock(), "data": {
+    "front_dist": None, "front_speed": 0.0, "front_blocked": False,
+    "rear_dist": None, "rear_speed": 0.0, "rear_blocked": False,
+    "body_min": None, "body_alert": False,
+    "steer_a1": None, "steer_a2": None, "pwm_sent": 0,
+    "mode": "manual", "braking": False,
+}}
+
+
+def gui_snapshot(front_track, rear_track, body_min, front_blocked, rear_blocked, body_alert,
+                  steer_a1, steer_a2, pwm_sent, mode, braking=False):
+    """Full update, called whenever a real driver packet is processed - this is the
+    authoritative blocked/braking decision, since that's the only time it actually matters
+    for control."""
+    with GUI_STATE["lock"]:
+        GUI_STATE["data"] = {
+            "t": time.time(),
+            "front_dist": front_track.dist, "front_speed": round(front_track.speed, 3),
+            "front_blocked": bool(front_blocked),
+            "rear_dist": rear_track.dist, "rear_speed": round(rear_track.speed, 3),
+            "rear_blocked": bool(rear_blocked),
+            "body_min": body_min, "body_alert": bool(body_alert),
+            "steer_a1": steer_a1, "steer_a2": steer_a2, "pwm_sent": pwm_sent,
+            "mode": mode, "braking": bool(braking),
+        }
+
+
+def gui_set_mode(mode):
+    """Standalone mode update (e.g. an override toggle), independent of a driver packet -
+    without this the GUI's mode badge would only ever update while someone is actively
+    driving, silently showing stale MANUAL even after override was actually enabled."""
+    with GUI_STATE["lock"]:
+        GUI_STATE["data"]["mode"] = mode
+
+
+def gui_update_distances(front_track, rear_track, body_min):
+    """Lighter, continuous update (no driver packet needed) so the GUI's numbers stay live
+    even when nobody is actively driving - only touches distance/speed, never the
+    blocked/braking/mode decision, since that's only meaningful while something is actually
+    being commanded."""
+    with GUI_STATE["lock"]:
+        GUI_STATE["data"]["front_dist"] = front_track.dist
+        GUI_STATE["data"]["front_speed"] = round(front_track.speed, 3)
+        GUI_STATE["data"]["rear_dist"] = rear_track.dist
+        GUI_STATE["data"]["rear_speed"] = round(rear_track.speed, 3)
+        GUI_STATE["data"]["body_min"] = body_min
+
+
+def start_gui_server(clr):
+    import http.server
+    import json as _json
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            pass   # the default access log would spam relay.log on every poll
+
+        def do_GET(self):
+            if self.path == "/" or self.path == "/index.html":
+                self._serve_file("lidar_gui.html", "text/html")
+            elif self.path.startswith("/api/scan"):
+                with GUI_STATE["lock"]:
+                    payload = dict(GUI_STATE["data"])
+                payload["points"] = clr.read_points()
+                body = _json.dumps(payload).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def do_POST(self):
+            if self.path.startswith("/api/override/"):
+                on = self.path.endswith("/on")
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.sendto(b"ADAS_OVERRIDE_ON" if on else b"ADAS_OVERRIDE_OFF", ("127.0.0.1", UDP_PORT))
+                    s.close()
+                    body = b'{"ok": true}'
+                    self.send_response(200)
+                except Exception as e:
+                    body = f'{{"ok": false, "error": "{e}"}}'.encode()
+                    self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def _serve_file(self, name, content_type):
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
+            try:
+                with open(path, "rb") as f:
+                    body = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except FileNotFoundError:
+                self.send_response(404)
+                self.end_headers()
+
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", GUI_PORT), Handler)
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    print(f"live LiDAR GUI on http://<pi-ip>:{GUI_PORT}/")
+    return server
+
+
 def main():
     # systemctl restart/stop sends SIGTERM; without this, cleanup only ran on Ctrl+C (SIGINT),
     # so the motor and LiDAR were never stopped cleanly on a service restart.
@@ -284,7 +448,17 @@ def main():
     time.sleep(2.0)
 
     gate = SafetyGate()
+    intent = IntentTracker()
+    adas_override = False
     logger = DriveLogger(LOG_DIR)
+    start_gui_server(clr)
+
+    def _gui_idle_updater():
+        while True:
+            ft, rt, bm = clr.read()
+            gui_update_distances(ft, rt, bm)
+            time.sleep(0.15)
+    threading.Thread(target=_gui_idle_updater, daemon=True).start()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", UDP_PORT))
@@ -317,6 +491,13 @@ def main():
                 sock.sendto(reply or b"PONG", addr)
                 continue
 
+            if text.strip() in ("ADAS_OVERRIDE_ON", "ADAS_OVERRIDE_OFF"):
+                adas_override = text.strip() == "ADAS_OVERRIDE_ON"
+                print(f"\nADAS override {'ENABLED (driver has full control)' if adas_override else 'disabled (safety gate active)'}")
+                gui_set_mode("override" if adas_override else "manual")
+                sock.sendto(b"OK", addr)
+                continue
+
             front_track, rear_track, body_min = clr.read()
             now = time.time()
             front_blocked = gate.blocked("front", front_track, now)
@@ -326,6 +507,7 @@ def main():
             out_lines = []
             steer_a1 = steer_a2 = None
             pwm_commanded = pwm_sent = 0
+            braking = False
             for line in text.splitlines():
                 line = line.strip()
                 if not line:
@@ -338,9 +520,35 @@ def main():
                         continue
                     pwm_commanded = wire_val
                     physical = -wire_val if WIRE_MOTOR_REVERSED else wire_val
-                    if (physical > 0 and (front_blocked or body_alert)) or \
-                       (physical < 0 and (rear_blocked or body_alert)):
-                        physical = 0
+                    intent.update(physical)
+                    braking = False
+                    if adas_override:
+                        pass   # driver has explicitly taken full control - pass through as-is
+                    elif physical > 0 and (front_blocked or body_alert):
+                        if body_alert and not front_blocked:
+                            physical = 0   # 360 backstop only - no direction-specific speed
+                                           # data to size a brake pulse from, just coast
+                        else:
+                            req = front_track.required_margin()
+                            if front_track.dist is not None and front_track.dist < req * BRAKE_ZONE_FRAC:
+                                speed_scale = min(1.0, front_track.speed / max(0.3, MAX_CLOSING_SPEED_M_S * 0.5))
+                                intent_scale = INTENT_EASE_SCALE if intent.easing_off("front") else 1.0
+                                physical = -int(BRAKE_PWM_MAX * speed_scale * intent_scale)
+                                braking = True
+                            else:
+                                physical = 0
+                    elif physical < 0 and (rear_blocked or body_alert):
+                        if body_alert and not rear_blocked:
+                            physical = 0
+                        else:
+                            req = rear_track.required_margin()
+                            if rear_track.dist is not None and rear_track.dist < req * BRAKE_ZONE_FRAC:
+                                speed_scale = min(1.0, rear_track.speed / max(0.3, MAX_CLOSING_SPEED_M_S * 0.5))
+                                intent_scale = INTENT_EASE_SCALE if intent.easing_off("rear") else 1.0
+                                physical = int(BRAKE_PWM_MAX * speed_scale * intent_scale)
+                                braking = True
+                            else:
+                                physical = 0
                     wire_out = -physical if WIRE_MOTOR_REVERSED else physical
                     pwm_sent = wire_out
                     out_lines.append(f"M {wire_out}")
@@ -365,7 +573,11 @@ def main():
                 "rear_dist": rear_track.dist, "rear_speed": round(rear_track.speed, 3),
                 "rear_blocked": int(rear_blocked),
                 "body_min": body_min, "body_alert": int(body_alert),
+                "braking": int(braking), "adas_override": int(adas_override),
             })
+            gui_snapshot(front_track, rear_track, body_min, front_blocked, rear_blocked,
+                         body_alert, steer_a1, steer_a2, pwm_sent,
+                         "override" if adas_override else "manual", braking)
 
             if now - last_status_print > 0.5:
                 last_status_print = now
