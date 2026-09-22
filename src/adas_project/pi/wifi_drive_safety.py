@@ -17,6 +17,7 @@ receipt, reasons about physical direction only, then converts back once before s
 
 import csv
 import glob
+import math
 import os
 import signal
 import socket
@@ -42,8 +43,35 @@ CONE_DEG = 25                                        # +/- around straight ahead
                                                      # in from the side before it's dead ahead)
 FRONT_OVERHANG_M = TUNING.mount.front_overhang_m     # LiDAR to front bumper
 REAR_OVERHANG_M = TUNING.mount.rear_overhang_m       # LiDAR to rear bumper
+LEFT_OVERHANG_M = TUNING.mount.left_overhang_m       # LiDAR to left side edge
+RIGHT_OVERHANG_M = TUNING.mount.right_overhang_m     # LiDAR to right side edge
 MIN_VALID_RANGE_M = TUNING.mount.min_valid_range_m   # ignore raw readings closer than this
                                                      # (self-hits: wires/mount clutter)
+
+
+def body_overhang(a_deg):
+    """Distance from the LiDAR to the car's own body edge, in the direction of bearing
+    `a_deg` (car frame, 0=front) - i.e. where a ray at this angle exits the car's own
+    rectangular footprint. Replaces a flat min(front,rear) overhang that was subtracted from
+    EVERY bearing including the sides, which is both wrong (the car is much narrower than it
+    is long, so a fixed ~0.16m constant badly overestimates how much of a side reading is
+    "inside the car") and, worse, wrong in exactly the direction that matters most for this
+    check - it made side/diagonal points look closer to the body than they really are, which
+    is why this 360deg backstop was firing on 68% of a real drive log and blocking BOTH
+    directions almost the whole time, matching a real complaint ("won't let me steer away and
+    leave or go back") that had nothing to do with actual obstacles."""
+    rad = math.radians(a_deg)
+    cx, sy = math.cos(rad), math.sin(rad)
+    candidates = []
+    if cx > 1e-6:
+        candidates.append(FRONT_OVERHANG_M / cx)
+    elif cx < -1e-6:
+        candidates.append(REAR_OVERHANG_M / -cx)
+    if sy > 1e-6:
+        candidates.append(LEFT_OVERHANG_M / sy)
+    elif sy < -1e-6:
+        candidates.append(RIGHT_OVERHANG_M / -sy)
+    return min(candidates) if candidates else FRONT_OVERHANG_M
 HOLD_AFTER_LOST_READING_S = 1.0   # a lost reading right after a block does NOT mean "clear"
 
 # Stop distance now SCALES with how fast the gap is closing (measured straight from
@@ -58,13 +86,18 @@ ASSUMED_DECEL = 1.0         # m/s^2 the car can coast-stop at - NOT calibrated, 
                             # number, and tighten this if it proves too cautious.
 MAX_CLOSING_SPEED_M_S = 3.0  # clip absurd speed spikes from noise
 
-# The front/rear cones above only cover straight-ahead/straight-behind motion. They are
-# blind to something close off to the SIDE that a turning front (or rear) corner can swing
-# into - confirmed live: the car's front-right corner clipped an obstacle that never showed
-# up in either cone. This is a static, direction-independent backstop: if anything, anywhere
-# around the car, gets this close, throttle is blocked in BOTH directions (we don't model the
-# exact footprint sweep for the current steering angle, so we can't tell which way is safe -
-# see STATUS.md's "no steering-aware curved-path prediction" gap for the real fix).
+# The front/rear cones above only cover straight-ahead/straight-behind motion within +-25deg.
+# They are blind to something close off to the SIDE that a turning front (or rear) corner can
+# swing into - confirmed live: the car's front-right corner clipped an obstacle that never
+# showed up in either narrow cone. WIDE_CONE_DEG widens that check to +-90deg (the whole front
+# half vs. the whole rear half) for a corner-strike backstop, but - unlike an earlier version
+# of this that used one single global "anything anywhere" flag blocking BOTH directions
+# regardless of which side the close thing was actually on - it stays split front/rear, same
+# as the narrow cones: a real drive log showed that single global flag true 68% of the session
+# (a wall the car happened to be parked next to on one side) and blocking reverse right along
+# with forward, matching a live complaint that the car "wouldn't let me steer away and leave
+# or go back" even though going back had nothing to do with that wall.
+WIDE_CONE_DEG = 90
 BODY_HARD_FLOOR_M = 0.30
 
 # Active braking: below this, cutting throttle to 0 (coast) is not enough - actively brake
@@ -177,7 +210,8 @@ class Clearance:
         self.lidar = RPLidar(port, baudrate=256000, timeout=3)
         self.front_track = DirectionTrack()
         self.rear_track = DirectionTrack()
-        self.body_min = None   # closest point anywhere around the car (360deg), body-adjusted
+        self.body_min_front = None   # closest point in the WIDE front half (+-90deg)
+        self.body_min_rear = None    # closest point in the WIDE rear half (+-90deg)
         self.points = []       # latest full scan, car-frame (angle_deg, dist_m) - for the GUI
         self.lock = threading.Lock()
         self.running = True
@@ -193,7 +227,8 @@ class Clearance:
             for scan in self.lidar.iter_scans(max_buf_meas=6000, min_len=5):
                 if not self.running:
                     break
-                best_front = best_rear = best_body = None
+                best_front = best_rear = None
+                best_body_front = best_body_rear = None
                 pts = []
                 for _, angle, dist in scan:
                     if dist <= 0 or dist / 1000.0 < MIN_VALID_RANGE_M:
@@ -214,17 +249,27 @@ class Clearance:
                         if best_rear is None or d < best_rear:
                             best_rear = d
 
-                    # full-360, direction-independent: use the smaller overhang so this stays
-                    # conservative (an underestimate of true clearance) at any bearing
-                    body_d = d_m - min(FRONT_OVERHANG_M, REAR_OVERHANG_M)
-                    if best_body is None or body_d < best_body:
-                        best_body = body_d
+                    # wide corner-strike backstop, using the ACTUAL body overhang for this
+                    # bearing (front/rear/side, via the car's real rectangular footprint - see
+                    # body_overhang()'s docstring), split front-half/rear-half so something
+                    # close on one side only ever blocks the direction that actually goes
+                    # toward it, same as the narrow cones above - a single global "anything
+                    # anywhere" flag used to block BOTH directions and fired 68% of a real
+                    # drive session on a wall the car was simply parked next to on one side.
+                    body_d = d_m - body_overhang(a)
+                    if abs(a) <= WIDE_CONE_DEG:
+                        if best_body_front is None or body_d < best_body_front:
+                            best_body_front = body_d
+                    else:
+                        if best_body_rear is None or body_d < best_body_rear:
+                            best_body_rear = body_d
 
                 now = time.time()
                 with self.lock:
                     self.front_track.update(best_front, now)
                     self.rear_track.update(best_rear, now)
-                    self.body_min = best_body
+                    self.body_min_front = best_body_front
+                    self.body_min_rear = best_body_rear
                     self.points = pts
         except Exception as e:
             print("LiDAR thread stopped:", e)
@@ -235,7 +280,7 @@ class Clearance:
 
     def read(self):
         with self.lock:
-            return self.front_track, self.rear_track, self.body_min
+            return self.front_track, self.rear_track, self.body_min_front, self.body_min_rear
 
     def stop(self):
         self.running = False
@@ -256,7 +301,8 @@ class DriveLogger:
     FIELDS = ["t", "steer_a1", "steer_a2", "pwm_commanded", "pwm_sent",
               "front_dist", "front_speed", "front_blocked",
               "rear_dist", "rear_speed", "rear_blocked",
-              "body_min", "body_alert", "braking", "adas_override"]
+              "body_min_front", "body_min_rear", "body_alert_front", "body_alert_rear",
+              "braking", "adas_override"]
 
     def __init__(self, directory):
         os.makedirs(directory, exist_ok=True)
@@ -308,13 +354,15 @@ GUI_PORT = 8090
 GUI_STATE = {"lock": threading.Lock(), "data": {
     "front_dist": None, "front_speed": 0.0, "front_blocked": False,
     "rear_dist": None, "rear_speed": 0.0, "rear_blocked": False,
-    "body_min": None, "body_alert": False,
+    "body_min_front": None, "body_min_rear": None,
+    "body_alert_front": False, "body_alert_rear": False,
     "steer_a1": None, "steer_a2": None, "pwm_sent": 0,
     "mode": "manual", "braking": False,
 }}
 
 
-def gui_snapshot(front_track, rear_track, body_min, front_blocked, rear_blocked, body_alert,
+def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_blocked,
+                  rear_blocked, body_alert_front, body_alert_rear,
                   steer_a1, steer_a2, pwm_sent, mode, braking=False):
     """Full update, called whenever a real driver packet is processed - this is the
     authoritative blocked/braking decision, since that's the only time it actually matters
@@ -326,7 +374,8 @@ def gui_snapshot(front_track, rear_track, body_min, front_blocked, rear_blocked,
             "front_blocked": bool(front_blocked),
             "rear_dist": rear_track.dist, "rear_speed": round(rear_track.speed, 3),
             "rear_blocked": bool(rear_blocked),
-            "body_min": body_min, "body_alert": bool(body_alert),
+            "body_min_front": body_min_front, "body_min_rear": body_min_rear,
+            "body_alert_front": bool(body_alert_front), "body_alert_rear": bool(body_alert_rear),
             "steer_a1": steer_a1, "steer_a2": steer_a2, "pwm_sent": pwm_sent,
             "mode": mode, "braking": bool(braking),
         }
@@ -340,7 +389,7 @@ def gui_set_mode(mode):
         GUI_STATE["data"]["mode"] = mode
 
 
-def gui_update_distances(front_track, rear_track, body_min):
+def gui_update_distances(front_track, rear_track, body_min_front, body_min_rear):
     """Lighter, continuous update (no driver packet needed) so the GUI's numbers stay live
     even when nobody is actively driving - only touches distance/speed, never the
     blocked/braking/mode decision, since that's only meaningful while something is actually
@@ -350,7 +399,8 @@ def gui_update_distances(front_track, rear_track, body_min):
         GUI_STATE["data"]["front_speed"] = round(front_track.speed, 3)
         GUI_STATE["data"]["rear_dist"] = rear_track.dist
         GUI_STATE["data"]["rear_speed"] = round(rear_track.speed, 3)
-        GUI_STATE["data"]["body_min"] = body_min
+        GUI_STATE["data"]["body_min_front"] = body_min_front
+        GUI_STATE["data"]["body_min_rear"] = body_min_rear
 
 
 def start_gui_server(clr):
@@ -455,8 +505,8 @@ def main():
 
     def _gui_idle_updater():
         while True:
-            ft, rt, bm = clr.read()
-            gui_update_distances(ft, rt, bm)
+            ft, rt, bmf, bmr = clr.read()
+            gui_update_distances(ft, rt, bmf, bmr)
             time.sleep(0.15)
     threading.Thread(target=_gui_idle_updater, daemon=True).start()
 
@@ -498,11 +548,12 @@ def main():
                 sock.sendto(b"OK", addr)
                 continue
 
-            front_track, rear_track, body_min = clr.read()
+            front_track, rear_track, body_min_front, body_min_rear = clr.read()
             now = time.time()
             front_blocked = gate.blocked("front", front_track, now)
             rear_blocked = gate.blocked("rear", rear_track, now)
-            body_alert = body_min is not None and body_min < BODY_HARD_FLOOR_M
+            body_alert_front = body_min_front is not None and body_min_front < BODY_HARD_FLOOR_M
+            body_alert_rear = body_min_rear is not None and body_min_rear < BODY_HARD_FLOOR_M
 
             out_lines = []
             steer_a1 = steer_a2 = None
@@ -524,9 +575,9 @@ def main():
                     braking = False
                     if adas_override:
                         pass   # driver has explicitly taken full control - pass through as-is
-                    elif physical > 0 and (front_blocked or body_alert):
-                        if body_alert and not front_blocked:
-                            physical = 0   # 360 backstop only - no direction-specific speed
+                    elif physical > 0 and (front_blocked or body_alert_front):
+                        if body_alert_front and not front_blocked:
+                            physical = 0   # wide backstop only - no direction-specific speed
                                            # data to size a brake pulse from, just coast
                         else:
                             req = front_track.required_margin()
@@ -537,8 +588,8 @@ def main():
                                 braking = True
                             else:
                                 physical = 0
-                    elif physical < 0 and (rear_blocked or body_alert):
-                        if body_alert and not rear_blocked:
+                    elif physical < 0 and (rear_blocked or body_alert_rear):
+                        if body_alert_rear and not rear_blocked:
                             physical = 0
                         else:
                             req = rear_track.required_margin()
@@ -572,21 +623,22 @@ def main():
                 "front_blocked": int(front_blocked),
                 "rear_dist": rear_track.dist, "rear_speed": round(rear_track.speed, 3),
                 "rear_blocked": int(rear_blocked),
-                "body_min": body_min, "body_alert": int(body_alert),
+                "body_min_front": body_min_front, "body_min_rear": body_min_rear,
+                "body_alert_front": int(body_alert_front), "body_alert_rear": int(body_alert_rear),
                 "braking": int(braking), "adas_override": int(adas_override),
             })
-            gui_snapshot(front_track, rear_track, body_min, front_blocked, rear_blocked,
-                         body_alert, steer_a1, steer_a2, pwm_sent,
-                         "override" if adas_override else "manual", braking)
+            gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_blocked,
+                         rear_blocked, body_alert_front, body_alert_rear, steer_a1, steer_a2,
+                         pwm_sent, "override" if adas_override else "manual", braking)
 
             if now - last_status_print > 0.5:
                 last_status_print = now
                 ftxt = f"{front_track.dist:.2f}m@{front_track.speed:.1f}m/s" if front_track.dist is not None else "--"
                 rtxt = f"{rear_track.dist:.2f}m@{rear_track.speed:.1f}m/s" if rear_track.dist is not None else "--"
-                btxt = f"{body_min:.2f}m" if body_min is not None else "--"
+                btxt = f"{body_min_front:.2f}/{body_min_rear:.2f}m" if body_min_front is not None and body_min_rear is not None else "--"
                 print(f"  front {ftxt:>16s} {'[BLOCKED]' if front_blocked else '         '}   "
                       f"rear {rtxt:>16s} {'[BLOCKED]' if rear_blocked else '         '}   "
-                      f"body {btxt:>6s} {'[ALERT]' if body_alert else '       '}   "
+                      f"body {btxt:>11s} {'[ALERT]' if (body_alert_front or body_alert_rear) else '       '}   "
                       f"-> {' '.join(out_lines)}", end="\r")
 
     except KeyboardInterrupt:

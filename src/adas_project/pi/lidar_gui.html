@@ -37,7 +37,8 @@
   <div id="status">
     <div class="stat"><span class="label">Front</span><span class="value" id="front">--</span></div>
     <div class="stat"><span class="label">Rear</span><span class="value" id="rear">--</span></div>
-    <div class="stat"><span class="label">Body floor</span><span class="value" id="body">--</span></div>
+    <div class="stat"><span class="label">Body front</span><span class="value" id="bodyFront">--</span></div>
+    <div class="stat"><span class="label">Body rear</span><span class="value" id="bodyRear">--</span></div>
     <div class="stat"><span class="label">Steer</span><span class="value" id="steer">--</span></div>
     <div class="stat"><span class="label">PWM sent</span><span class="value" id="pwm">--</span></div>
     <div class="mode-badge" id="mode">MANUAL</div>
@@ -116,7 +117,7 @@ function draw(data) {
   ctx.save();
   ctx.translate(cx, cy);
   const steerAvg = ((data.steer_a1 ?? 90) + (data.steer_a2 ?? 90)) / 2 - 90;
-  ctx.fillStyle = data.body_alert ? '#f87171' : '#e5ecff';
+  ctx.fillStyle = (data.body_alert_front || data.body_alert_rear) ? '#f87171' : '#e5ecff';
   ctx.fillRect(-carPxWid / 2, -carPxLen / 2, carPxWid, carPxLen);
   // steering indicator line from the front
   ctx.strokeStyle = '#facc15';
@@ -176,9 +177,13 @@ async function poll() {
     rear.textContent = fmt(data.rear_dist, 'm');
     rear.className = 'value ' + (data.rear_blocked ? 'blocked' : 'ok');
 
-    const body = document.getElementById('body');
-    body.textContent = fmt(data.body_min, 'm');
-    body.className = 'value ' + (data.body_alert ? 'blocked' : 'ok');
+    const bodyFront = document.getElementById('bodyFront');
+    bodyFront.textContent = fmt(data.body_min_front, 'm');
+    bodyFront.className = 'value ' + (data.body_alert_front ? 'blocked' : 'ok');
+
+    const bodyRear = document.getElementById('bodyRear');
+    bodyRear.textContent = fmt(data.body_min_rear, 'm');
+    bodyRear.className = 'value ' + (data.body_alert_rear ? 'blocked' : 'ok');
 
     document.getElementById('steer').textContent =
       data.steer_a1 != null ? Math.round((data.steer_a1 + data.steer_a2) / 2) + '°' : '--';
