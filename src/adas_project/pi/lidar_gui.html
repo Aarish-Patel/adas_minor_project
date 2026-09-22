@@ -41,6 +41,7 @@
     <div class="stat"><span class="label">Body rear</span><span class="value" id="bodyRear">--</span></div>
     <div class="stat"><span class="label">Steer</span><span class="value" id="steer">--</span></div>
     <div class="stat"><span class="label">PWM sent</span><span class="value" id="pwm">--</span></div>
+    <div class="stat"><span class="label">Tracked objs</span><span class="value" id="tracks">--</span></div>
     <div class="mode-badge" id="mode">MANUAL</div>
     <button id="overrideBtn">ADAS OVERRIDE: OFF</button>
   </div>
@@ -112,6 +113,23 @@ function draw(data) {
     ctx.fill();
   }
 
+  // tracked objects (adas/tracking.py, vehicle frame: x forward from the rear axle, y left) -
+  // shift by LIDAR_X_M to plot in the same LiDAR-centred space as the point cloud above
+  const LIDAR_X_M = 0.12, LIDAR_Y_M = 0.0;
+  for (const tr of (data.tracks || [])) {
+    const lx = tr.x - LIDAR_X_M, ly = tr.y - LIDAR_Y_M;
+    const px = cx - ly * scale, py = cy - lx * scale;
+    ctx.beginPath();
+    ctx.arc(px, py, (tr.moving ? 7 : 5) * devicePixelRatio, 0, Math.PI * 2);
+    ctx.fillStyle = tr.moving ? '#fb923c' : '#a78bfa';
+    ctx.fill();
+    if (tr.moving) {
+      ctx.strokeStyle = '#fb923c';
+      ctx.lineWidth = 1.5 * devicePixelRatio;
+      ctx.stroke();
+    }
+  }
+
   // car outline (rectangle, front pointing up)
   const carPxLen = CAR_LEN_M * scale, carPxWid = CAR_WID_M * scale;
   ctx.save();
@@ -158,6 +176,8 @@ function applyMode(data) {
     modeEl.textContent = 'OVERRIDE'; modeEl.className = 'mode-badge override';
   } else if (data.braking) {
     modeEl.textContent = 'BRAKING'; modeEl.className = 'mode-badge braking';
+  } else if (data.moving_blocked) {
+    modeEl.textContent = 'MOVING OBJ'; modeEl.className = 'mode-badge braking';
   } else {
     modeEl.textContent = (data.mode || 'manual').toUpperCase(); modeEl.className = 'mode-badge';
   }
@@ -188,6 +208,9 @@ async function poll() {
     document.getElementById('steer').textContent =
       data.steer_a1 != null ? Math.round((data.steer_a1 + data.steer_a2) / 2) + '°' : '--';
     document.getElementById('pwm').textContent = data.pwm_sent ?? '--';
+    const tracks = data.tracks || [];
+    const moving = tracks.filter(t => t.moving).length;
+    document.getElementById('tracks').textContent = `${tracks.length} (${moving} moving)`;
     applyMode(data);
 
     draw(data);

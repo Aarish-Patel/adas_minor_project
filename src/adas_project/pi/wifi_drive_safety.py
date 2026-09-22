@@ -25,11 +25,14 @@ import sys
 import threading
 import time
 
+import numpy as np
 import serial
 from rplidar import RPLidar
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from adas.config import load_tuning  # noqa: E402
+from adas.tracking import Tracker, moving_object_contact  # noqa: E402
+from pi.path_predict import VP, delta_for_offset  # noqa: E402
 
 TUNING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuning_real_car.json")
 TUNING = load_tuning(TUNING_PATH)
@@ -225,9 +228,24 @@ class Clearance:
         self.body_min_front = None   # closest point in the WIDE front half (+-90deg)
         self.body_min_rear = None    # closest point in the WIDE rear half (+-90deg)
         self.points = []       # latest full scan, car-frame (angle_deg, dist_m) - for the GUI
+        self.tracker = Tracker()   # moving-object tracking (adas/tracking.py, LiDAR-only)
+        self.tracks_info = []      # [{"id","x","y","moving"}] - for the GUI overlay
+        self.moving_contact = (math.inf, math.inf, None)   # (dist_m, time_s, track_id)
+        self._motion_v = 0.0       # ego speed estimate (signed, +forward), set by the main
+        self._motion_offset = 0.0  # loop from the last commanded pwm/steer so the tracker
+                                    # can subtract the car's own motion from what it sees
         self.lock = threading.Lock()
         self.running = True
         self.thread = threading.Thread(target=self._loop, daemon=True)
+
+    def set_motion_state(self, physical_pwm, steer_offset_deg):
+        """Called by the main loop after every command, so the background scan thread knows
+        the car's own current speed/steering when separating a moving object's real motion
+        from the apparent motion caused by the car itself turning or driving."""
+        v = TUNING.speed_model.speed(physical_pwm)
+        with self.lock:
+            self._motion_v = v
+            self._motion_offset = steer_offset_deg
 
     def start(self):
         print("LiDAR info:", self.lidar.get_info())
@@ -278,17 +296,42 @@ class Clearance:
 
                 now = time.time()
                 with self.lock:
+                    v, offset = self._motion_v, self._motion_offset
+                delta = delta_for_offset(offset)
+                omega = v * math.tan(delta) / VP.wheelbase if abs(v) > 1e-6 else 0.0
+                # vehicle-frame (x,y) for the tracker - same conversion as
+                # path_predict.points_to_vehicle_frame, inlined to avoid re-parsing pts
+                if pts:
+                    arr = np.array(pts, dtype=float)
+                    rad = np.radians(arr[:, 0])
+                    xy = np.stack([arr[:, 1] * np.cos(rad) + VP.lidar_x,
+                                   arr[:, 1] * np.sin(rad) + VP.lidar_y], axis=1)
+                else:
+                    xy = np.zeros((0, 2))
+                tracks = self.tracker.update(xy, now, v, omega)
+                direction = 1 if v >= 0 else -1
+                contact = moving_object_contact(tracks, delta, direction, abs(v), VP, horizon=1.5)
+
+                with self.lock:
                     self.front_track.update(best_front, now)
                     self.rear_track.update(best_rear, now)
                     self.body_min_front = best_body_front
                     self.body_min_rear = best_body_rear
                     self.points = pts
+                    self.moving_contact = contact
+                    self.tracks_info = [{"id": tr.id, "x": round(tr.pos[0], 3),
+                                          "y": round(tr.pos[1], 3), "moving": tr.moving}
+                                         for tr in tracks]
         except Exception as e:
             print("LiDAR thread stopped:", e)
 
     def read_points(self):
         with self.lock:
             return list(self.points)
+
+    def read_tracks(self):
+        with self.lock:
+            return list(self.tracks_info), self.moving_contact
 
     def read(self):
         with self.lock:
@@ -314,7 +357,7 @@ class DriveLogger:
               "front_dist", "front_speed", "front_blocked",
               "rear_dist", "rear_speed", "rear_blocked",
               "body_min_front", "body_min_rear", "body_alert_front", "body_alert_rear",
-              "braking", "adas_override"]
+              "braking", "adas_override", "n_tracks", "n_moving", "moving_blocked"]
 
     def __init__(self, directory):
         os.makedirs(directory, exist_ok=True)
@@ -348,6 +391,7 @@ class SafetyGate:
 
     def __init__(self):
         self.last_blocked = {"front": None, "rear": None}
+        self.last_body_alert = {"front": None, "rear": None}
 
     def blocked(self, which, track, now):
         if track.dist is not None and track.dist < track.required_margin():
@@ -355,6 +399,21 @@ class SafetyGate:
             return True
         last = self.last_blocked[which]
         if track.dist is None and last is not None and now - last < HOLD_AFTER_LOST_READING_S:
+            return True
+        return False
+
+    def body_alert(self, which, body_min, now):
+        """Same hold-after-lost-reading protection as blocked(), applied to the wide
+        backstop: an obstacle that gets close enough to fall below MIN_VALID_RANGE_M is
+        filtered out of the scan entirely (self-hit/clutter rejection), which made
+        body_min flip to None and the alert silently vanish exactly when the car was
+        closest - confirmed live: a low-speed creep test drove straight into contact
+        because of this. A lost reading right after being in-alert does NOT mean clear."""
+        if body_min is not None and body_min < BODY_HARD_FLOOR_M:
+            self.last_body_alert[which] = now
+            return True
+        last = self.last_body_alert[which]
+        if body_min is None and last is not None and now - last < HOLD_AFTER_LOST_READING_S:
             return True
         return False
 
@@ -369,13 +428,14 @@ GUI_STATE = {"lock": threading.Lock(), "data": {
     "body_min_front": None, "body_min_rear": None,
     "body_alert_front": False, "body_alert_rear": False,
     "steer_a1": None, "steer_a2": None, "pwm_sent": 0,
-    "mode": "manual", "braking": False,
+    "mode": "manual", "braking": False, "tracks": [], "moving_blocked": False,
 }}
 
 
 def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_blocked,
                   rear_blocked, body_alert_front, body_alert_rear,
-                  steer_a1, steer_a2, pwm_sent, mode, braking=False):
+                  steer_a1, steer_a2, pwm_sent, mode, braking=False, tracks=None,
+                  moving_blocked=False):
     """Full update, called whenever a real driver packet is processed - this is the
     authoritative blocked/braking decision, since that's the only time it actually matters
     for control."""
@@ -390,6 +450,7 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
             "body_alert_front": bool(body_alert_front), "body_alert_rear": bool(body_alert_rear),
             "steer_a1": steer_a1, "steer_a2": steer_a2, "pwm_sent": pwm_sent,
             "mode": mode, "braking": bool(braking),
+            "tracks": tracks or [], "moving_blocked": bool(moving_blocked),
         }
 
 
@@ -530,6 +591,7 @@ def main():
 
     last_packet_time = time.time()
     last_status_print = 0.0
+    last_steer_offset = 0.0   # persists across ticks that don't include an A line
 
     try:
         while True:
@@ -561,16 +623,19 @@ def main():
                 continue
 
             front_track, rear_track, body_min_front, body_min_rear = clr.read()
+            tracks_info, moving_contact = clr.read_tracks()
             now = time.time()
             front_blocked = gate.blocked("front", front_track, now)
             rear_blocked = gate.blocked("rear", rear_track, now)
-            body_alert_front = body_min_front is not None and body_min_front < BODY_HARD_FLOOR_M
-            body_alert_rear = body_min_rear is not None and body_min_rear < BODY_HARD_FLOOR_M
+            body_alert_front = gate.body_alert("front", body_min_front, now)
+            body_alert_rear = gate.body_alert("rear", body_min_rear, now)
 
             out_lines = []
             steer_a1 = steer_a2 = None
             pwm_commanded = pwm_sent = 0
             braking = False
+            moving_blocked = False
+            final_physical = 0
             for line in text.splitlines():
                 line = line.strip()
                 if not line:
@@ -593,8 +658,12 @@ def main():
                             # pulse from, but the same creep-vs-cancel split still applies: a
                             # low-pwm nudge is allowed down to the absolute floor, a high-pwm
                             # command gets cancelled rather than an unconditional hard block
-                            if body_min_front is not None and body_min_front < CREEP_FLOOR_M:
-                                physical = 0
+                            if body_min_front is None or body_min_front < CREEP_FLOOR_M:
+                                physical = 0   # None means either genuinely clear OR too
+                                               # close to see (filtered as self-hit) - the
+                                               # hold-after-lost-reading above already covers
+                                               # "still recently in-alert"; with no fresh
+                                               # positive distance at all, never allow a creep
                             elif abs(physical) > CREEP_PWM_MAX:
                                 physical = 0
                             # else: low pwm, still above the floor - let the creep through
@@ -616,7 +685,7 @@ def main():
                             # else: low pwm, still above the floor - let the creep through
                     elif physical < 0 and (rear_blocked or body_alert_rear):
                         if body_alert_rear and not rear_blocked:
-                            if body_min_rear is not None and body_min_rear < CREEP_FLOOR_M:
+                            if body_min_rear is None or body_min_rear < CREEP_FLOOR_M:
                                 physical = 0
                             elif abs(physical) > CREEP_PWM_MAX:
                                 physical = 0
@@ -635,20 +704,40 @@ def main():
                             elif high_pwm:
                                 physical = 0
                             # else: low pwm, still above the floor - let the creep through
+
+                    # Moving-object check (adas/tracking.py, ported from the simulator): the
+                    # static front/rear/body checks above only see WHERE things are right
+                    # now, not where a moving object is headed - something crossing in from
+                    # outside the current cone can still meet the car on its predicted path.
+                    # Genuinely new capability, not just a tighter version of the existing
+                    # checks - it needs actual velocity data, which only the tracker has.
+                    if not adas_override and physical != 0:
+                        contact_dist, _, contact_id = moving_contact
+                        if contact_id is not None:
+                            est_v = TUNING.speed_model.speed(physical)
+                            needed = BASE_MARGIN_M + abs(est_v) * REACTION_TIME_S + \
+                                est_v * est_v / (2.0 * ASSUMED_DECEL)
+                            if contact_dist < needed:
+                                physical = 0
+                                moving_blocked = True
+
                     wire_out = -physical if WIRE_MOTOR_REVERSED else physical
                     pwm_sent = wire_out
+                    final_physical = physical
                     out_lines.append(f"M {wire_out}")
                 elif line.startswith("A "):
                     parts = line.split()
                     if len(parts) == 3:
                         try:
                             steer_a1, steer_a2 = float(parts[1]), float(parts[2])
+                            last_steer_offset = (steer_a1 + steer_a2) / 2.0 - 90.0
                         except ValueError:
                             pass
                     out_lines.append(line)   # steering is never modified by the safety gate
                 else:
                     out_lines.append(line)
 
+            clr.set_motion_state(final_physical, last_steer_offset)
             esp.write(("\n".join(out_lines) + "\n").encode())
 
             logger.maybe_log(now, {
@@ -661,10 +750,13 @@ def main():
                 "body_min_front": body_min_front, "body_min_rear": body_min_rear,
                 "body_alert_front": int(body_alert_front), "body_alert_rear": int(body_alert_rear),
                 "braking": int(braking), "adas_override": int(adas_override),
+                "n_tracks": len(tracks_info), "n_moving": sum(1 for t in tracks_info if t["moving"]),
+                "moving_blocked": int(moving_blocked),
             })
             gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_blocked,
                          rear_blocked, body_alert_front, body_alert_rear, steer_a1, steer_a2,
-                         pwm_sent, "override" if adas_override else "manual", braking)
+                         pwm_sent, "override" if adas_override else "manual", braking,
+                         tracks_info, moving_blocked)
 
             if now - last_status_print > 0.5:
                 last_status_print = now
