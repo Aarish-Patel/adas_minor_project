@@ -36,7 +36,10 @@ TUNING = load_tuning(TUNING_PATH)
 UDP_PORT = 4210
 
 FRONT_OFFSET_DEG = TUNING.mount.yaw_offset_deg       # raw LiDAR angle that is the car's straight-ahead
-CONE_DEG = 15                                        # +/- around straight ahead / straight behind
+CONE_DEG = 25                                        # +/- around straight ahead / straight behind
+                                                     # (widened from 15: gives the closing-speed
+                                                     # check more lead time on something crossing
+                                                     # in from the side before it's dead ahead)
 FRONT_OVERHANG_M = TUNING.mount.front_overhang_m     # LiDAR to front bumper
 REAR_OVERHANG_M = TUNING.mount.rear_overhang_m       # LiDAR to rear bumper
 MIN_VALID_RANGE_M = TUNING.mount.min_valid_range_m   # ignore raw readings closer than this
