@@ -16,21 +16,30 @@ receipt, reasons about physical direction only, then converts back once before s
 """
 
 import glob
+import os
 import signal
 import socket
+import sys
 import threading
 import time
 
 import serial
 from rplidar import RPLidar
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from adas.config import load_tuning  # noqa: E402
+
+TUNING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuning_real_car.json")
+TUNING = load_tuning(TUNING_PATH)
+
 UDP_PORT = 4210
 
-FRONT_OFFSET_DEG = 96.5    # raw LiDAR angle that is the car's straight-ahead (measured)
-CONE_DEG = 15              # +/- around straight ahead / straight behind
-FRONT_OVERHANG_M = 0.16    # LiDAR to front bumper (measured)
-REAR_OVERHANG_M = 0.17     # LiDAR to rear bumper (measured)
-MIN_VALID_RANGE_M = 0.20   # ignore raw readings closer than this (self-hits/mount clutter)
+FRONT_OFFSET_DEG = TUNING.mount.yaw_offset_deg       # raw LiDAR angle that is the car's straight-ahead
+CONE_DEG = 15                                        # +/- around straight ahead / straight behind
+FRONT_OVERHANG_M = TUNING.mount.front_overhang_m     # LiDAR to front bumper
+REAR_OVERHANG_M = TUNING.mount.rear_overhang_m       # LiDAR to rear bumper
+MIN_VALID_RANGE_M = TUNING.mount.min_valid_range_m   # ignore raw readings closer than this
+                                                     # (self-hits: wires/mount clutter)
 HOLD_AFTER_LOST_READING_S = 1.0   # a lost reading right after a block does NOT mean "clear"
 
 # Stop distance now SCALES with how fast the gap is closing (measured straight from
@@ -45,7 +54,7 @@ ASSUMED_DECEL = 1.0         # m/s^2 the car can coast-stop at - NOT calibrated, 
                             # number, and tighten this if it proves too cautious.
 MAX_CLOSING_SPEED_M_S = 3.0  # clip absurd speed spikes from noise
 
-WIRE_MOTOR_REVERSED = True  # must match rc_controller.py's MOTOR_REVERSED for this car
+WIRE_MOTOR_REVERSED = TUNING.servo.motor_reversed  # must match rc_controller.py's MOTOR_REVERSED
 
 
 def find_ports(retries=5, delay=1.5):

@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi
-ExecStart=/usr/bin/python3 -u /home/pi/wifi_drive_safety.py
+WorkingDirectory=/home/pi/rc_car
+ExecStart=/usr/bin/python3 -u /home/pi/rc_car/pi/wifi_drive_safety.py
 Restart=on-failure
 RestartSec=2
 StandardOutput=append:/home/pi/relay.log

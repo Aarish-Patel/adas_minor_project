@@ -12,6 +12,7 @@ import os
 from dataclasses import asdict, dataclass, field, fields
 
 from .aeb import AEBConfig, SpeedModel
+from .lidar_mount import LidarMount
 from .pipeline import AdasPipeline
 from .servo import ServoCalibration
 from .vehicle_params import VehicleParams
@@ -23,6 +24,7 @@ class Tuning:
     speed_model: SpeedModel = field(default_factory=SpeedModel)
     vehicle: VehicleParams = field(default_factory=VehicleParams)
     servo: ServoCalibration = field(default_factory=ServoCalibration)
+    mount: LidarMount = field(default_factory=LidarMount)
     lidar_min_range: float = 0.2
 
     def make_pipeline(self):
@@ -31,7 +33,7 @@ class Tuning:
     def to_dict(self):
         return {"aeb": asdict(self.aeb), "speed_model": asdict(self.speed_model),
                 "vehicle": asdict(self.vehicle), "servo": asdict(self.servo),
-                "lidar_min_range": self.lidar_min_range}
+                "mount": asdict(self.mount), "lidar_min_range": self.lidar_min_range}
 
     @classmethod
     def from_dict(cls, d):
@@ -40,7 +42,7 @@ class Tuning:
             return klass(**{k: v for k, v in (data or {}).items() if k in names})
         return cls(aeb=build(AEBConfig, d.get("aeb")), speed_model=build(SpeedModel, d.get("speed_model")),
                    vehicle=build(VehicleParams, d.get("vehicle")), servo=build(ServoCalibration, d.get("servo")),
-                   lidar_min_range=d.get("lidar_min_range", 0.2))
+                   mount=build(LidarMount, d.get("mount")), lidar_min_range=d.get("lidar_min_range", 0.2))
 
 
 def load_tuning(path="tuning.json"):
