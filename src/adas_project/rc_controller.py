@@ -60,8 +60,8 @@ ACKERMANN_FACTOR = 1
 # SERVO CALIBRATION (degrees, as used by the Arduino Servo library)
 # ============================================================
 
-LEFT_RIGHT, LEFT_CENTER, LEFT_LEFT = 30, 90, 140
-RIGHT_RIGHT, RIGHT_CENTER, RIGHT_LEFT = 30, 90, 140
+LEFT_RIGHT, LEFT_CENTER, LEFT_LEFT = 30, 85, 140    # center 90 -> 85: measured with the final grips (pi/center_fine.py, turn_test.py)
+RIGHT_RIGHT, RIGHT_CENTER, RIGHT_LEFT = 30, 85, 140
 
 # Servo degrees per wheel degree (1.0 = servo shaft drives the wheel 1:1).
 LEFT_SCALE = 1.0

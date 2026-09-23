@@ -12,16 +12,20 @@ import numpy as np
 sys.path.insert(0, "/home/pi/rc_car")
 import pi.lidar_steering_diag as D  # noqa: E402
 from pi.lidar_steering_diag import Rig, floor_violated, TICK_S  # noqa: E402
-from pi.speed_run import back_up_to_rear_limit, unique_scan_sample  # noqa: E402
+from pi.speed_run import back_up_to_rear_limit, unique_scan_sample
+from pi.test_gui import TestGui  # noqa: E402
 
 D.RAMP_STEP_PWM = 25
-LEVELS = [90, 110, 130, 150]
+LEVELS = [90, 110, 130, 150, 180]
+V_REF = ([90, 110, 130, 150, 180, 210], [0.163, 0.258, 0.353, 0.480, 0.592, 0.666])  # speed_run.py measurements
 CUT_FRONT_M = 0.95
 REPORT = "/home/pi/rc_car/pi/brake_run_report.json"
 
 
-def run_level(rig, pwm):
+def run_level(rig, pwm, gui):
+    gui.set(activity='FINDING OPEN SPACE - backing up to get run-up room', servo=90.0, message=f'stopping test at PWM {pwm}')
     back_up_to_rear_limit(rig)
+    gui.set(activity=f'TESTING BRAKING - cruising at PWM {pwm}, then cutting throttle')
     f0 = rig.front()
     if f0 is None or f0 < 1.0:
         return {"pwm": pwm, "skipped": f"front room {f0}"}
@@ -29,10 +33,9 @@ def run_level(rig, pwm):
     ramp_s = pwm / D.RAMP_STEP_PWM * TICK_S
     cut = None
     while rig.now() - t0 < 4.0:
-        bad, _, _ = floor_violated(rig)
         f = rig.front()
-        if bad:
-            break
+        if not rig.is_fresh() or (f is not None and f < 0.42):
+            break        # only the FRONT matters while driving forward away from the rear wall
         if rig.now() - t0 > ramp_s + 0.25 + 0.75 or (f is not None and f < 0.72 and rig.now() - t0 > ramp_s + 0.5):
             break
         rig.motor_forward(pwm)
@@ -64,14 +67,24 @@ def run_level(rig, pwm):
 
 def main():
     rig = Rig()
+    gui = TestGui(rig)
+    gui.set("Stopping-distance test (final grips)", "cruise, cut throttle, measure roll-out", 0.0)
     out = {"levels": []}
     try:
-        for pwm in LEVELS:
-            r = run_level(rig, pwm); print(r, flush=True); out["levels"].append(r)
+        for i, pwm in enumerate(LEVELS):
+            r = run_level(rig, pwm, gui); out["levels"].append(r)
+            if "front_at_rest" in r:
+                r["v_ref"] = float(np.interp(pwm, *V_REF))
+                gui.log(f"PWM {pwm}: v~{r['v_ref']:.2f} m/s -> stopped in {r['stop_dist_m']*100:.0f} cm")
+            else:
+                gui.log(f"PWM {pwm}: {r.get('skipped')}")
+            gui.set(progress=(i + 1) / len(LEVELS))
             time.sleep(0.5)
     finally:
-        rig.stop(); rig.steer(90); time.sleep(0.2); rig.close()
+        rig.stop(); rig.steer(90); time.sleep(0.2)
         json.dump(out, open(REPORT, "w"), indent=2)
+        gui.set("Stopping-distance test - DONE", "see log", 1.0, activity="finished")
+        time.sleep(45); rig.close()
 
 
 if __name__ == "__main__":

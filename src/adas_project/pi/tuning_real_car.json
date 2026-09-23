@@ -34,10 +34,10 @@
   },
   "servo": {
     "left_right": 30.0,
-    "left_center": 90.0,
+    "left_center": 85.0,
     "left_left": 140.0,
     "right_right": 30.0,
-    "right_center": 90.0,
+    "right_center": 85.0,
     "right_left": 140.0,
     "left_scale": 1.0,
     "right_scale": 1.0,

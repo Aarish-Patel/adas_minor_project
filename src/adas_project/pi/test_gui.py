@@ -44,7 +44,16 @@ class TestGui:
                 self.send_response(200)
                 self.end_headers()
 
-        self.server = http.server.ThreadingHTTPServer(("0.0.0.0", port), H)
+        for _ in range(40):          # an earlier test may still be showing its results page
+            try:
+                self.server = http.server.ThreadingHTTPServer(("0.0.0.0", port), H)
+                break
+            except OSError:
+                time.sleep(1.0)
+        else:
+            self.server = None
+            print("test GUI: port busy, continuing without it", flush=True)
+            return
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         print(f"test GUI on http://<pi-ip>:{port}/", flush=True)
 
