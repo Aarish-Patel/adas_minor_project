@@ -37,7 +37,7 @@ TRANSPORT = "wifi"          # "wifi" or "serial"
 SERIAL_PORT = "COM7"
 BAUD_RATE = 115200
 
-ESP32_IP = "192.168.1.3"    # the PI's address (pi/wifi_drive_safety.py), NOT the ESP32's directly:
+ESP32_IP = "192.168.1.6"    # the PI's address (pi/wifi_drive_safety.py), NOT the ESP32's directly:
                             # driving straight to the ESP32 bypasses the obstacle safety relay.
                             # (leaving this on auto-discover risks nondeterministically finding
                             # the ESP32 itself instead, since both would answer a broadcast PING)
