@@ -33,6 +33,15 @@
   #overrideBanner.show { display: block; }
   #canvasWrap { flex: 1; position: relative; }
   canvas { display: block; width: 100%; height: 100%; }
+  #testPanel { display: none; position: absolute; left: 14px; top: 12px; width: 380px; max-width: 46vw;
+               background: rgba(17,26,46,0.92); border: 1px solid #33415f; border-radius: 10px;
+               padding: 10px 12px; font-size: 12px; line-height: 1.45; }
+  #testPanel.show { display: block; }
+  #testPanel .tt { font-size: 15px; font-weight: 700; color: #60a5fa; }
+  #testPanel .tm { color: #e5ecff; margin: 2px 0 6px; }
+  #testBar { height: 5px; background: #1e2b47; border-radius: 3px; margin-bottom: 6px; }
+  #testBar > div { height: 100%; background: #34d399; border-radius: 3px; width: 0; transition: width .3s; }
+  #testLog { font-family: Consolas, monospace; color: #94a3b8; white-space: pre-wrap; max-height: 230px; overflow: hidden; }
   #conn { position: absolute; top: 10px; right: 14px; font-size: 12px; color: #f87171; }
 </style>
 </head>
@@ -53,6 +62,7 @@
   </div>
   <div id="canvasWrap">
     <canvas id="c"></canvas>
+    <div id="testPanel"><div class="tt" id="testTitle"></div><div id="testActivity" style="font-weight:700;color:#facc15;margin-top:2px"></div><div id="testServo" style="color:#e5ecff"></div><div id="testAlert" style="font-weight:700;color:#f87171"></div><div class="tm" id="testMsg"></div><div id="testBar"><div id="testBarFill"></div></div><div id="testLog"></div></div>
     <div id="conn"></div>
   </div>
 </div>
@@ -237,6 +247,18 @@ async function poll() {
     const tracks = data.tracks || [];
     const moving = tracks.filter(t => t.moving).length;
     document.getElementById('tracks').textContent = `${tracks.length} (${moving} moving)`;
+    const tp = document.getElementById('testPanel');
+    if (data.test && data.test.title) {
+      tp.classList.add('show');
+      document.getElementById('testTitle').textContent = data.test.title;
+      document.getElementById('testMsg').textContent = data.test.message || '';
+      document.getElementById('testActivity').textContent = data.test.activity ? ('>> ' + data.test.activity) : '';
+      document.getElementById('testServo').textContent = data.test.servo == null ? '' :
+        `servo ${data.test.servo.toFixed(1)}°  =  wheel offset ${(data.test.servo - 90 >= 0 ? '+' : '') + (data.test.servo - 90).toFixed(1)}° from center`;
+      document.getElementById('testAlert').textContent = data.test.scan_ok === false ? 'LIDAR: no fresh scan' : (data.test.alert || '');
+      document.getElementById('testBarFill').style.width = data.test.progress == null ? '0%' : (data.test.progress * 100) + '%';
+      document.getElementById('testLog').textContent = (data.test.log || []).join(String.fromCharCode(10));
+    } else { tp.classList.remove('show'); }
     applyMode(data);
 
     draw(data);

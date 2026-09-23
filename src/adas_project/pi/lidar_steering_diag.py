@@ -430,44 +430,47 @@ def reposition_away_from_nearest(rig, log, max_attempts=14, purpose_bearing=None
     replaces a fixed cycle of blind guesses with an actual read of the room."""
     if _clearance_ok(rig):
         return True
+    # Commit to ONE direction for the whole episode: re-picking forward/reverse every burst
+    # made the car jitter back and forth in a tight spot (and stress the drivetrain). Only
+    # flip once, if the committed direction's own cone runs out of room.
+    committed = None
+    flipped = False
     for attempt in range(max_attempts):
         steer_offset, direction, target_bin = choose_escape_move(rig, purpose_bearing)
-        before = _clearance_score(rig)
+        if committed is None:
+            committed = direction
+        direction = committed
+        cone = rig.front() if direction == "forward" else rig.rear()
+        if cone is not None and cone < HARD_FLOOR_M + 0.05:
+            if flipped:
+                break
+            committed = "reverse" if direction == "forward" else "forward"
+            flipped = True
+            direction = committed
+        if direction == "reverse":
+            steer_offset = 0
         d, a = rig.floor()
         log.append({"event": "reposition", "attempt": attempt, "steer_offset": steer_offset,
                      "direction": direction, "target_bin": target_bin,
                      "floor": d, "floor_bearing": a, "front": rig.front(), "rear": rig.rear()})
 
         rig.steer(90 + steer_offset)
-        end = time.time() + ESCAPE_BURST_S
+        end = time.time() + ESCAPE_BURST_S * 2
         while time.time() < end:
+            bad, _, _ = floor_violated(rig)
+            if bad and time.time() > end - ESCAPE_BURST_S * 1.5:
+                break
             if direction == "reverse":
                 rig.motor_reverse(150)
             else:
                 rig.motor_forward(150)
             time.sleep(TICK_S)
         rig.stop()
-        time.sleep(0.25)
+        time.sleep(0.3)
         rig.steer(90)
 
         if _clearance_ok(rig):
             return True
-        after = _clearance_score(rig)
-        if after < before:
-            # that guess made it worse - undo roughly half before the map gets re-read and
-            # a fresh direction gets picked next attempt
-            rig.steer(90 + steer_offset)
-            undo_end = time.time() + ESCAPE_BURST_S * 0.5
-            opposite = "forward" if direction == "reverse" else "reverse"
-            while time.time() < undo_end:
-                if opposite == "reverse":
-                    rig.motor_reverse(120)
-                else:
-                    rig.motor_forward(120)
-                time.sleep(TICK_S)
-            rig.stop()
-            time.sleep(0.2)
-            rig.steer(90)
     return _clearance_ok(rig)
 
 

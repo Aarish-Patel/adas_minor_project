@@ -18,8 +18,8 @@
     "alert_ttc": 1.0
   },
   "speed_model": {
-    "v_max": 0.68,
-    "deadband": 0.0
+    "v_max": 0.896,
+    "deadband": 48.5
   },
   "vehicle": {
     "wheelbase": 0.2,
@@ -49,7 +49,7 @@
     "servo_sign": -1
   },
   "mount": {
-    "yaw_offset_deg": 95.1,
+    "yaw_offset_deg": 90.0,
     "front_overhang_m": 0.16,
     "rear_overhang_m": 0.17,
     "left_overhang_m": 0.1,

@@ -1,0 +1,78 @@
+"""Measured stopping distance: cruise at a steady speed, cut throttle, record how far the
+car travels before it stops (includes the real command/motor latency). Fits
+  stop_dist(v) = v*T + v^2/(2*a)
+which is exactly the shape wifi_drive_safety.required_margin() uses (REACTION_TIME_S=T,
+ASSUMED_DECEL=a) - so this replaces two guesses with measured numbers."""
+import json
+import sys
+import time
+
+import numpy as np
+
+sys.path.insert(0, "/home/pi/rc_car")
+import pi.lidar_steering_diag as D  # noqa: E402
+from pi.lidar_steering_diag import Rig, floor_violated, TICK_S  # noqa: E402
+from pi.speed_run import back_up_to_rear_limit, unique_scan_sample  # noqa: E402
+
+D.RAMP_STEP_PWM = 25
+LEVELS = [90, 110, 130, 150]
+CUT_FRONT_M = 0.95
+REPORT = "/home/pi/rc_car/pi/brake_run_report.json"
+
+
+def run_level(rig, pwm):
+    back_up_to_rear_limit(rig)
+    f0 = rig.front()
+    if f0 is None or f0 < 1.0:
+        return {"pwm": pwm, "skipped": f"front room {f0}"}
+    samples, last_t, t0 = [], None, rig.now()
+    ramp_s = pwm / D.RAMP_STEP_PWM * TICK_S
+    cut = None
+    while rig.now() - t0 < 4.0:
+        bad, _, _ = floor_violated(rig)
+        f = rig.front()
+        if bad:
+            break
+        if rig.now() - t0 > ramp_s + 0.25 + 0.75 or (f is not None and f < 0.72 and rig.now() - t0 > ramp_s + 0.5):
+            break
+        rig.motor_forward(pwm)
+        last_t, s = unique_scan_sample(rig, last_t)
+        if s:
+            samples.append(s)
+        time.sleep(TICK_S)
+    cruise = [(t - t0, f) for t, f in samples if t - t0 > ramp_s + 0.25]
+    if len(cruise) < 5:
+        rig.stop()
+        return {"pwm": pwm, "skipped": "too little cruise data"}
+    ts = np.array([a for a, _ in cruise]); fs = np.array([b for _, b in cruise])
+    v = float(-np.polyfit(ts, fs, 1)[0])
+    f_cut = float(fs[-1])
+    t_cut_wall = rig.now()
+    rig.stop()                                  # immediate M 0 (coast)
+    rest, last_t2 = [], last_t
+    end = time.time() + 1.8
+    while time.time() < end:
+        last_t2, s = unique_scan_sample(rig, last_t2)
+        if s:
+            rest.append(s)
+        time.sleep(0.03)
+    f_rest = float(np.median([f for _, f in rest[-4:]])) if rest else None
+    return {"pwm": pwm, "v_cruise": v, "front_at_cut": f_cut, "front_at_rest": f_rest,
+            "stop_dist_m": (f_cut - f_rest) if f_rest is not None else None,
+            "cut_to_last_cruise_scan_s": t_cut_wall - (t0 + ts[-1])}
+
+
+def main():
+    rig = Rig()
+    out = {"levels": []}
+    try:
+        for pwm in LEVELS:
+            r = run_level(rig, pwm); print(r, flush=True); out["levels"].append(r)
+            time.sleep(0.5)
+    finally:
+        rig.stop(); rig.steer(90); time.sleep(0.2); rig.close()
+        json.dump(out, open(REPORT, "w"), indent=2)
+
+
+if __name__ == "__main__":
+    main()
