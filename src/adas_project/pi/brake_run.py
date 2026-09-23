@@ -13,7 +13,7 @@ sys.path.insert(0, "/home/pi/rc_car")
 import pi.lidar_steering_diag as D  # noqa: E402
 from pi.lidar_steering_diag import Rig, floor_violated, TICK_S  # noqa: E402
 from pi.speed_run import back_up_to_rear_limit, unique_scan_sample
-from pi.test_gui import TestGui  # noqa: E402
+from pi.test_gui import TestGui, save_result  # noqa: E402
 
 D.RAMP_STEP_PWM = 25
 LEVELS = [90, 110, 130, 150, 180]
@@ -68,14 +68,14 @@ def run_level(rig, pwm, gui):
 def main():
     rig = Rig()
     gui = TestGui(rig)
-    gui.set("Stopping-distance test (final grips)", "cruise, cut throttle, measure roll-out", 0.0)
+    gui.set("Speed + stopping-distance calibration", "each level: cruise (speed measured), cut throttle (roll-out measured)", 0.0)
     out = {"levels": []}
     try:
         for i, pwm in enumerate(LEVELS):
             r = run_level(rig, pwm, gui); out["levels"].append(r)
             if "front_at_rest" in r:
                 r["v_ref"] = float(np.interp(pwm, *V_REF))
-                gui.log(f"PWM {pwm}: v~{r['v_ref']:.2f} m/s -> stopped in {r['stop_dist_m']*100:.0f} cm")
+                gui.log(f"PWM {pwm}: measured {r['v_cruise']:.2f} m/s -> stopped in {r['stop_dist_m']*100:.0f} cm")
             else:
                 gui.log(f"PWM {pwm}: {r.get('skipped')}")
             gui.set(progress=(i + 1) / len(LEVELS))
@@ -83,7 +83,24 @@ def main():
     finally:
         rig.stop(); rig.steer(90); time.sleep(0.2)
         json.dump(out, open(REPORT, "w"), indent=2)
-        gui.set("Stopping-distance test - DONE", "see log", 1.0, activity="finished")
+        try:
+            good = [r for r in out["levels"] if r.get("v_cruise") and r.get("v_cruise") > 0.05 and r.get("stop_dist_m") is not None]
+            if len(good) >= 3:
+                p = np.array([r["pwm"] for r in good], float); v = np.array([r["v_cruise"] for r in good])
+                m, c = np.polyfit(p, v, 1)                       # v = m*pwm + c  ->  deadband = -c/m
+                dead = float(-c / m)
+                vmax = float(m * (255 - dead))
+                d = np.array([r["stop_dist_m"] for r in good])
+                A = np.stack([v, v ** 2], 1)                     # stop = v*T + v^2/(2a)
+                (T, k), *_ = np.linalg.lstsq(A, d, rcond=None)
+                res = {"deadband": dead, "v_max": vmax,
+                       "reaction_s": float(max(T, 0.0)), "decel": float(1 / (2 * k)) if k > 1e-3 else None,
+                       "levels": [{"pwm": r["pwm"], "v": r["v_cruise"], "stop_cm": r["stop_dist_m"] * 100} for r in good]}
+                save_result("speed", res)
+                gui.log(f"FIT: deadband {dead:.0f} PWM, v_max {vmax:.2f} m/s, reaction {res['reaction_s']:.2f} s")
+        except Exception as e:
+            print("fit error", e, flush=True)
+        gui.set("Speed + stopping-distance calibration - DONE", "see log", 1.0, activity="finished")
         time.sleep(45); rig.close()
 
 

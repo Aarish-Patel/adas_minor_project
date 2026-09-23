@@ -112,6 +112,9 @@ def gather(run):
     faults = load("faults.json")
     if faults:
         results["faults"] = faults
+    byp = load("bypass_eval.json")
+    if byp:
+        results["bypass"] = byp["summary"]
     intent = load("intent_metrics.json")
     if intent:
         results["intent"] = intent

@@ -82,7 +82,7 @@ def run(obstacle, extra_segs, label, seed=0, verbose=False, k_true=1.0, servo_bi
     traj = np.array(traj)
     fin = traj[-1]
     print(f"[{label}] end state={ctl.state}  msg: {ctl.msg}")
-    print(f"    steps={len(traj)}  max lateral={np.abs(traj[:,1]).max():.2f} m  final y={fin[1]:+.3f} m  final heading={math.degrees(fin[2]):+.1f} deg  "
+    print(f"    steps={len(traj)}  max lateral={np.abs(traj[:,1]).max():.2f} m  final y={fin[1]:+.3f} m  final heading={math.degrees(fin[2]):+.1f} deg  final x={fin[0]:.2f}  max|th|={np.degrees(np.abs(traj[:,2]).max()):.0f}  "
           f"min body-to-obstacle={min_clear:.3f} m  odom fallbacks={odo.fallbacks}/{odo.n} ref-fixes={odo.ref_fixes}  side={ctl.side:+d}")
     return ctl.state, min_clear, fin
 

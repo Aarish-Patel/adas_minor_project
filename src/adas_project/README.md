@@ -15,7 +15,7 @@ The viewer: pick a scenario, drive with **W/S/A/D** or an Xbox controller (stick
 **Off / Warn / Active** with `X`, camera views `1-4`, auto-park `G`, follow-the-leader `C`, traffic signs `I`.
 Side panel tabs: **Live** (charts, driver-intent bars, events), **Tuning** (sliders, download `tuning.json`),
 **Camera** (OpenCV running on the frames the 3D scene renders), **Results** (all evaluations).
-**Monte Carlo lab** (top right) replays many random drives side by side, ADAS off (red) vs on (teal).
+**Bypass** (`B`) drives straight, goes around the obstacle on the more open side and rejoins the line, using the same controller and scan-matching odometry as the real car (`pi/bypass_core.py`). **Car: REAL** (`K`) switches the simulator to the measured car (`sim/real_car.py`). **Monte Carlo lab** (top right) replays many random drives side by side, ADAS off (red) vs on (teal).
 
 ## What is where
 
@@ -44,6 +44,9 @@ python -m sim.parking_eval 60    # auto-park from random starting poses
 python -m sim.sweeps 40          # robustness: crash rate vs calibration error, delay, noise ...
 python -m sim.intent_data 240    # train + evaluate the driver-intent model
 python -m sim.warning_eval 400 100   # does intent help the warnings? (long: ~20 min)
+python -m sim.run_scenarios --real   # the same scenarios with the car as measured (sim/real_car.py)
+python -m sim.bypass_eval 60     # obstacle bypass: random obstacles, walls, gaps; default car and real-car profile
+python -m unittest discover -s tests -t .   # regression suite (23 tests, no car needed)
 python -m sim.report --run       # everything above -> Results tab + reports/index.html
 python -m pi.hil wall            # the real Pi runtime driving the simulated car + emulated ESP32
 python -m pi.calibrate --sim     # rehearse the calibration procedure on the simulator

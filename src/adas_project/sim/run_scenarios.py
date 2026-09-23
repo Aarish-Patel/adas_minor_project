@@ -17,10 +17,22 @@ from .scenarios import default_suite
 from .simulator import Simulator
 
 
+REAL = False      # --real: the car as measured (sim/real_car.py) instead of the default simulator car
+
+
 def run_one(scn, adas_on, v_scale=1.0):
     world, start = scn.build()
-    dyn = Dynamics(speed_model=SpeedModel(v_max=1.0 * v_scale))
-    sim = Simulator(world, start, adas_on=adas_on, dynamics=dyn)
+    if REAL:
+        from .lidar_sim import LidarSim
+        from .real_car import real_profile
+        rp = real_profile()
+        sm = replace(rp.speed_model, v_max=rp.speed_model.v_max * v_scale)
+        dyn = replace(rp.dynamics, speed_model=sm)
+        sim = Simulator(world, start, adas_on=adas_on, params=rp.params, aeb_config=rp.aeb, dynamics=dyn,
+                        adas_speed_model=rp.speed_model, lidar=LidarSim(**rp.lidar_kw))
+    else:
+        dyn = Dynamics(speed_model=SpeedModel(v_max=1.0 * v_scale))
+        sim = Simulator(world, start, adas_on=adas_on, dynamics=dyn)
     sim.run(scn.driver, scn.duration, stop_when_stopped=not scn.run_full)
     return sim
 
@@ -44,6 +56,10 @@ def fmt(sim):
 
 
 def main():
+    global REAL
+    REAL = "--real" in sys.argv
+    if REAL:
+        print("REAL-CAR PROFILE (measured values, sim/real_car.py)")
     failures = 0
     print(f"{'scenario':58s} | {'ADAS OFF':38s} | {'ADAS ON':38s} | ADAS ON, car 25% faster | ADAS ON, car 25% slower")
     for scn in default_suite():

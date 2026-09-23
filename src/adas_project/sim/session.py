@@ -18,7 +18,10 @@ from adas.intent import IntentEstimator, IntentLogger, IntentModel
 from adas.vehicle_params import VehicleParams, steer_to_delta, steer_to_wheel_angles
 from adas.warning import RiskScorer
 
+from .bypass_driver import BypassDriver
 from .car_sim import Dynamics
+from .lidar_sim import LidarSim
+from .real_car import real_profile
 from .drivers import HumanLikeDriver
 from .intent_data import MODEL_DIR
 from .library import SCENARIOS
@@ -64,6 +67,8 @@ TUNABLE_IDS = {t[0] for t in TUNABLES}
 
 class Session:
     def __init__(self):
+        self.profile = "sim"
+        self.bypass = None
         self.p = VehicleParams()
         self.speed = 1.0
         self.paused = False
@@ -102,9 +107,19 @@ class Session:
         self.start = start
         self.driver_kind = spec["driver"]
 
-        aeb_cfg = AEBConfig.for_vehicle(self.p, 0.2)
-        self.sim = Simulator(world, start, adas_on=self.mode, params=self.p, aeb_config=aeb_cfg,
-                             dynamics=Dynamics(), seed=seed or 0)
+        if self.profile == "real":
+            rp = real_profile()
+            self.p = rp.params
+            self.sim = Simulator(world, start, adas_on=self.mode, params=self.p, aeb_config=rp.aeb,
+                                 dynamics=rp.dynamics, adas_speed_model=rp.speed_model,
+                                 lidar=LidarSim(seed=seed or 0, **rp.lidar_kw), seed=seed or 0)
+        else:
+            self.p = VehicleParams()
+            aeb_cfg = AEBConfig.for_vehicle(self.p, 0.2)
+            self.sim = Simulator(world, start, adas_on=self.mode, params=self.p, aeb_config=aeb_cfg,
+                                 dynamics=Dynamics(), seed=seed or 0)
+        self.scorer = RiskScorer(self.p)
+        self.bypass = None
         self.driver = HumanLikeDriver(seed=seed or 7) if self.driver_kind == "virtual" else None
         self.estimator = IntentEstimator(self.intent_model)
         self.risk = {"base": 0.0, "blend": 0.0, "adaptive": 0.0}
@@ -196,6 +211,20 @@ class Session:
         self.crash_wall_time = None
         self.sim.adas.parking.stop()
 
+    def set_profile(self, name):
+        if name in ("sim", "real") and name != self.profile:
+            self.profile = name
+            self.load(self.scenario_id)
+            self.event("info", "Car profile: " + ("REAL car (measured values)" if name == "real" else "default simulator car"))
+
+    def toggle_bypass(self):
+        if self.bypass is not None and not self.bypass.done:
+            self.bypass.done = True
+            self.event("info", "Obstacle bypass cancelled")
+        else:
+            self.bypass = BypassDriver(self.p, pwm=115)
+            self.event("info", "Obstacle bypass started")
+
     def toggle_park(self):
         park = self.sim.adas.parking
         if park.active:
@@ -269,6 +298,11 @@ class Session:
             w.writerows(rows)
 
     def _command(self):
+        if self.bypass is not None and not self.bypass.done:
+            out = self.bypass.command(self.sim)
+            if self.bypass.done:
+                self.event("info", f"Bypass finished: {self.bypass.state} - {self.bypass.msg}")
+            return out
         if self.driver is not None:
             return self.driver(self.sim.t, self.sim)
         return self.input
@@ -335,6 +369,10 @@ class Session:
                 "isa": {"on": a.isa.enabled, "active": a.isa.active,
                         "cap": round(a.isa.cap, 2) if math.isfinite(a.isa.cap) else -1},
                 "park": {"state": a.parking.state, "msg": a.parking.message, "error": self._park_error()},
+                "bypass": ({"on": not self.bypass.done, "state": self.bypass.state, "msg": self.bypass.msg,
+                            "y": round(self.bypass.pose[1], 3), "y_ref": round(self.bypass.y_ref, 3),
+                            "th": round(math.degrees(self.bypass.pose[2]), 1)} if self.bypass else None),
+                "profile": self.profile,
                 "fault": a.fault,
                 "lane": {"mode": a.lane.mode, "valid": a.lane.est.valid, "offset": round(a.lane.est.offset, 3),
                          "heading": round(a.lane.est.heading, 3), "level": a.lane.level, "assisting": a.lane.assisting}}

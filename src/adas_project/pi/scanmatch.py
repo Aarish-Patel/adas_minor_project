@@ -98,10 +98,16 @@ class Odometry:
         if self.n % 2 == 0 and self.ref is not None:
             x, y, thw = self.pose
             res = icp(self.ref, xy, (x, y, thw), iters=16, gates=(0.25, 0.12, 0.08))
-            if res is not None and res[3] < 0.04 and res[4] >= 75:
-                R, tt, th, _, _ = res
+            # strict gate while the scene still looks like the start scan; a looser one (still needing a
+            # decent inlier count and a modest correction) once the overlap has shrunk - that is exactly
+            # when the scan-to-scan drift needs correcting most
+            if res is not None and res[3] < 0.055 and res[4] >= 55:
+                R, tt, th, resid, n_in = res
                 jump = np.hypot(tt[0] - x, tt[1] - y)
-                if jump < 0.20 and abs(th - thw) < np.radians(10):
-                    self.pose = np.array([tt[0], tt[1], th])
+                strict = resid < 0.04 and n_in >= 75
+                if (jump < (0.20 if strict else 0.25)) and abs(th - thw) < np.radians(10 if strict else 8):
+                    # with little overlap the match can slide along parallel walls, so a loose match only
+                    # corrects sideways position and heading (what rejoining the line needs), not x
+                    self.pose = np.array([tt[0] if strict else x, tt[1], th])
                     self.ref_fixes += 1
         return self.pose

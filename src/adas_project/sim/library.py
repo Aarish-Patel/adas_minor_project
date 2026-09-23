@@ -130,7 +130,17 @@ def signs():
     return w, (0.0, 0.0, 0.0)
 
 
+def bypass_arena():
+    w = World()
+    _room(w, -1.0, 5.4, -1.6, 1.6)
+    w.add(Box(1.8, 0.0, 0.20, 0.20, 0.0, 0.16, colour="#f97316"))     # 20 cm block dead ahead
+    w.add(FloorLine([[0.0, 0.0], [5.0, 0.0]], 0.012, "#facc15", dashed=True))   # the straight line to rejoin
+    return w, (0.0, 0.0, 0.0)
+
+
 SCENARIOS = {
+    "bypass": {"name": "Obstacle bypass (arc around)", "build": bypass_arena, "driver": "manual",
+               "text": "Press B: the car drives straight, goes around the block on the more open side and rejoins the yellow line (scan-matching odometry, same code as the real car)."},
     "playground": {"name": "Playground", "build": playground, "driver": "manual",
                    "text": "Free driving among cones, boxes and a wandering pedestrian."},
     "wall": {"name": "Emergency stop", "build": wall_stop, "driver": "manual",

@@ -14,7 +14,7 @@ sys.path.insert(0, "/home/pi/rc_car")
 import pi.lidar_steering_diag as D  # noqa: E402
 import pi.center_scan as CS  # noqa: E402
 from pi.lidar_steering_diag import Rig, TICK_S  # noqa: E402
-from pi.test_gui import TestGui  # noqa: E402
+from pi.test_gui import TestGui, save_result  # noqa: E402
 
 D.RAMP_STEP_PWM = 25
 OFFSETS = [-8, -6, -4, -2, 0]
@@ -98,6 +98,8 @@ def main():
                    "resid_sd": float(res.std()), "n": len(good)}
         json.dump({"runs": out, "summary": summ, "fit": fit}, open(REPORT, "w"), indent=2)
         if fit:
+            if fit["t"] >= 3 and 80 <= fit["straight_servo"] <= 100:
+                save_result("servo_center", {"servo_center": fit["straight_servo"], "t": fit["t"], "resid_sd": fit["resid_sd"]})
             gui.log(f"FIT: straight-ahead servo = {fit['straight_servo']:.1f} deg (t={fit['t']:.1f}, resid sd {fit['resid_sd']:.1f})")
             print("FIT", json.dumps(fit), flush=True)
         try:

@@ -22,8 +22,11 @@ MAX_SERVO_DEG = 24.0
 HALF_PATH = 0.17             # obstacle counts as "in the path" if within this of the line (body half-width 0.07 + margin)
 LOOK_M = 1.15                # how far ahead an obstacle is noticed
 CLEAR_M = 0.20               # side clearance kept between the obstacle edge and the car centerline (0.07 body + margin)
+MIN_DETECT_DIST_M = 0.75     # closer than this and the sidestep can't finish before reaching it -> refuse
 MIN_GAP_M = 0.45             # a side is only usable if the free gap beside the obstacle is at least this
-LOOKAHEAD_M = 0.50           # pure-pursuit distance
+L_H = 0.45                   # heading-law length constant (m): how quickly y is pulled back to y_ref
+TAU_S = 0.20                 # distance over which the heading error is closed (m)
+TH_DES_MAX_DEG = 28.0        # never aim more steeply than this
 REAR_EXTENT = 0.17           # LiDAR to rear bumper
 FRONT_EXTENT = 0.16          # LiDAR to front bumper
 BODY_HALF_W = 0.07
@@ -100,6 +103,11 @@ class Bypass:
                 neg = band[band[:, 1] < ymin - 0.03][:, 1] if len(band) else np.array([])
                 self.gap_pos = float(pos.min() - ymax) if len(pos) else 2.0
                 self.gap_neg = float(ymin - neg.max()) if len(neg) else 2.0
+                if xmin - x < MIN_DETECT_DIST_M:
+                    self.state = "ABORT"
+                    self.msg = (f"obstacle only {xmin - x:.2f} m ahead - too close to steer around it safely "
+                                f"(need {MIN_DETECT_DIST_M} m of run-up); more room needed")
+                    return self._out(0, SERVO_STRAIGHT, 0.0)
                 if max(self.gap_pos, self.gap_neg) < MIN_GAP_M:
                     self.state = "ABORT"
                     self.msg = (f"obstacle ahead but no gap wide enough (free room: +side {self.gap_pos:.2f} m, "
@@ -143,12 +151,13 @@ class Bypass:
                     self.state, self.msg = "DONE", "DONE - rejoined the original straight path"
                     return self._out(0, SERVO_STRAIGHT, 0.0)
 
-        # ---- pure pursuit toward (x + L, y_ref) --------------------------------
-        tx, ty = x + LOOKAHEAD_M, y_ref
-        dx, dy = tx - x, ty - y
-        c, s = math.cos(th), math.sin(th)
-        xl, yl = c * dx + s * dy, -s * dx + c * dy
-        kappa = 2 * yl / max(xl * xl + yl * yl, 1e-6)
+        # ---- heading-tracking steering (damped: no overshoot when rejoining the line) -------
+        # desired heading points back toward y_ref with a length constant L_H; the path curvature
+        # then closes the heading error over a distance TAU_S.  Second-order response (zeta ~0.66).
+        y_err = y - y_ref
+        th_des = -math.atan(y_err / L_H)
+        th_des = max(-math.radians(TH_DES_MAX_DEG), min(math.radians(TH_DES_MAX_DEG), th_des))
+        kappa = (th_des - th) / TAU_S
         servo_off = max(-MAX_SERVO_DEG, min(MAX_SERVO_DEG, kappa / K_CURV_PER_DEG))
         return self._out(self.pwm, SERVO_STRAIGHT + servo_off, y_ref, kappa)
 

@@ -1,148 +1,74 @@
-# Real-hardware status (Pi + LiDAR + ESP32)
+# Project status (RC-car ADAS: Raspberry Pi 5 + RPLIDAR A3M1 + ESP32 car)
 
-Read this first. Everything below is real hardware work from one long session, milestone by
-milestone (`git log --oneline`, M1 through M17) — each one is a distinct commit you can check
-out and test individually if something regresses.
+Last updated after the final-grip recalibration, the obstacle-bypass work and the control panel.
 
-**Important: the Pi went unreachable (SSH and even ICMP ping both timing out) partway through
-the session, after M15 was deployed and tested live but before M16/M17 were deployed at all.**
-Everything from M16 onward is committed and syntax-checked, but has never run on the real
-hardware. **Start tomorrow's session with the deploy checklist below**, not by assuming
-anything past M15 is actually live.
+## Where things are
 
-## Deploy checklist for tomorrow (do this first)
+| Piece | Where | State |
+|---|---|---|
+| Pi | `192.168.1.6` (DHCP, has changed once: give it a static IP), user `pi` | reachable |
+| ESP32 | `192.168.1.7` | reachable |
+| Safety relay (drive with LiDAR stops) | `pi/wifi_drive_safety.py`, systemd `rc-relay` | deployed; stopped whenever a test/panel job owns the LiDAR |
+| Control panel (buttons) | `pi/control_panel.py` + `.html`, systemd `rc-panel`, **http://192.168.1.6:8080/** | deployed; only the LiDAR-calibration button has been exercised so far |
+| Live LiDAR view | port 8090 (relay GUI, or the running script's `pi/test_gui.py`) | works |
+| Simulator + 3D viewer | `python server.py` -> http://localhost:8765 | works; new: Bypass (B) and real-car profile (K) |
+| Laptop controller | `rc_controller.py` (ESP32_IP = the Pi relay) | works |
 
-1. Confirm the Pi is reachable: `ping 192.168.1.3`, then `ssh pi@192.168.1.3`.
-2. Stop the relay, push every file under `pi/` and `adas/` that changed since M15, restart:
-   ```bash
-   ssh pi@192.168.1.3 sudo systemctl stop rc-relay
-   # scp/sftp everything (see "How this session deployed" below for the pattern used)
-   ssh pi@192.168.1.3 sudo systemctl start rc-relay
-   ssh pi@192.168.1.3 systemctl is-active rc-relay
-   ```
-3. Health check before driving: UDP `PING` to port 4210 should get `PONG`, and
-   `http://192.168.1.3:8090/` should load the live GUI with a moving point cloud.
-4. **Re-test the creep-collision fix specifically** (M16) before trusting it: creep toward an
-   obstacle at low PWM and confirm it now stops at `CREEP_FLOOR_M` (5cm) instead of making
-   contact. This was a real bug found live (see M16's commit message) — the fix is code-
-   reviewed and logically sound but was never re-verified against real hardware.
-5. Sanity-check the new imports don't crash on startup: `adas.tracking`, `adas.acc`,
-   `pi.path_predict` are all new dependencies pulled into `wifi_drive_safety.py` tonight.
-   Watch `relay.log` for a clean "listening for driver commands" line, not a traceback.
-6. Only after 1-5 pass, test moving-object tracking (M16) and follow-mode (M17) — neither has
-   ever run against real LiDAR data.
+Only ONE process may own the LiDAR/ESP32 at a time (relay, a test script, or the panel's job).
 
-## What's verified working live tonight
+## Current calibration (real car, final wheel grips) - `pi/tuning_real_car.json`
 
-- **RPLIDAR A3M1**, ESP32 dual serial+WiFi link, motor polarity handling — all solid,
-  unchanged from earlier sessions.
-- **LiDAR mount calibration**: `yaw_offset_deg` re-measured after the mount visibly shifted
-  (96.5° → **95.1°**, from a tight 8-sample static-scan cluster). `min_valid_range_m=0.20`,
-  overhangs front=0.16/rear=0.17/left=0.10/right=0.10 (in `pi/tuning_real_car.json`).
-- **Servo center**: confirmed at **90.0°** across 3 independent converged passes (one showed
-  just 0.4° drift) — high confidence, matches the current config exactly.
-- **Speed model, finally trustworthy**: `v_max=0.68 m/s, deadband=0` — replaced the old
-  simulator-derived guess (`v_max=1.0, deadband=40`). Measured via a properly ramp-aware
-  burst duration (earlier attempts were corrupted by measuring mid-acceleration).
-- **Turn radius** (real, not theoretical): +20°→2.184m, +35°→0.633m, -35°→1.351m (-20° was a
-  discarded unreliable outlier). Left/right differ by >2x at the extremes — real asymmetry or
-  still noise, not resolved. `pi/path_predict.py` uses each side's own data, not a symmetric
-  assumption, since this feeds a safety-critical stop decision.
-- **The relay's safety gate**, after several real bugs found and fixed from live testing:
-  - Full-360° "wide backstop" (corner-strike protection) is split front/rear
-    (`WIDE_CONE_DEG=90`), not one global flag — a single flag blocking *both* directions
-    fired 68% of a real drive session on a wall the car was just parked next to on one side.
-  - Body-overhang subtraction uses the car's actual rectangular footprint per bearing
-    (`body_overhang()`), not one flat constant that overestimated closeness at the sides.
-  - **Fixed a real creep-to-collision bug**: an obstacle closer than `MIN_VALID_RANGE_M` gets
-    filtered out of the scan entirely, which flipped the body-alert to "false" (falsely
-    "clear") right when the car was closest. Added the same hold-after-lost-reading
-    protection that `front_track`/`rear_track` already had, which this path never got.
-  - **Graduated creep vs. cancel**: inside the safety margin, a low-PWM command is still
-    allowed through (down to `CREEP_FLOOR_M=0.05m`) for a deliberate slow approach; a high-PWM
-    command in that same zone is cancelled outright, not softened to a cap.
-  - **Active braking**: a real reverse pulse (not just coasting) when close AND still
-    committing hard, speed-scaled and reduced if the driver's own recent commands show them
-    already easing off (a lightweight intent-aware heuristic, not the trained ML model).
-- **ADAS override**: a GUI button that passes every command through unmodified when toggled
-  on, with an unmissable red banner. Verified round-trip live, both directions.
-- **Live LiDAR GUI** (`pi/lidar_gui.html`, served by a small HTTP server embedded in the
-  relay on port 8090, reusing its already-open LiDAR connection): real-time point cloud, car
-  outline, front/rear cones tinted on block, override/follow buttons, tracked-object overlay.
-  Verified rendering correctly against the real car in a browser.
+| Item | Value | Source |
+|---|---|---|
+| LiDAR yaw offset | 90.0 deg (object dead-centre in front) | `lidar_front_cal.py` / earlier refine runs |
+| Servo straight-ahead | 87.0 (fit 86.9, t = 17.7, 20/20 arcs) | `center_fine.py` |
+| Steering gain | 0.068 rad/m of path curvature per servo degree (about 24 deg -> radius 0.6 m) | `turn_test.py`, old centre - re-measure |
+| Speed model | v_max 0.896 m/s, deadband 48.5 PWM (0.27 m/s at PWM 115) | sustained LiDAR runs |
+| Stopping | rolled 0-7 cm after cutting throttle at 0.25-0.36 m/s | `brake_run.py`; faster speeds NOT measured |
+| Body extents from the LiDAR | front 0.16, rear 0.17, left/right 0.10 m | ruler |
 
-## Built tonight, NOT yet verified live (Pi went offline mid-session)
+## What works (verified on the car)
+- Obstacle bypass (`pi/bypass_run.py`, controller `pi/bypass_core.py`, scan-matching odometry `pi/scanmatch.py`):
+  detects the obstacle, picks the more open side (0.87 m vs 0.35 m), passes it, and starts rejoining the line.
+  Speeds and steering are ramped (PWM step 8/tick, servo slew 60 deg/s). **It has never finished the return on the car**:
+  the room only gives ~2.7 m and the independent front stop (0.28 m) ended both runs, 0.26 m off the line at +26 deg.
+  Needs ~3.5 m of clear runway. Nothing has been touched.
+- LiDAR-based safety relay (see the git log M1-M17), calibration tools, live GUI.
 
-- **Steering-aware predicted-path stop check** (`pi/path_predict.py`): reuses the simulator's
-  already-tested arc-sweep footprint math (`adas/geometry.py`), fed the *measured* turn
-  radius above instead of the theoretical bicycle-model angle (which was never independently
-  checked against this hardware). Ran once in `pi/autonomous_drive.py`'s live test — 90s,
-  46 segments, zero contact — but the arc check was never actually the deciding factor
-  (the room's simple distance checks always fired first), so it has no live evidence yet of
-  catching something the simpler checks would've missed. Needs a bigger space or a
-  deliberately staged off-cone/in-arc obstacle to actually validate.
-- **Moving-object tracking** (`adas/tracking.py`, ported into `Clearance._loop`): each scan
-  feeds a `Tracker`, using an ego speed/yaw-rate estimate to separate real object motion from
-  the car's own. `moving_object_contact()` blocks throttle if a moving object's predicted
-  path meets the car's sooner than the required stopping distance — genuinely new capability
-  (static distance checks only know *where* things are, not where they're headed), but
-  completely unexercised against real moving objects.
-- **Adaptive cruise / follow-the-leader** (`adas/acc.py`, opt-in via a GUI button): caps
-  forward throttle to hold a time-gap behind whatever the tracker finds moving ahead. Depends
-  entirely on the tracker above being correct, so equally unverified.
-- All three share one dependency: the ego speed/yaw-rate estimate used to separate a
-  tracked object's real motion from the car's own is only as good as the speed model and the
-  measured-turn-radius interpolation above - if those drift, tracking quality drifts with them.
+## What works (simulator only)
+- Everything in `README.md` (14/14 self-test scenarios, Monte Carlo, faults, parking, lane keeping, follow, signs).
+- **Real-car profile** (`sim/real_car.py`): the simulator configured from the measurements above. All 14 scenarios pass with it,
+  also at +/-25 % speed error. Stops about 10 cm short of a wall at any speed.
+- **Bypass in the simulator** (`sim/bypass_driver.py`, `sim/bypass_eval.py`): 60 random obstacle/wall/gap cases x both car profiles:
+  60/60 correct, 0 crashes, median final lateral error 0.5 cm, median clearance 6.7 cm (real profile), 10 correct refusals.
 
-## Known gaps, unchanged or newly clarified
+## Changed since the last real run - NOT yet on the Pi (deploy + verify at the next car session)
+- `pi/scanmatch.py`: the scan-to-start-scan correction now also accepts weaker matches (residual < 0.055, inliers >= 55) but only
+  applies y and heading from them. In simulation this fixed odometry drift in the return phase (lateral error 7-16 cm -> under 2 cm).
+  It is untested on real scans. The old strict behaviour is the `strict` branch in `Odometry.update`.
 
-- **No webcam connected.** Still true - `lsusb`/`/dev/video*` only show the Pi's onboard ISP.
-  Everything camera-dependent (ArUco parking, traffic-sign ISA, lane keeping) stays blocked.
-  `pi/devices.py`'s `WebcamMarkers` and `adas/markers.py` are ready and simulator-tested,
-  untested on real video - this is the single biggest remaining gap once the Pi is back.
-- **No LiDAR-to-rear-axle measurement** - `pi/path_predict.py`'s `VehicleParams` uses the
-  simulator's assumed `lidar_x=0.12, lidar_y=0.0`, never independently confirmed on this car.
-  If the arc-sweep predictions look consistently offset once tested, measure this first.
-- **`pi/calibrate.py --real`** still has never been run end-to-end (the newer
-  `pi/lidar_steering_diag.py` iterative-convergence approach superseded it for tonight's
-  actual calibration work, but the original procedure - with its own braking/latency
-  measurement, which nothing else measures - is still sitting there unused).
-- **Braking/deceleration is still `ASSUMED_DECEL=1.0 m/s²`, an uncalibrated guess.** Nothing
-  tonight measured real stopping deceleration. This directly sizes `required_margin()` and
-  therefore the stopping distance quoted to the user (~0.50m at top speed) - worth doing
-  before trusting that number for anything beyond "reasonably conservative."
-- **`pi/main.py`/`pi/runtime.py`** (the "proper" `AdasPipeline` architecture) is still not
-  what's running - `wifi_drive_safety.py` remains a parallel, independently-built relay that
-  now duplicates a fair amount of `adas/` logic (tracking, ACC, geometry) rather than reusing
-  `adas/pipeline.py` directly. Worth unifying once the two together are more validated.
+## Known limitations
+- An obstacle within ~16 cm of a wall is clustered with the wall (region-grow radius) and may be refused although the other side is open.
+- Steering gain is only measured to ~24 servo degrees; full lock (radius ~0.26 m) is an extrapolation in the simulator.
+- Stopping distance above 0.36 m/s and turn gain at the new servo centre are not measured.
+- The creep-into-obstacle fix (M16) and moving-object tracking / follow mode (M16/M17) have never run on the real car.
+- No webcam: ArUco parking, traffic-sign ISA and lane keeping are simulator-only.
 
-## Suggested order for the next session
-
-1. Run the deploy checklist above. Confirm the relay starts cleanly with the M16/M17 imports.
-2. Re-verify the creep-collision fix live - this was a real "drove into the wall" bug.
-3. Verify moving-object tracking and follow-mode against an actual moving object (walk a box
-   past the car, or push it by hand) before trusting either for anything.
-4. Try to get real evidence for/against the path-prediction arc check specifically - stage an
-   obstacle just outside the front cone but inside where a hard turn would swing the corner.
-5. If there's spare time/patience: measure LiDAR-to-rear-axle, run a real braking-deceleration
-   test, or get a webcam connected to finally unblock ArUco parking/ISA/lane-keeping.
-
-## Quick reference
-
+## Test commands
 ```bash
-# Check the relay is running / watch it live
-ssh pi@192.168.1.3 systemctl is-active rc-relay
-ssh pi@192.168.1.3 tail -f /home/pi/relay.log
-
-# Restart after deploying a code change
-ssh pi@192.168.1.3 sudo systemctl restart rc-relay
-
-# Drive (from the laptop, controller plugged in, same WiFi as the Pi)
-python rc_controller.py
-
-# Live LiDAR GUI (point cloud, override/follow toggles, tracked objects)
-http://192.168.1.3:8090/
-
-# Toggle ADAS override / follow mode without the GUI (UDP to port 4210)
-# ADAS_OVERRIDE_ON / ADAS_OVERRIDE_OFF / FOLLOW_ON / FOLLOW_OFF
+python -m unittest discover -s tests -t .      # 23 tests, ~90 s, no car needed
+python -m sim.selftest                         # the 14 scenarios, 6 s
+python -m sim.run_scenarios --real             # the same scenarios with the real-car profile
+python -m sim.bypass_eval 60                   # bypass Monte Carlo, both profiles
+python -m sim.report                           # rebuild the Results tab (use --run to re-run everything: minutes)
+python -m pi.sim_bypass                        # standalone bypass simulator (ray cast + real controller)
 ```
+On the car: open the control panel (http://192.168.1.6:8080/) and use the buttons. Suggested order: LiDAR front, speed + stopping,
+turning, then Drive with safety stops, then the obstacle-avoidance demo (with ~3.5 m runway).
+
+## Next steps
+1. Car: run the three calibrations from the panel and press Apply on each result.
+2. Deploy `pi/scanmatch.py` + `pi/bypass_core.py` + `pi/bypass_run.py` (already on the Pi are the older versions) and rerun the bypass with runway.
+3. Car: automated pass/fail braking and failsafe tests (stopping distance at 2 speeds, stop time after a WiFi cut).
+4. Intent-aware warning and follow-the-leader on the car (needs the printed cones and a leader body).
+5. Webcam for parking; results slides from `reports/index.html` and the Results tab.

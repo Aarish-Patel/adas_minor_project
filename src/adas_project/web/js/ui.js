@@ -281,6 +281,15 @@ export async function renderResults(box) {
       <tr><td>Yaw error (median / 95th)</td><td>${p.median_yaw_deg?.toFixed(1)} / ${p.p95_yaw_deg?.toFixed(1)}&deg;</td></tr>
       <tr><td>Time (median)</td><td>${p.median_time_s?.toFixed(0)} s</td></tr></table></div>`;
   }
+  if (data.bypass) {
+    const row = (name, s) => `<tr><td>${name}</td><td class="${s.success === s.runs ? 'ok' : 'bad'}">${s.success}/${s.runs}</td>
+      <td class="${s.crashes ? 'bad' : 'ok'}">${s.crashes}</td><td>${s.median_lateral_cm?.toFixed(1)} / ${s.p95_lateral_cm?.toFixed(1)} cm</td>
+      <td>${s.median_clearance_cm?.toFixed(1)} cm (min ${s.min_clearance_cm?.toFixed(1)})</td></tr>`;
+    html += `<div class="chart-card"><h4>Obstacle bypass <em>random obstacles, walls and gaps</em></h4>
+      <table class="res"><tr><th></th><th>ok</th><th>crash</th><th>final lateral (median / 95th)</th><th>clearance</th></tr>
+      ${row('default car', data.bypass.sim)}${row('real car (measured)', data.bypass.real)}</table>
+      <div class="hint" style="margin:4px 0 0">ok = rejoined the line within 6 cm and 4&deg;, or correctly refused a gap that is too narrow; ${data.bypass.real.refused} of ${data.bypass.real.runs} runs were refusals.</div></div>`;
+  }
   if (data.sweeps) {
     html += `<div class="chart-card"><h4>Robustness <em>crash rate %, ADAS on vs off</em></h4>` +
       Object.values(data.sweeps).map((d) => `<div class="hint" style="margin:8px 0 0">${d.label}</div>` +

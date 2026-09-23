@@ -115,6 +115,8 @@ $('btnReset').onclick = () => send({ type: 'cmd', cmd: 'reset' });
 $('btnRec').onclick = () => send({ type: 'cmd', cmd: 'record' });
 $('btnExport').onclick = () => send({ type: 'cmd', cmd: 'export' });
 $('btnPark').onclick = () => send({ type: 'cmd', cmd: 'park' });
+$('btnBypass').onclick = () => send({ type: 'cmd', cmd: 'bypass' });
+$('btnProfile').onclick = () => send({ type: 'cmd', cmd: 'profile', name: state.profile === 'real' ? 'sim' : 'real' });
 $('btnAcc').onclick = () => send({ type: 'cmd', cmd: 'acc' });
 $('btnIsa').onclick = () => send({ type: 'cmd', cmd: 'isa' });
 $('btnLane').onclick = () => send({ type: 'cmd', cmd: 'lane' });
@@ -134,7 +136,7 @@ function setCam(c) {
 const scenarios = [['playground', 'Playground'], ['wall', 'Emergency stop'], ['pedestrian', 'Pedestrian crossing'],
   ['emerging', 'Emerging pedestrian'], ['slalom', 'Slalom'], ['corridor', 'Narrow corridor'],
   ['virtual', 'Virtual driver (lapses)'], ['leader', 'Follow the leader'], ['cutin', 'Car cuts in'], ['lane', 'Lane keeping'], ['parking', 'Parking bay (ArUco)'],
-  ['signs', 'Traffic signs (ISA)']];
+  ['signs', 'Traffic signs (ISA)'], ['bypass', 'Obstacle bypass (arc around)']];
 $('scenario').innerHTML = scenarios.map(([id, n]) => `<option value="${id}">${n}</option>`).join('');
 
 window.addEventListener('keydown', (e) => {
@@ -145,6 +147,8 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'x') { const order = ['off', 'advisory', 'active']; send({ type: 'cmd', cmd: 'mode', mode: order[(order.indexOf(state.mode) + 1) % 3] }); }
   else if (k === 'p') send({ type: 'cmd', cmd: 'pause' });
   else if (k === 'g') send({ type: 'cmd', cmd: 'park' });
+  else if (k === 'b') send({ type: 'cmd', cmd: 'bypass' });
+  else if (k === 'k') send({ type: 'cmd', cmd: 'profile', name: state.profile === 'real' ? 'sim' : 'real' });
   else if (k === 'c') send({ type: 'cmd', cmd: 'acc' });
   else if (k === 'i') send({ type: 'cmd', cmd: 'isa' });
   else if (k === 'l') send({ type: 'cmd', cmd: 'lane' });
@@ -209,6 +213,10 @@ window.__world = world;       // handy for debugging in the console
 // ---------------------------------------------------------------- assists + camera overlays
 function updateAssists(s) {
   const f = s.features;
+  state.profile = f.profile;
+  $('btnProfile').classList.toggle('on', f.profile === 'real');
+  $('profileLabel').textContent = f.profile === 'real' ? 'Car: REAL (measured)' : 'Car: default';
+  $('btnBypass').classList.toggle('on', !!(f.bypass && f.bypass.on));
   $('btnPark').classList.toggle('on', f.park.state === 'approach');
   $('btnAcc').classList.toggle('on', f.acc.on);
   $('btnIsa').classList.toggle('on', f.isa.on);
@@ -216,6 +224,7 @@ function updateAssists(s) {
   $('laneLabel').textContent = 'Lane: ' + f.lane.mode;
   const lines = [];
   if (f.park.state !== 'idle') lines.push(`<b>Park:</b> ${f.park.msg}` + (f.park.error ? `<br>offset ${f.park.error.lateral_cm} cm, yaw ${f.park.error.yaw_deg}&deg;` : ''));
+  if (f.bypass) lines.push(`<b>Bypass:</b> ${f.bypass.state} - ${f.bypass.msg}<br>lateral ${(f.bypass.y * 100).toFixed(0)} cm (target ${(f.bypass.y_ref * 100).toFixed(0)}), heading ${f.bypass.th}&deg;`);
   if (f.acc.on && f.acc.lead) lines.push(`<b>Following:</b> gap ${(f.acc.lead[0] * 100).toFixed(0)} cm`);
   if (f.lane.mode !== 'off' && f.lane.valid) lines.push(`<b>Lane:</b> ${(f.lane.offset * 100).toFixed(0)} cm off centre` + (f.lane.assisting ? ' (steering)' : ''));
   if (f.isa.on && f.isa.active) lines.push(`<b>Sign:</b> ${f.isa.active}` + (f.isa.cap >= 0 ? ` (max ${f.isa.cap.toFixed(2)} m/s)` : ''));

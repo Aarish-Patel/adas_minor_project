@@ -100,6 +100,11 @@ async def client(ws, session, lock):
                         session.teleport(msg["x"], msg["y"], msg.get("theta", 0.0))
                     elif cmd == "park":
                         session.toggle_park()
+                    elif cmd == "bypass":
+                        session.toggle_bypass()
+                    elif cmd == "profile":
+                        session.set_profile(msg["name"])
+                        send_full = True
                     elif cmd == "lane":
                         session.cycle_lane()
                     elif cmd == "acc":

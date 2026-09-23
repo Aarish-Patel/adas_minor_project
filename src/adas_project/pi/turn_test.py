@@ -14,7 +14,7 @@ sys.path.insert(0, "/home/pi/rc_car")
 import pi.lidar_steering_diag as D  # noqa: E402
 import pi.center_scan as CS  # noqa: E402
 from pi.lidar_steering_diag import Rig, TICK_S  # noqa: E402
-from pi.test_gui import TestGui  # noqa: E402
+from pi.test_gui import TestGui, save_result  # noqa: E402
 
 D.RAMP_STEP_PWM = 25
 OFFSETS = [-35, -20, 20, 35]
@@ -27,7 +27,7 @@ REPORT = "/home/pi/rc_car/pi/turn_test_report.json"
 
 
 def arc(rig, offset, gui):
-    servo = 90 + offset
+    servo = D.CENTER0 + offset
     rig.steer(servo + (8 if offset > 0 else -8))     # approach from the outside (backlash)
     time.sleep(0.35)
     rig.steer(servo)
@@ -88,6 +88,12 @@ def main():
                              "rot_sd": float(np.std(rots)),
                              "radius_m": float(np.median([r["radius_m"] for r in rs if r["radius_m"]] or [np.nan]))}
         json.dump({"runs": out, "summary": summ}, open(REPORT, "w"), indent=2)
+        ks = [1.0 / (r["radius_m"] * abs(r["offset"])) for r in out if r.get("radius_m")]
+        if len(ks) >= 3:
+            k = float(np.median(ks))
+            save_result("turn", {"k_curv_per_deg": k, "n": len(ks), "spread": float(np.std(ks)),
+                                 "min_radius_m": float(min(r["radius_m"] for r in out if r.get("radius_m")))})
+            gui.log(f"turn gain: {k:.4f} rad/m of curvature per servo degree")
         try:
             for off, v in summ.items():
                 gui.log(f"offset {off:+d}: median rot {v['rot_median_deg']:+.1f} deg (sd {v['rot_sd']:.1f}), radius {v['radius_m']:.2f} m")

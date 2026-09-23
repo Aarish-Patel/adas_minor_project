@@ -1,18 +1,46 @@
 """Browser GUI for the standalone calibration/test scripts (the relay is stopped while they
 run, so its own GUI isn't available). Serves the same lidar_gui.html on port 8090 plus a
 live test-status panel: what is being tested, progress, and a rolling result log."""
+import atexit
 import http.server
 import json
 import os
+import signal
 import threading
 import time
 
 PORT = 8090
+RESULTS = "/home/pi/rc_car/pi/cal_results.json"
+
+
+def save_result(key, data):
+    """Merge one calibration result into cal_results.json (the control panel offers 'Apply')."""
+    try:
+        cur = json.load(open(RESULTS))
+    except Exception:
+        cur = {}
+    data = dict(data)
+    data["time"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    cur[key] = data
+    json.dump(cur, open(RESULTS, "w"), indent=2)
 
 
 class TestGui:
     def __init__(self, rig, port=PORT):
         self.rig = rig
+        # the control panel stops a test with SIGTERM: unwind normally so motors stop and the LiDAR closes
+        try:
+            signal.signal(signal.SIGTERM, lambda *a: (_ for _ in ()).throw(KeyboardInterrupt()))
+        except ValueError:
+            pass
+
+        def _cleanup():
+            try:
+                rig.stop()
+                rig.close()
+            except Exception:
+                pass
+        atexit.register(_cleanup)
         self.state = {"title": "idle", "message": "", "progress": None, "log": [],
                       "activity": "", "servo": None, "alert": ""}
         self.lock = threading.Lock()
