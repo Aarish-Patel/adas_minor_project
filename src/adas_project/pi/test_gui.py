@@ -13,6 +13,12 @@ PORT = 8090
 RESULTS = "/home/pi/rc_car/pi/cal_results.json"
 
 
+def hold(seconds):
+    """Keep showing the finished test on the GUI - unless a batch run (RC_NO_HOLD=1) needs the LiDAR straight away."""
+    if not os.environ.get("RC_NO_HOLD"):
+        time.sleep(seconds)
+
+
 def save_result(key, data):
     """Merge one calibration result into cal_results.json (the control panel offers 'Apply')."""
     try:

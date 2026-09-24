@@ -56,6 +56,11 @@
   <details id="dOA"><summary>Obstacle-avoidance tuning</summary><div id="oaFields"></div>
     <button class="mini" id="oaReset">Reset to defaults</button></details>
 
+  <div class="grp">Everything in one go</div>
+  <button class="btn" data-mode="all">Run everything<small>all calibrations, then the obstacle-avoidance demo; pauses for arena set-up</small></button>
+  <div id="runAll" style="display:none" class="status"><div id="raStatus"></div><div id="raPrompt" class="prep"></div>
+    <button class="mini" id="raContinue" style="display:none">Continue</button><div id="raSteps" style="color:var(--mute);font-size:12px;margin-top:4px"></div></div>
+
   <div class="grp">Calibration</div>
   <button class="btn" data-mode="lidar">Calibrate LiDAR front<small>object dead-centre in front, car stays still</small></button>
   <button class="btn" data-mode="center">Calibrate steering centre<small>arcs at several servo angles, finds the straightest</small></button>
@@ -124,6 +129,14 @@ async function refresh() {
   document.querySelectorAll('.btn[data-mode]').forEach(b => b.classList.toggle('active', S.mode === b.dataset.mode && S.running));
   $('prep').textContent = S.mode ? S.modes[S.mode].prep : '';
   $('log').textContent = (S.log || []).join(NL);
+  const ra = S.run_all;
+  $('runAll').style.display = ra ? 'block' : 'none';
+  if (ra) {
+    $('raStatus').textContent = 'Step ' + ra.step + '/' + ra.total + ' - ' + ra.title + ' - ' + ra.status;
+    $('raPrompt').textContent = ra.prompt || '';
+    $('raContinue').style.display = ra.waiting ? 'inline-block' : 'none';
+    $('raSteps').textContent = (ra.results || []).map(r => (r.ok ? 'OK  ' : 'FAILED  ') + r.step + (r.ok ? '' : ' - ' + r.message)).join(NL);
+  }
   $('noview').style.display = busy ? 'none' : 'flex';
   const R = S.results || {}, box = $('results');
   const items = [
@@ -151,7 +164,7 @@ document.querySelectorAll('.btn[data-mode]').forEach(b => {
   b.onclick = async () => {
     const mode = b.dataset.mode;
     const params = mode === 'oa' ? readFields($('oaFields')) : mode === 'drive' ? readFields($('safetyFields')) : null;
-    if (mode !== 'lidar' && mode !== 'drive' && !confirm(S.modes[mode].prep + '\n\nThe car will move. Start?')) return;
+    if (mode !== 'lidar' && mode !== 'drive' && mode !== 'all' && !confirm(S.modes[mode].prep + '\n\nThe car will move. Start?')) return;
     toast('starting ' + S.modes[mode].title + ' ...');
     const r = await api('/api/start', { mode, params });
     toast(r.result === 'ok' ? '' : r.result);
@@ -160,6 +173,7 @@ document.querySelectorAll('.btn[data-mode]').forEach(b => {
     refresh();
   };
 });
+$('raContinue').onclick = async () => { await api('/api/continue', {}); refresh(); };
 $('stop').onclick = async () => { const r = await api('/api/stop', {}); toast(r.result); refresh(); };
 $('oaReset').onclick = () => buildFields($('oaFields'), S.oa_fields, S.oa_defaults, 'oa');
 $('safetyReset').onclick = () => buildFields($('safetyFields'), S.safety_fields, S.safety_defaults, 'safety');

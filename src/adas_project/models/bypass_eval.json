@@ -1,0 +1,2188 @@
+{
+ "summary": {
+  "sim": {
+   "runs": 60,
+   "success": 60,
+   "crashes": 0,
+   "refused": 10,
+   "median_lateral_cm": 0.5,
+   "p95_lateral_cm": 1.9749999999999988,
+   "median_clearance_cm": 9.5,
+   "min_clearance_cm": 5.3,
+   "failures": []
+  },
+  "real": {
+   "runs": 60,
+   "success": 60,
+   "crashes": 0,
+   "refused": 10,
+   "median_lateral_cm": 0.6,
+   "p95_lateral_cm": 1.5549999999999997,
+   "median_clearance_cm": 6.65,
+   "min_clearance_cm": 2.5,
+   "failures": []
+  }
+ },
+ "rows": [
+  {
+   "seed": 0,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.61,
+   "obstacle": [
+    1.84,
+    -0.07,
+    0.11
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.3,
+   "yaw_deg": -0.6,
+   "clearance_cm": 11.9,
+   "time": 12.6
+  },
+  {
+   "seed": 0,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.61,
+   "obstacle": [
+    1.84,
+    -0.07,
+    0.11
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.2,
+   "yaw_deg": -0.1,
+   "clearance_cm": 8.7,
+   "time": 15.0
+  },
+  {
+   "seed": 1,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.48,
+   "obstacle": [
+    1.71,
+    0.14,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -3.4,
+   "yaw_deg": -0.5,
+   "clearance_cm": 8.2,
+   "time": 10.5
+  },
+  {
+   "seed": 1,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.48,
+   "obstacle": [
+    1.71,
+    0.14,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.9,
+   "yaw_deg": 1.1,
+   "clearance_cm": 5.9,
+   "time": 12.9
+  },
+  {
+   "seed": 2,
+   "profile": "sim",
+   "case": "wall_left",
+   "best_gap_m": 1.37,
+   "obstacle": [
+    1.46,
+    -0.06,
+    0.34
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -1.3,
+   "yaw_deg": 0.7,
+   "clearance_cm": 9.1,
+   "time": 12.4
+  },
+  {
+   "seed": 2,
+   "profile": "real",
+   "case": "wall_left",
+   "best_gap_m": 1.37,
+   "obstacle": [
+    1.46,
+    -0.06,
+    0.34
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.9,
+   "yaw_deg": 0.8,
+   "clearance_cm": 5.9,
+   "time": 14.6
+  },
+  {
+   "seed": 3,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.33,
+   "obstacle": [
+    1.29,
+    -0.08,
+    0.34
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": 0.0,
+   "clearance_cm": 48.3,
+   "time": 1.0
+  },
+  {
+   "seed": 3,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.33,
+   "obstacle": [
+    1.29,
+    -0.08,
+    0.34
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": 0.0,
+   "clearance_cm": 44.8,
+   "time": 1.0
+  },
+  {
+   "seed": 4,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.23,
+   "obstacle": [
+    2.14,
+    0.0,
+    0.39
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.0,
+   "yaw_deg": -0.1,
+   "clearance_cm": 35.0,
+   "time": 3.4
+  },
+  {
+   "seed": 4,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.23,
+   "obstacle": [
+    2.14,
+    0.0,
+    0.39
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.1,
+   "yaw_deg": -0.0,
+   "clearance_cm": 31.9,
+   "time": 3.9
+  },
+  {
+   "seed": 5,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.38,
+   "obstacle": [
+    2.01,
+    0.09,
+    0.25
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 1.4,
+   "yaw_deg": -0.4,
+   "clearance_cm": 8.6,
+   "time": 14.3
+  },
+  {
+   "seed": 5,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.38,
+   "obstacle": [
+    2.01,
+    0.09,
+    0.25
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 1.6,
+   "yaw_deg": -0.1,
+   "clearance_cm": 5.2,
+   "time": 16.4
+  },
+  {
+   "seed": 6,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.54,
+   "obstacle": [
+    1.74,
+    -0.05,
+    0.21
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.7,
+   "yaw_deg": -0.8,
+   "clearance_cm": 9.0,
+   "time": 12.4
+  },
+  {
+   "seed": 6,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.54,
+   "obstacle": [
+    1.74,
+    -0.05,
+    0.21
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 1.2,
+   "yaw_deg": -0.9,
+   "clearance_cm": 5.4,
+   "time": 13.9
+  },
+  {
+   "seed": 7,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.45,
+   "obstacle": [
+    1.83,
+    0.12,
+    0.33
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.1,
+   "yaw_deg": 0.1,
+   "clearance_cm": 34.9,
+   "time": 2.5
+  },
+  {
+   "seed": 7,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.45,
+   "obstacle": [
+    1.83,
+    0.12,
+    0.33
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": 0.0,
+   "clearance_cm": 32.0,
+   "time": 2.8
+  },
+  {
+   "seed": 8,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.36,
+   "obstacle": [
+    1.53,
+    0.15,
+    0.2
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 1.3,
+   "yaw_deg": -0.3,
+   "clearance_cm": 6.5,
+   "time": 12.8
+  },
+  {
+   "seed": 8,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.36,
+   "obstacle": [
+    1.53,
+    0.15,
+    0.2
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.5,
+   "yaw_deg": -0.6,
+   "clearance_cm": 4.8,
+   "time": 14.5
+  },
+  {
+   "seed": 9,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.52,
+   "obstacle": [
+    2.07,
+    -0.06,
+    0.28
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 1.7,
+   "yaw_deg": 0.2,
+   "clearance_cm": 10.8,
+   "time": 13.0
+  },
+  {
+   "seed": 9,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.52,
+   "obstacle": [
+    2.07,
+    -0.06,
+    0.28
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.9,
+   "yaw_deg": -1.7,
+   "clearance_cm": 7.2,
+   "time": 15.4
+  },
+  {
+   "seed": 10,
+   "profile": "sim",
+   "case": "wall_left",
+   "best_gap_m": 1.34,
+   "obstacle": [
+    2.16,
+    -0.09,
+    0.35
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.8,
+   "yaw_deg": 1.2,
+   "clearance_cm": 7.5,
+   "time": 14.6
+  },
+  {
+   "seed": 10,
+   "profile": "real",
+   "case": "wall_left",
+   "best_gap_m": 1.34,
+   "obstacle": [
+    2.16,
+    -0.09,
+    0.35
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -2.0,
+   "yaw_deg": -0.2,
+   "clearance_cm": 5.4,
+   "time": 17.3
+  },
+  {
+   "seed": 11,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.46,
+   "obstacle": [
+    1.33,
+    -0.0,
+    0.28
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.2,
+   "yaw_deg": 0.2,
+   "clearance_cm": 10.1,
+   "time": 12.6
+  },
+  {
+   "seed": 11,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.46,
+   "obstacle": [
+    1.33,
+    -0.0,
+    0.28
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.9,
+   "yaw_deg": 0.7,
+   "clearance_cm": 6.9,
+   "time": 12.9
+  },
+  {
+   "seed": 12,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.66,
+   "obstacle": [
+    1.45,
+    0.13,
+    0.16
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.5,
+   "yaw_deg": 0.6,
+   "clearance_cm": 12.3,
+   "time": 11.2
+  },
+  {
+   "seed": 12,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.66,
+   "obstacle": [
+    1.45,
+    0.13,
+    0.16
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.4,
+   "yaw_deg": 0.2,
+   "clearance_cm": 9.3,
+   "time": 12.8
+  },
+  {
+   "seed": 13,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.45,
+   "obstacle": [
+    2.06,
+    0.11,
+    0.34
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.1,
+   "yaw_deg": -0.1,
+   "clearance_cm": 34.9,
+   "time": 3.2
+  },
+  {
+   "seed": 13,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.45,
+   "obstacle": [
+    2.06,
+    0.11,
+    0.34
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": -0.1,
+   "clearance_cm": 31.9,
+   "time": 3.6
+  },
+  {
+   "seed": 14,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.49,
+   "obstacle": [
+    2.03,
+    -0.04,
+    0.31
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.5,
+   "yaw_deg": -1.2,
+   "clearance_cm": 9.6,
+   "time": 13.9
+  },
+  {
+   "seed": 14,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.49,
+   "obstacle": [
+    2.03,
+    -0.04,
+    0.31
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.7,
+   "yaw_deg": -0.4,
+   "clearance_cm": 6.3,
+   "time": 15.3
+  },
+  {
+   "seed": 15,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.59,
+   "obstacle": [
+    1.89,
+    0.09,
+    0.2
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.1,
+   "yaw_deg": 1.0,
+   "clearance_cm": 11.4,
+   "time": 12.5
+  },
+  {
+   "seed": 15,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.59,
+   "obstacle": [
+    1.89,
+    0.09,
+    0.2
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.7,
+   "yaw_deg": 0.8,
+   "clearance_cm": 8.6,
+   "time": 14.4
+  },
+  {
+   "seed": 16,
+   "profile": "sim",
+   "case": "wall_left",
+   "best_gap_m": 1.52,
+   "obstacle": [
+    1.77,
+    -0.02,
+    0.13
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.8,
+   "yaw_deg": -0.3,
+   "clearance_cm": 10.6,
+   "time": 12.6
+  },
+  {
+   "seed": 16,
+   "profile": "real",
+   "case": "wall_left",
+   "best_gap_m": 1.52,
+   "obstacle": [
+    1.77,
+    -0.02,
+    0.13
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -1.4,
+   "yaw_deg": -0.0,
+   "clearance_cm": 7.2,
+   "time": 14.1
+  },
+  {
+   "seed": 17,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    2.05,
+    -0.1,
+    0.27
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": -1.8,
+   "clearance_cm": 11.2,
+   "time": 13.0
+  },
+  {
+   "seed": 17,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    2.05,
+    -0.1,
+    0.27
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.4,
+   "yaw_deg": -1.2,
+   "clearance_cm": 8.3,
+   "time": 14.4
+  },
+  {
+   "seed": 18,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    1.6,
+    0.07,
+    0.18
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.2,
+   "yaw_deg": 0.3,
+   "clearance_cm": 9.1,
+   "time": 12.3
+  },
+  {
+   "seed": 18,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    1.6,
+    0.07,
+    0.18
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.3,
+   "yaw_deg": 0.9,
+   "clearance_cm": 6.6,
+   "time": 14.4
+  },
+  {
+   "seed": 19,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.46,
+   "obstacle": [
+    1.62,
+    0.13,
+    0.18
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -2.2,
+   "yaw_deg": -1.3,
+   "clearance_cm": 7.8,
+   "time": 11.4
+  },
+  {
+   "seed": 19,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.46,
+   "obstacle": [
+    1.62,
+    0.13,
+    0.18
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -1.5,
+   "yaw_deg": 1.0,
+   "clearance_cm": 4.9,
+   "time": 12.4
+  },
+  {
+   "seed": 20,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.54,
+   "obstacle": [
+    1.48,
+    -0.01,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": -0.1,
+   "clearance_cm": 10.2,
+   "time": 13.2
+  },
+  {
+   "seed": 20,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.54,
+   "obstacle": [
+    1.48,
+    -0.01,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.3,
+   "yaw_deg": 0.1,
+   "clearance_cm": 5.8,
+   "time": 15.5
+  },
+  {
+   "seed": 21,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.48,
+   "obstacle": [
+    1.98,
+    0.03,
+    0.31
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.6,
+   "yaw_deg": 1.4,
+   "clearance_cm": 9.1,
+   "time": 13.3
+  },
+  {
+   "seed": 21,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.48,
+   "obstacle": [
+    1.98,
+    0.03,
+    0.31
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.4,
+   "yaw_deg": 0.8,
+   "clearance_cm": 7.4,
+   "time": 15.0
+  },
+  {
+   "seed": 22,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.63,
+   "obstacle": [
+    1.57,
+    -0.09,
+    0.13
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.4,
+   "yaw_deg": -0.2,
+   "clearance_cm": 12.2,
+   "time": 11.8
+  },
+  {
+   "seed": 22,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.63,
+   "obstacle": [
+    1.57,
+    -0.09,
+    0.13
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.1,
+   "yaw_deg": -0.3,
+   "clearance_cm": 6.2,
+   "time": 13.1
+  },
+  {
+   "seed": 23,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.49,
+   "obstacle": [
+    1.89,
+    0.04,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 1.0,
+   "yaw_deg": -0.8,
+   "clearance_cm": 10.2,
+   "time": 12.9
+  },
+  {
+   "seed": 23,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.49,
+   "obstacle": [
+    1.89,
+    0.04,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 1.2,
+   "yaw_deg": -2.0,
+   "clearance_cm": 6.7,
+   "time": 14.1
+  },
+  {
+   "seed": 24,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.49,
+   "obstacle": [
+    1.53,
+    -0.03,
+    0.27
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.4,
+   "yaw_deg": -1.3,
+   "clearance_cm": 9.4,
+   "time": 12.6
+  },
+  {
+   "seed": 24,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.49,
+   "obstacle": [
+    1.53,
+    -0.03,
+    0.27
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.7,
+   "yaw_deg": -0.4,
+   "clearance_cm": 7.9,
+   "time": 13.5
+  },
+  {
+   "seed": 25,
+   "profile": "sim",
+   "case": "wall_left",
+   "best_gap_m": 1.37,
+   "obstacle": [
+    1.36,
+    -0.15,
+    0.16
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.3,
+   "yaw_deg": 0.5,
+   "clearance_cm": 5.3,
+   "time": 12.3
+  },
+  {
+   "seed": 25,
+   "profile": "real",
+   "case": "wall_left",
+   "best_gap_m": 1.37,
+   "obstacle": [
+    1.36,
+    -0.15,
+    0.16
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.9,
+   "yaw_deg": -0.2,
+   "clearance_cm": 2.5,
+   "time": 15.4
+  },
+  {
+   "seed": 26,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.62,
+   "obstacle": [
+    1.69,
+    -0.08,
+    0.12
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.3,
+   "yaw_deg": -0.9,
+   "clearance_cm": 11.4,
+   "time": 11.9
+  },
+  {
+   "seed": 26,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.62,
+   "obstacle": [
+    1.69,
+    -0.08,
+    0.12
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.4,
+   "yaw_deg": -0.6,
+   "clearance_cm": 8.3,
+   "time": 13.1
+  },
+  {
+   "seed": 27,
+   "profile": "sim",
+   "case": "wall_left",
+   "best_gap_m": 1.48,
+   "obstacle": [
+    1.9,
+    -0.06,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.6,
+   "yaw_deg": 0.2,
+   "clearance_cm": 10.4,
+   "time": 13.1
+  },
+  {
+   "seed": 27,
+   "profile": "real",
+   "case": "wall_left",
+   "best_gap_m": 1.48,
+   "obstacle": [
+    1.9,
+    -0.06,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -1.2,
+   "yaw_deg": -0.4,
+   "clearance_cm": 7.4,
+   "time": 14.8
+  },
+  {
+   "seed": 28,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.32,
+   "obstacle": [
+    2.05,
+    0.12,
+    0.33
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.3,
+   "yaw_deg": -2.3,
+   "clearance_cm": 5.4,
+   "time": 14.9
+  },
+  {
+   "seed": 28,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.32,
+   "obstacle": [
+    2.05,
+    0.12,
+    0.33
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 1.9,
+   "yaw_deg": -0.5,
+   "clearance_cm": 3.1,
+   "time": 16.6
+  },
+  {
+   "seed": 29,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.47,
+   "obstacle": [
+    1.25,
+    0.0,
+    0.26
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.0,
+   "yaw_deg": -1.1,
+   "clearance_cm": 9.9,
+   "time": 12.5
+  },
+  {
+   "seed": 29,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.47,
+   "obstacle": [
+    1.25,
+    0.0,
+    0.26
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.7,
+   "yaw_deg": -0.3,
+   "clearance_cm": 6.7,
+   "time": 12.6
+  },
+  {
+   "seed": 30,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.56,
+   "obstacle": [
+    1.44,
+    -0.02,
+    0.13
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.9,
+   "yaw_deg": -0.7,
+   "clearance_cm": 10.5,
+   "time": 11.1
+  },
+  {
+   "seed": 30,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.56,
+   "obstacle": [
+    1.44,
+    -0.02,
+    0.13
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.7,
+   "yaw_deg": -0.7,
+   "clearance_cm": 7.2,
+   "time": 13.3
+  },
+  {
+   "seed": 31,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.58,
+   "obstacle": [
+    2.1,
+    -0.13,
+    0.3
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": -1.0,
+   "clearance_cm": 9.9,
+   "time": 13.2
+  },
+  {
+   "seed": 31,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.58,
+   "obstacle": [
+    2.1,
+    -0.13,
+    0.3
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.4,
+   "yaw_deg": -0.7,
+   "clearance_cm": 6.8,
+   "time": 15.0
+  },
+  {
+   "seed": 32,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.52,
+   "obstacle": [
+    1.36,
+    0.02,
+    0.21
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.2,
+   "yaw_deg": 0.6,
+   "clearance_cm": 10.7,
+   "time": 11.9
+  },
+  {
+   "seed": 32,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.52,
+   "obstacle": [
+    1.36,
+    0.02,
+    0.21
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.5,
+   "yaw_deg": 0.4,
+   "clearance_cm": 7.8,
+   "time": 13.3
+  },
+  {
+   "seed": 33,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.43,
+   "obstacle": [
+    1.64,
+    0.02,
+    0.37
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.5,
+   "yaw_deg": 0.8,
+   "clearance_cm": 8.1,
+   "time": 12.6
+  },
+  {
+   "seed": 33,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.43,
+   "obstacle": [
+    1.64,
+    0.02,
+    0.37
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.5,
+   "yaw_deg": 1.6,
+   "clearance_cm": 5.7,
+   "time": 15.0
+  },
+  {
+   "seed": 34,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.63,
+   "obstacle": [
+    1.2,
+    0.11,
+    0.17
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.7,
+   "yaw_deg": 1.0,
+   "clearance_cm": 11.4,
+   "time": 10.1
+  },
+  {
+   "seed": 34,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.63,
+   "obstacle": [
+    1.2,
+    0.11,
+    0.17
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.4,
+   "yaw_deg": 0.3,
+   "clearance_cm": 8.4,
+   "time": 12.1
+  },
+  {
+   "seed": 35,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.42,
+   "obstacle": [
+    1.54,
+    -0.01,
+    0.38
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.3,
+   "yaw_deg": -0.7,
+   "clearance_cm": 9.2,
+   "time": 12.4
+  },
+  {
+   "seed": 35,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.42,
+   "obstacle": [
+    1.54,
+    -0.01,
+    0.38
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.8,
+   "yaw_deg": -0.8,
+   "clearance_cm": 4.9,
+   "time": 14.0
+  },
+  {
+   "seed": 36,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.27,
+   "obstacle": [
+    1.38,
+    -0.03,
+    0.37
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": 0.0,
+   "clearance_cm": 45.8,
+   "time": 1.1
+  },
+  {
+   "seed": 36,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.27,
+   "obstacle": [
+    1.38,
+    -0.03,
+    0.37
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": 0.0,
+   "clearance_cm": 42.3,
+   "time": 1.2
+  },
+  {
+   "seed": 37,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.41,
+   "obstacle": [
+    1.9,
+    0.05,
+    0.12
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": -0.1,
+   "clearance_cm": 34.9,
+   "time": 2.8
+  },
+  {
+   "seed": 37,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.41,
+   "obstacle": [
+    1.9,
+    0.05,
+    0.12
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.0,
+   "yaw_deg": -0.0,
+   "clearance_cm": 31.9,
+   "time": 3.0
+  },
+  {
+   "seed": 38,
+   "profile": "sim",
+   "case": "wall_left",
+   "best_gap_m": 1.37,
+   "obstacle": [
+    1.69,
+    -0.08,
+    0.32
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -1.5,
+   "yaw_deg": 0.7,
+   "clearance_cm": 9.3,
+   "time": 13.4
+  },
+  {
+   "seed": 38,
+   "profile": "real",
+   "case": "wall_left",
+   "best_gap_m": 1.37,
+   "obstacle": [
+    1.69,
+    -0.08,
+    0.32
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -1.0,
+   "yaw_deg": 0.8,
+   "clearance_cm": 5.6,
+   "time": 15.3
+  },
+  {
+   "seed": 39,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.54,
+   "obstacle": [
+    1.7,
+    0.01,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": -0.1,
+   "clearance_cm": 10.0,
+   "time": 24.9
+  },
+  {
+   "seed": 39,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.54,
+   "obstacle": [
+    1.7,
+    0.01,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.2,
+   "yaw_deg": 0.3,
+   "clearance_cm": 6.7,
+   "time": 20.7
+  },
+  {
+   "seed": 40,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.47,
+   "obstacle": [
+    1.93,
+    0.06,
+    0.38
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.5,
+   "yaw_deg": 1.6,
+   "clearance_cm": 8.2,
+   "time": 13.2
+  },
+  {
+   "seed": 40,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.47,
+   "obstacle": [
+    1.93,
+    0.06,
+    0.38
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.6,
+   "yaw_deg": 0.9,
+   "clearance_cm": 6.0,
+   "time": 15.3
+  },
+  {
+   "seed": 41,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.61,
+   "obstacle": [
+    2.15,
+    0.08,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.5,
+   "yaw_deg": 0.1,
+   "clearance_cm": 11.6,
+   "time": 13.0
+  },
+  {
+   "seed": 41,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.61,
+   "obstacle": [
+    2.15,
+    0.08,
+    0.14
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.5,
+   "yaw_deg": 1.0,
+   "clearance_cm": 8.5,
+   "time": 14.8
+  },
+  {
+   "seed": 42,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.44,
+   "obstacle": [
+    1.97,
+    -0.02,
+    0.36
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.2,
+   "yaw_deg": -1.1,
+   "clearance_cm": 8.2,
+   "time": 13.7
+  },
+  {
+   "seed": 42,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.44,
+   "obstacle": [
+    1.97,
+    -0.02,
+    0.36
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.7,
+   "yaw_deg": -0.8,
+   "clearance_cm": 5.8,
+   "time": 15.9
+  },
+  {
+   "seed": 43,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.68,
+   "obstacle": [
+    1.85,
+    -0.14,
+    0.11
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.7,
+   "yaw_deg": -0.5,
+   "clearance_cm": 12.1,
+   "time": 12.2
+  },
+  {
+   "seed": 43,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.68,
+   "obstacle": [
+    1.85,
+    -0.14,
+    0.11
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.3,
+   "yaw_deg": -0.7,
+   "clearance_cm": 9.3,
+   "time": 13.5
+  },
+  {
+   "seed": 44,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.56,
+   "obstacle": [
+    1.32,
+    -0.07,
+    0.22
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.4,
+   "yaw_deg": 0.1,
+   "clearance_cm": 10.7,
+   "time": 14.3
+  },
+  {
+   "seed": 44,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.56,
+   "obstacle": [
+    1.32,
+    -0.07,
+    0.22
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.2,
+   "yaw_deg": -0.4,
+   "clearance_cm": 7.5,
+   "time": 13.5
+  },
+  {
+   "seed": 45,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.43,
+   "obstacle": [
+    1.77,
+    0.01,
+    0.33
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.3,
+   "yaw_deg": -1.4,
+   "clearance_cm": 7.3,
+   "time": 13.3
+  },
+  {
+   "seed": 45,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.43,
+   "obstacle": [
+    1.77,
+    0.01,
+    0.33
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 1.2,
+   "yaw_deg": -1.3,
+   "clearance_cm": 7.4,
+   "time": 14.8
+  },
+  {
+   "seed": 46,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.64,
+   "obstacle": [
+    2.11,
+    -0.13,
+    0.18
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.6,
+   "yaw_deg": -0.5,
+   "clearance_cm": 12.0,
+   "time": 12.8
+  },
+  {
+   "seed": 46,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.64,
+   "obstacle": [
+    2.11,
+    -0.13,
+    0.18
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.6,
+   "yaw_deg": 0.9,
+   "clearance_cm": 4.5,
+   "time": 17.0
+  },
+  {
+   "seed": 47,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.56,
+   "obstacle": [
+    1.94,
+    0.08,
+    0.24
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.5,
+   "yaw_deg": 0.3,
+   "clearance_cm": 11.5,
+   "time": 12.8
+  },
+  {
+   "seed": 47,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.56,
+   "obstacle": [
+    1.94,
+    0.08,
+    0.24
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.6,
+   "yaw_deg": 0.8,
+   "clearance_cm": 8.7,
+   "time": 14.5
+  },
+  {
+   "seed": 48,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.5,
+   "obstacle": [
+    1.59,
+    0.03,
+    0.25
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.1,
+   "yaw_deg": 0.7,
+   "clearance_cm": 9.4,
+   "time": 13.0
+  },
+  {
+   "seed": 48,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.5,
+   "obstacle": [
+    1.59,
+    0.03,
+    0.25
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.6,
+   "yaw_deg": 0.6,
+   "clearance_cm": 6.4,
+   "time": 14.5
+  },
+  {
+   "seed": 49,
+   "profile": "sim",
+   "case": "wall_left",
+   "best_gap_m": 1.52,
+   "obstacle": [
+    1.56,
+    0.03,
+    0.22
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -1.0,
+   "yaw_deg": 0.6,
+   "clearance_cm": 10.6,
+   "time": 11.7
+  },
+  {
+   "seed": 49,
+   "profile": "real",
+   "case": "wall_left",
+   "best_gap_m": 1.52,
+   "obstacle": [
+    1.56,
+    0.03,
+    0.22
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.6,
+   "yaw_deg": 0.7,
+   "clearance_cm": 7.7,
+   "time": 13.0
+  },
+  {
+   "seed": 50,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    1.99,
+    0.1,
+    0.26
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.6,
+   "yaw_deg": 0.8,
+   "clearance_cm": 9.4,
+   "time": 12.9
+  },
+  {
+   "seed": 50,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    1.99,
+    0.1,
+    0.26
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.3,
+   "yaw_deg": 1.7,
+   "clearance_cm": 5.8,
+   "time": 14.8
+  },
+  {
+   "seed": 51,
+   "profile": "sim",
+   "case": "open",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    2.14,
+    -0.06,
+    0.18
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.4,
+   "yaw_deg": -0.8,
+   "clearance_cm": 8.8,
+   "time": 13.5
+  },
+  {
+   "seed": 51,
+   "profile": "real",
+   "case": "open",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    2.14,
+    -0.06,
+    0.18
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.8,
+   "yaw_deg": -1.2,
+   "clearance_cm": 8.5,
+   "time": 15.1
+  },
+  {
+   "seed": 52,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.45,
+   "obstacle": [
+    1.82,
+    0.02,
+    0.26
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.6,
+   "yaw_deg": 0.4,
+   "clearance_cm": 9.3,
+   "time": 13.3
+  },
+  {
+   "seed": 52,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.45,
+   "obstacle": [
+    1.82,
+    0.02,
+    0.26
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.9,
+   "yaw_deg": 1.5,
+   "clearance_cm": 6.4,
+   "time": 15.0
+  },
+  {
+   "seed": 53,
+   "profile": "sim",
+   "case": "wall_left",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    1.21,
+    0.07,
+    0.2
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.1,
+   "yaw_deg": 0.9,
+   "clearance_cm": 8.3,
+   "time": 11.1
+  },
+  {
+   "seed": 53,
+   "profile": "real",
+   "case": "wall_left",
+   "best_gap_m": 1.57,
+   "obstacle": [
+    1.21,
+    0.07,
+    0.2
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.6,
+   "yaw_deg": 0.8,
+   "clearance_cm": 5.5,
+   "time": 12.4
+  },
+  {
+   "seed": 54,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.36,
+   "obstacle": [
+    1.42,
+    0.01,
+    0.12
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.0,
+   "yaw_deg": -0.1,
+   "clearance_cm": 39.8,
+   "time": 1.4
+  },
+  {
+   "seed": 54,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.36,
+   "obstacle": [
+    1.42,
+    0.01,
+    0.12
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": 0.1,
+   "clearance_cm": 38.0,
+   "time": 1.4
+  },
+  {
+   "seed": 55,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.41,
+   "obstacle": [
+    2.03,
+    0.11,
+    0.17
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -2.2,
+   "yaw_deg": -2.9,
+   "clearance_cm": 7.2,
+   "time": 14.2
+  },
+  {
+   "seed": 55,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.41,
+   "obstacle": [
+    2.03,
+    0.11,
+    0.17
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.3,
+   "yaw_deg": -0.7,
+   "clearance_cm": 6.3,
+   "time": 17.0
+  },
+  {
+   "seed": 56,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 0.45,
+   "obstacle": [
+    1.93,
+    -0.14,
+    0.39
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.0,
+   "yaw_deg": -0.1,
+   "clearance_cm": 35.0,
+   "time": 2.8
+  },
+  {
+   "seed": 56,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 0.45,
+   "obstacle": [
+    1.93,
+    -0.14,
+    0.39
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.1,
+   "yaw_deg": 0.1,
+   "clearance_cm": 32.1,
+   "time": 3.1
+  },
+  {
+   "seed": 57,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.25,
+   "obstacle": [
+    1.88,
+    -0.01,
+    0.35
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.0,
+   "yaw_deg": 0.1,
+   "clearance_cm": 34.9,
+   "time": 2.7
+  },
+  {
+   "seed": 57,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.25,
+   "obstacle": [
+    1.88,
+    -0.01,
+    0.35
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.0,
+   "yaw_deg": 0.0,
+   "clearance_cm": 31.9,
+   "time": 3.0
+  },
+  {
+   "seed": 58,
+   "profile": "sim",
+   "case": "wall_right",
+   "best_gap_m": 1.4,
+   "obstacle": [
+    1.51,
+    0.11,
+    0.17
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.4,
+   "yaw_deg": -0.5,
+   "clearance_cm": 9.2,
+   "time": 12.7
+  },
+  {
+   "seed": 58,
+   "profile": "real",
+   "case": "wall_right",
+   "best_gap_m": 1.4,
+   "obstacle": [
+    1.51,
+    0.11,
+    0.17
+   ],
+   "state": "DONE",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.2,
+   "yaw_deg": -0.4,
+   "clearance_cm": 6.4,
+   "time": 14.4
+  },
+  {
+   "seed": 59,
+   "profile": "sim",
+   "case": "boxed",
+   "best_gap_m": 0.45,
+   "obstacle": [
+    1.79,
+    0.1,
+    0.14
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": 0.1,
+   "yaw_deg": 0.1,
+   "clearance_cm": 34.9,
+   "time": 2.5
+  },
+  {
+   "seed": 59,
+   "profile": "real",
+   "case": "boxed",
+   "best_gap_m": 0.45,
+   "obstacle": [
+    1.79,
+    0.1,
+    0.14
+   ],
+   "state": "ABORT",
+   "ok": true,
+   "crash": false,
+   "lateral_cm": -0.0,
+   "yaw_deg": 0.0,
+   "clearance_cm": 31.9,
+   "time": 2.8
+  }
+ ]
+}

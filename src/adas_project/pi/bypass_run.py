@@ -13,7 +13,7 @@ import numpy as np
 sys.path.insert(0, "/home/pi/rc_car")
 import pi.lidar_steering_diag as D  # noqa: E402
 from pi.lidar_steering_diag import Rig, TICK_S  # noqa: E402
-from pi.test_gui import TestGui  # noqa: E402
+from pi.test_gui import TestGui, hold  # noqa: E402
 import pi.speed_run as SR  # noqa: E402
 import pi.bypass_core as BC  # noqa: E402
 from pi.bypass_core import Bypass, SERVO_STRAIGHT  # noqa: E402
@@ -155,7 +155,7 @@ def main():
                 gui.log(f"final lateral {fin['y']:+.3f} m, heading {fin['th_deg']:+.1f} deg, odom fallbacks {odo.fallbacks}/{odo.n}")
             gui.set("Obstacle bypass - " + ("DONE" if ctl.state == "DONE" else "STOPPED"), ctl.msg, 1.0,
                     activity="finished")
-            time.sleep(60)
+            hold(60)
         except Exception as e:
             print("end error", e)
         rig.close()

@@ -9,7 +9,7 @@ import numpy as np
 sys.path.insert(0, "/home/pi/rc_car")
 import pi.lidar_steering_diag as D  # noqa: E402
 from pi.lidar_steering_diag import Rig  # noqa: E402
-from pi.test_gui import TestGui, save_result  # noqa: E402
+from pi.test_gui import TestGui, hold, save_result  # noqa: E402
 
 N_SCANS = 40
 
@@ -57,13 +57,13 @@ def main():
             if abs(b) > 15 or sd > 3:
                 gui.log(f"REJECTED: nearest object is {b:+.1f} deg off centre (sd {sd:.1f}) - not the centred object? nothing saved")
                 gui.set("LiDAR front calibration - REJECTED", "check the object is centred and is the nearest thing in front", 1.0, activity="finished")
-                time.sleep(40)
+                hold(40)
                 return
             save_result("lidar", {"yaw_offset_deg": new, "was": cur, "bearing_deg": b, "sd": sd, "distance_m": float(np.median(dists))})
             gui.log(f"object bearing {b:+.2f} deg (sd {sd:.2f}) at {np.median(dists):.2f} m")
             gui.log(f"yaw offset {cur:.1f} -> {new:.1f}   (press Apply in the panel)")
             gui.set("LiDAR front calibration - DONE", f"correction {b:+.2f} deg", 1.0, activity="finished")
-        time.sleep(40)
+        hold(40)
     finally:
         pass
 

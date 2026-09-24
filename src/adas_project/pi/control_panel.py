@@ -26,6 +26,8 @@ MODES = {
               "prep": "Starts the safety relay. Drive with rc_controller.py on the laptop. Change thresholds below, then press again to apply."},
     "oa": {"title": "Obstacle avoidance demo", "script": "pi/bypass_run.py",
            "prep": "Put ONE obstacle straight ahead (about 1.4 m from the car's start spot), with about 3.5 m clear along the line and room on both sides. The car backs up to get run-up first."},
+    "all": {"title": "Run everything", "script": "pi/run_all.py",
+            "prep": "Runs LiDAR front, steering centre, speed + stopping, turning and the obstacle-avoidance demo in order. It pauses and tells you how to set up the arena before each group; nothing is applied automatically."},
     "lidar": {"title": "Calibrate LiDAR front", "script": "pi/lidar_front_cal.py",
               "prep": "Put ONE object dead-centre in front of the car, 0.3-1.2 m away. The car does not move."},
     "center": {"title": "Calibrate steering centre", "script": "pi/center_fine.py",
@@ -150,6 +152,11 @@ def start(mode, params):
             sh(["systemctl", "restart", "rc-relay"])
             state.update(mode="drive", since=time.time(), message="safety relay running - drive from the laptop controller")
             return "ok"
+        for f in ("run_all_state.json", "run_all_continue.flag"):
+            try:
+                os.remove(os.path.join(PI, f))
+            except OSError:
+                pass
         log = open(CHILD_LOG, "w")
         state["proc"] = subprocess.Popen(["runuser", "-u", "pi", "--", "python3", "-u", ROOT + "/" + MODES[mode]["script"]],
                                          cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
@@ -205,7 +212,8 @@ def snapshot():
             "oa_fields": OA_FIELDS, "safety_fields": SAFETY_FIELDS,
             "oa": {**OA_DEFAULTS, **pp.get("oa", {})}, "oa_defaults": OA_DEFAULTS,
             "safety": {**saf_def, **pp.get("safety", {})}, "safety_defaults": saf_def,
-            "results": read_json(RESULTS, {}), "log": tail}
+            "results": read_json(RESULTS, {}), "log": tail,
+            "run_all": read_json(PI + "/run_all_state.json", None) if state["mode"] == "all" else None}
 
 
 class H(http.server.BaseHTTPRequestHandler):
@@ -241,6 +249,9 @@ class H(http.server.BaseHTTPRequestHandler):
                 stop_all()
                 state["message"] = "stopped - motors zeroed"
             out = "stopped"
+        elif self.path == "/api/continue":
+            open(PI + "/run_all_continue.flag", "w").close()
+            out = "continuing"
         elif self.path == "/api/apply":
             out = apply_result(body.get("kind"))
         else:

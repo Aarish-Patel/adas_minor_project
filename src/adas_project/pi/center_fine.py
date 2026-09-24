@@ -14,7 +14,7 @@ sys.path.insert(0, "/home/pi/rc_car")
 import pi.lidar_steering_diag as D  # noqa: E402
 import pi.center_scan as CS  # noqa: E402
 from pi.lidar_steering_diag import Rig, TICK_S  # noqa: E402
-from pi.test_gui import TestGui, save_result  # noqa: E402
+from pi.test_gui import TestGui, hold, save_result  # noqa: E402
 
 D.RAMP_STEP_PWM = 25
 OFFSETS = [-8, -6, -4, -2, 0]
@@ -107,7 +107,7 @@ def main():
                 gui.log(f"offset {off:+d}: median rot {v['rot_median_deg']:+.1f} deg (sd {v['rot_sd']:.1f})")
             gui.set("Steering test - DONE", "see log", 1.0, activity="finished")
             print("SUMMARY", json.dumps(summ), flush=True)
-            time.sleep(45)
+            hold(45)
         except Exception as e:
             print("summary error", e)
         rig.close()

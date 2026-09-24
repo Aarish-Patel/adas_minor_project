@@ -13,7 +13,7 @@ sys.path.insert(0, "/home/pi/rc_car")
 import pi.lidar_steering_diag as D  # noqa: E402
 from pi.lidar_steering_diag import Rig, floor_violated, TICK_S  # noqa: E402
 from pi.speed_run import back_up_to_rear_limit, unique_scan_sample
-from pi.test_gui import TestGui, save_result  # noqa: E402
+from pi.test_gui import TestGui, hold, save_result  # noqa: E402
 
 D.RAMP_STEP_PWM = 25
 LEVELS = [90, 110, 130, 150, 180]
@@ -101,7 +101,7 @@ def main():
         except Exception as e:
             print("fit error", e, flush=True)
         gui.set("Speed + stopping-distance calibration - DONE", "see log", 1.0, activity="finished")
-        time.sleep(45); rig.close()
+        hold(45); rig.close()
 
 
 if __name__ == "__main__":
