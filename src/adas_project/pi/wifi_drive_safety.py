@@ -464,6 +464,7 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
             "mode": mode, "braking": bool(braking),
             "tracks": tracks or [], "moving_blocked": bool(moving_blocked),
             "follow_enabled": bool(follow_enabled), "follow_lead": follow_lead,
+            "assist": GUI_STATE["data"].get("assist"),        # kept: set separately by the assist code
         }
 
 
@@ -473,6 +474,14 @@ def gui_set_mode(mode):
     driving, silently showing stale MANUAL even after override was actually enabled."""
     with GUI_STATE["lock"]:
         GUI_STATE["data"]["mode"] = mode
+
+
+def gui_set_assists(enabled):
+    """Which driving assists are on, shown on the GUI's toggle buttons even while nobody is driving."""
+    with GUI_STATE["lock"]:
+        a = dict(GUI_STATE["data"].get("assist") or {"level": 0, "info": {}, "changed": False})
+        a["enabled"] = enabled
+        GUI_STATE["data"]["assist"] = a
 
 
 def gui_update_distances(front_track, rear_track, body_min_front, body_min_rear):
@@ -519,6 +528,9 @@ def start_gui_server(clr):
             routes = {"/api/override/on": b"ADAS_OVERRIDE_ON", "/api/override/off": b"ADAS_OVERRIDE_OFF",
                       "/api/follow/on": b"FOLLOW_ON", "/api/follow/off": b"FOLLOW_OFF"}
             cmd = routes.get(self.path)
+            parts = self.path.strip("/").split("/")          # /api/assist/<name>/<on|off>
+            if cmd is None and len(parts) == 4 and parts[:2] == ["api", "assist"] and parts[3] in ("on", "off"):
+                cmd = f"ASSIST {parts[2]} {parts[3].upper()}".encode()
             if cmd is not None:
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -593,6 +605,9 @@ def main():
     gate = SafetyGate()
     intent = IntentTracker()
     adas_override = False
+    from pi.relay_assists import RelayAssists
+    from adas.assists import deadman_pwm
+    assist = RelayAssists(TUNING, WIRE_MOTOR_REVERSED)   # driving assists, all off until toggled on
     follow = FollowController(VP, TUNING.speed_model)   # adaptive cruise / follow-the-leader,
                                                           # opt-in via FOLLOW_ON/FOLLOW_OFF
     logger = DriveLogger(LOG_DIR)
@@ -607,27 +622,56 @@ def main():
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", UDP_PORT))
-    sock.settimeout(0.5)
+    sock.settimeout(0.05)     # short, so a lost driver link can be handled smoothly (dead-man ramp)
     print(f"\nlistening for driver commands on UDP :{UDP_PORT}")
     print("point rc_controller.py's ESP32_IP at this Pi's address to drive.\n")
 
     last_packet_time = time.time()
     last_status_print = 0.0
     last_steer_offset = 0.0   # persists across ticks that don't include an A line
+    last_physical = 0.0       # what was last sent to the motor (physical convention, + = forward)
+    last_tick = time.time()
+    last_zero_sent = 0.0
 
     try:
         while True:
             try:
                 data, addr = sock.recvfrom(256)
             except socket.timeout:
-                # failsafe: if the driver link drops, stop the car (belt-and-suspenders;
-                # the ESP32 firmware also has its own 500 ms timeout).
-                if time.time() - last_packet_time > 0.6:
+                # dead-man: the driver link is quiet. Keep the last command alive for 0.5 s (the ESP32's own
+                # 500 ms timeout would otherwise cut the motor instantly), then ramp the throttle down smoothly.
+                # Anything ahead in the direction of travel -> zero at once.
+                now = time.time()
+                dt, last_tick = now - last_tick, now
+                age = now - last_packet_time
+                if last_physical != 0:
+                    ft, rt, bmf, bmr = clr.read()
+                    danger = (last_physical > 0 and (gate.blocked("front", ft, now) or gate.body_alert("front", bmf, now))) or \
+                             (last_physical < 0 and (gate.blocked("rear", rt, now) or gate.body_alert("rear", bmr, now)))
+                    new = 0.0 if danger else deadman_pwm(last_physical, age, dt)
+                    if age > 0.5 and last_physical != 0 and new != last_physical:
+                        dlog.event("driver link lost - dead-man ramp" if not danger else "driver link lost - obstacle, stopped",
+                                   pwm=new)
+                    last_physical = new
+                    w = -int(round(new)) if WIRE_MOTOR_REVERSED else int(round(new))
+                    esp.write(f"M {w}\n".encode())
+                elif age > 0.6 and now - last_zero_sent > 0.5:
                     esp.write(b"M 0\n")
+                    last_zero_sent = now
                 continue
 
             last_packet_time = time.time()
+            last_tick = last_packet_time
             text = data.decode(errors="ignore")
+
+            parts = text.strip().split()
+            if len(parts) == 3 and parts[0] == "ASSIST" and parts[2] in ("ON", "OFF"):
+                assist.set(parts[1].lower(), parts[2] == "ON")
+                print(f"\nassist {parts[1]} {parts[2]}: now {assist.enabled()}")
+                dlog.event("assist toggled", name=parts[1], on=parts[2] == "ON")
+                gui_set_assists(assist.enabled())
+                sock.sendto(b"OK", addr)
+                continue
 
             if text.strip() == "PING":
                 esp.reset_input_buffer()
@@ -657,6 +701,12 @@ def main():
             rear_blocked = gate.blocked("rear", rear_track, now)
             body_alert_front = gate.body_alert("front", body_min_front, now)
             body_alert_rear = gate.body_alert("rear", body_min_rear, now)
+
+            # driving assists rewrite the driver's steering/throttle first; the safety gate below still has
+            # the last word on the throttle
+            driver_text = text
+            if not adas_override:
+                text = "\n".join(assist.process([ln.strip() for ln in text.splitlines() if ln.strip()], clr.read_points()))
 
             out_lines = []
             steer_a1 = steer_a2 = None
@@ -777,8 +827,14 @@ def main():
 
             clr.set_motion_state(final_physical, last_steer_offset)
             esp.write(("\n".join(out_lines) + "\n").encode())
+            last_physical = float(final_physical)
+            with GUI_STATE["lock"]:
+                GUI_STATE["data"]["assist"] = {"level": assist.level, "info": assist.info, "enabled": assist.enabled(),
+                                               "changed": assist.changed}
             # what the driver asked for vs what the ADAS let through - the raw material for intent learning
-            dlog.driver(inp=text.strip(), out=out_lines, pwm_in=pwm_commanded, pwm_out=pwm_sent,
+            dlog.driver(inp=driver_text.strip(), assisted=text.strip() if assist.changed else None,
+                        assist_level=assist.level, assist_info=assist.info or None,
+                        out=out_lines, pwm_in=pwm_commanded, pwm_out=pwm_sent,
                         front=front_track.dist, rear=rear_track.dist, fb=int(front_blocked), rb=int(rear_blocked),
                         braking=int(braking), moving_blocked=int(moving_blocked), override=int(adas_override),
                         follow=int(follow.enabled))

@@ -10,6 +10,7 @@ import numpy as np
 
 from .aeb import AEB, AEBConfig, SpeedEstimator, SpeedModel
 from .acc import FollowController
+from .assists import DrivingAssists
 from .isa import SpeedAdaptation
 from .lane import LaneKeeper, fit_lane
 from .memory import ObstacleMemory
@@ -29,6 +30,8 @@ class AdasPipeline:
         self.acc = FollowController(self.p, self.model)
         self.isa = SpeedAdaptation(self.p)
         self.lane = LaneKeeper(self.p)
+        self.assists = DrivingAssists(self.p, self.model)   # all off until switched on
+        self.assist_level = 0
         self._lane_est = None
         self.t_now = 0.0
         self.marker_obs = []
@@ -91,6 +94,13 @@ class AdasPipeline:
         acc_cap = self.acc.limit(self.tracks, self.estimator.v, driver_pwm)
         if acc_cap is not None:
             driver_pwm = min(driver_pwm, acc_cap)
+        # driving assists (evasive steer, centring, limiter, narrow gap, proximity) act on the driver's
+        # command before emergency braking, which always has the last word
+        self.assist_level = 0
+        if mode != "off" and not self.parking.active:
+            a_steer, a_pwm, self.assist_level = self.assists.update(dt, self.points, steer, driver_pwm, self.estimator.v)
+            if mode == "active":
+                steer, driver_pwm = a_steer, a_pwm
 
         self._new_obs = []
         self.steer_out = steer
@@ -122,6 +132,6 @@ class AdasPipeline:
                         cap = self.model.pwm_for_speed(cfg.crawl_speed)
                         self.pwm_out = math.copysign(min(abs(self.pwm_out), cap), self.pwm_out)
 
-        self.level = max(self.level, lane_level) if mode != "off" else self.level
+        self.level = max(self.level, lane_level, self.assist_level) if mode != "off" else self.level
         self.estimator.update(dt, self.pwm_out)
         return self.pwm_out, self.level, self.info

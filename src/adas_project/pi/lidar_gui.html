@@ -42,6 +42,14 @@
   #testBar { height: 5px; background: #1e2b47; border-radius: 3px; margin-bottom: 6px; }
   #testBar > div { height: 100%; background: #34d399; border-radius: 3px; width: 0; transition: width .3s; }
   #testLog { font-family: Consolas, monospace; color: #94a3b8; white-space: pre-wrap; max-height: 230px; overflow: hidden; }
+  #assistBar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 12px; border-bottom: 1px solid #1e2b47; }
+  #assistBar .lbl { font-size: 12px; color: #94a3b8; margin-right: 4px; }
+  .aBtn { padding: 5px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; border: 1px solid #33415f;
+          background: #1e2b47; color: #cbd5f5; cursor: pointer; }
+  .aBtn.on { background: #047857; border-color: #34d399; color: #fff; }
+  #assistInfo { position: absolute; left: 14px; bottom: 12px; max-width: 60vw; font-size: 14px; font-weight: 700;
+                color: #facc15; background: rgba(17,26,46,0.85); border-radius: 8px; padding: 6px 10px; display: none; }
+  #assistInfo.warn { color: #fca5a5; }
   #conn { position: absolute; top: 10px; right: 14px; font-size: 12px; color: #f87171; }
 </style>
 </head>
@@ -60,9 +68,19 @@
     <button id="followBtn">FOLLOW MODE: OFF</button>
     <button id="overrideBtn">ADAS OVERRIDE: OFF</button>
   </div>
+  <div id="assistBar"><span class="lbl">DRIVING ASSISTS</span>
+    <button class="aBtn" data-a="evasive">Evasive steer</button>
+    <button class="aBtn" data-a="centring">Corridor centring</button>
+    <button class="aBtn" data-a="limiter">Speed/steer limiter</button>
+    <button class="aBtn" data-a="narrow">Narrow gap</button>
+    <button class="aBtn" data-a="proximity">Side/rear alerts</button>
+    <button class="aBtn" data-a="all" data-all="on">All on</button>
+    <button class="aBtn" data-a="all" data-all="off">All off</button>
+  </div>
   <div id="canvasWrap">
     <canvas id="c"></canvas>
     <div id="testPanel"><div class="tt" id="testTitle"></div><div id="testActivity" style="font-weight:700;color:#facc15;margin-top:2px"></div><div id="testServo" style="color:#e5ecff"></div><div id="testAlert" style="font-weight:700;color:#f87171"></div><div class="tm" id="testMsg"></div><div id="testBar"><div id="testBarFill"></div></div><div id="testLog"></div></div>
+    <div id="assistInfo"></div>
     <div id="conn"></div>
   </div>
 </div>
@@ -219,6 +237,25 @@ function applyMode(data) {
   }
 }
 
+let assistEnabled = {};
+document.querySelectorAll('.aBtn').forEach(b => b.addEventListener('click', async () => {
+  const name = b.dataset.a;
+  const on = name === 'all' ? b.dataset.all === 'on' : !assistEnabled[name];
+  try { await fetch(`/api/assist/${name}/${on ? 'on' : 'off'}`, { method: 'POST' }); } catch (e) {}
+}));
+function applyAssists(data) {
+  const a = data.assist || {};
+  assistEnabled = a.enabled || {};
+  document.querySelectorAll('.aBtn[data-a]').forEach(b => {
+    if (b.dataset.a !== 'all') b.classList.toggle('on', !!assistEnabled[b.dataset.a]);
+  });
+  const box = document.getElementById('assistInfo');
+  const lines = Object.values(a.info || {});
+  box.style.display = lines.length ? 'block' : 'none';
+  box.textContent = lines.join('  |  ');
+  box.classList.toggle('warn', (a.level || 0) >= 2);
+}
+
 async function poll() {
   try {
     const res = await fetch('/api/scan', { cache: 'no-store' });
@@ -260,6 +297,7 @@ async function poll() {
       document.getElementById('testLog').textContent = (data.test.log || []).join(String.fromCharCode(10));
     } else { tp.classList.remove('show'); }
     applyMode(data);
+    applyAssists(data);
 
     draw(data);
   } catch (e) {
