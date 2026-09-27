@@ -34,6 +34,20 @@
     logs in `logs/sim/`.
 12. Then the same on the real car, with its drive logs.
 
+## Digital twin for the evaluator (requested, NOT done)
+17. **3D view of the car simulator, alongside the car GUI.** Today the two are separate: the 3D viewer
+    (`python server.py`, :8765) runs the older simulator ADAS pipeline, NOT the car's relay, so it does not show
+    the path gate, brake latch, obstacle memory, lattice evasive steer or scan-matching odometry. Needed:
+    - stream the virtual car (`sim/hw_sim.py`: true pose, world, LiDAR scan) and the relay's plan/assist/gate
+      state from `tools/sim_car.py` to the 3D viewer, so one drive shows in both: 3D (world, car, LiDAR rays,
+      predicted path, collision X, manoeuvre + original line) and the 2D car GUI (:8090)
+    - 3D car model with the measured body (20 x 44 cm, wheelbase 20 cm) and steering from the servo angle
+    - worlds shared between both (`sim/hw_worlds.py`), including `log:` rooms rebuilt from real scans
+18. **Accuracy to the real car, shown as evidence:** the virtual car's motor/steering must come from the fitted
+    model (task 2/3), and a "twin check" page: replay a real drive log's commands in the simulator and overlay the
+    simulated path on the real (scan-matched) path, with the error. That is the digital-twin / testing-cycle
+    demo: real drive -> log -> fit -> simulate -> compare -> fix -> redeploy.
+
 ## Later
 13. Tests for the new pieces (path gate, memory pruning, lattice planner, hw simulator) in `tests/`.
 14. Update `STATUS.md` and `README.md` (simulator instructions, assists, path gate).
