@@ -30,7 +30,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] B11. Brake hold stops 0.75 m short of a wall at full speed (old speed model in the relay) - fixed by C3.
 - [x] B13. (fixed) Car froze next to a box: points already inside the body margin blocked every direction, even
   backing away. The path gate now ignores close points the motion moves away from (same margin box as the sweep).
-- [ ] B12. Unit tests for the Hybrid A* planner and the evasive state machine (doorway, boxed, reverse case).
+- [x] B12. (done in J1) Unit tests for the Hybrid A* planner and the evasive state machine (doorway, boxed, reverse case).
 
 ## C. Localisation and car model
 - [ ] C1. **Research accurate 2D LiDAR odometry** (research done: RESEARCH.md section 3 - RF2O + KISS-ICP + EKF; implementation NOT done) (linear and angular velocity from the LiDAR is poor now):
@@ -88,7 +88,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] I2. Same on the real car.
 
 ## J. Housekeeping
-- [ ] J1. Tests for the new pieces (path gate, memory pruning, planner, hw simulator).
+- [ ] J1. (partly done: tests/test_planning_safety.py - Hybrid A* doorway/reverse/boxed, gate beside-wall/head-on/not-frozen/phantom/latch, intent model, Monte Carlo smoke; 50 tests pass. Still: hw simulator, dashboard) Tests for the new pieces (path gate, memory pruning, planner, hw simulator).
 - [ ] J2. Update `STATUS.md` and `README.md`.
 - [ ] J3. Results/slides from sim + car logs.
 - [ ] J4. Calibrations only when the user asks (LiDAR yaw 63.4 deg current).
