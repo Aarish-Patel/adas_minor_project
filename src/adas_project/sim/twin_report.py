@@ -35,44 +35,86 @@ def lidar_to_car_frame(ang, dist, yaw, dmin=0.2):
 
 
 CELL = 0.03
+L_OCC, L_FREE = 0.85, 0.41           # log-odds of p = 0.7 (hit) and p = 0.4 (beam passed through), Probabilistic Robotics
+
+
+class OccMap:
+    """Static occupancy grid built the standard way (Moravec & Elfes 1985; Thrun, Burgard, Fox, Probabilistic Robotics
+    ch. 9): each beam adds occupied evidence at its end cell and free evidence along the way (free-space carving),
+    as log-odds. Carving removes the halo of noisy hits in front of a wall that would otherwise stop grazing beams
+    early. A cell is occupied if its log-odds is positive and it was hit in at least `min_scans` scans (transient
+    things drop out); it stores the mean position of its hits - the surface the beam is projected on."""
+
+    def __init__(self, x0, y0, nx, ny):
+        self.x0, self.y0, self.nx, self.ny = x0, y0, nx, ny
+        self.hits = np.zeros((nx, ny), np.int32)
+        self.free = np.zeros((nx, ny), np.int32)
+        self.sx = np.zeros((nx, ny))
+        self.sy = np.zeros((nx, ny))
+        self.n = np.zeros((nx, ny), np.int32)
+        self.occ = None
+
+    def _idx(self, X, Y):
+        ix = np.floor((X - self.x0) / CELL).astype(int)
+        iy = np.floor((Y - self.y0) / CELL).astype(int)
+        ok = (ix >= 0) & (ix < self.nx) & (iy >= 0) & (iy < self.ny)
+        return ix, iy, ok
+
+    def add_scan(self, x, y, th, a, d):
+        ang = th + a
+        wx, wy = x + d * np.cos(ang), y + d * np.sin(ang)
+        ix, iy, ok = self._idx(wx, wy)
+        np.add.at(self.sx, (ix[ok], iy[ok]), wx[ok])
+        np.add.at(self.sy, (ix[ok], iy[ok]), wy[ok])
+        np.add.at(self.n, (ix[ok], iy[ok]), 1)
+        hit = np.unique(ix[ok] * self.ny + iy[ok])
+        # free space: samples every half cell from the sensor to one cell short of the hit
+        r = np.arange(0.2, 4.0, CELL / 2)
+        m = r[None, :] < (d[:, None] - CELL)
+        fx = x + np.cos(ang)[:, None] * r[None, :]
+        fy = y + np.sin(ang)[:, None] * r[None, :]
+        jx, jy, fok = self._idx(fx[m], fy[m])
+        free = np.setdiff1d(np.unique(jx[fok] * self.ny + jy[fok]), hit)
+        self.hits.flat[hit] += 1
+        self.free.flat[free] += 1
+
+    def finish(self, min_scans=3):
+        lo = self.hits * L_OCC - self.free * L_FREE
+        self.occ = (lo > 0) & (self.hits >= min_scans)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            self.mx, self.my = self.sx / self.n, self.sy / self.n
+        return self
+
+    def raycast(self, x, y, th, beams, max_range=4.0, step=0.01):
+        """First occupied cell along each beam; range = that cell's mean surface point projected on the beam."""
+        r = np.arange(0.2, max_range, step)
+        ang = th + beams
+        ix, iy, ok = self._idx(x + np.cos(ang)[:, None] * r[None, :], y + np.sin(ang)[:, None] * r[None, :])
+        occ = np.zeros(ix.shape, bool)
+        occ[ok] = self.occ[ix[ok], iy[ok]]
+        first = occ.argmax(1)
+        out = np.full(len(beams), np.inf)
+        hit = occ[np.arange(len(beams)), first]
+        bi = np.flatnonzero(hit)
+        cx, cy = ix[bi, first[bi]], iy[bi, first[bi]]
+        out[bi] = (self.mx[cx, cy] - x) * np.cos(ang[bi]) + (self.my[cx, cy] - y) * np.sin(ang[bi])
+        return out
 
 
 def build_map(log, rows, yaw, use, min_scans=3):
-    """Static occupancy map: 3 cm cells the LiDAR hit in at least `min_scans` different scans (transient things,
-    e.g. a person walking past, drop out). Each kept cell stores the mean position of its hits: the wall surface."""
-    cells = {}                                       # key -> [distinct scans, sum x, sum y, points, last scan]
+    xs, ys = rows[use, 1], rows[use, 2]
+    x0, y0 = xs.min() - 4.5, ys.min() - 4.5
+    m = OccMap(x0, y0, int((xs.max() + 4.5 - x0) / CELL) + 1, int((ys.max() + 4.5 - y0) / CELL) + 1)
     for i in use:
         t, ang, dist, _ = log["scans"][i]
-        x, y, th = rows[i, 1], rows[i, 2], rows[i, 3]
         a, d = lidar_to_car_frame(ang, dist, yaw)
-        px, py = d * np.cos(a), d * np.sin(a)
-        wx = x + np.cos(th) * px - np.sin(th) * py
-        wy = y + np.sin(th) * px + np.cos(th) * py
-        for X, Y in zip(wx, wy):
-            c = cells.setdefault((int(np.floor(X / CELL)), int(np.floor(Y / CELL))), [0, 0.0, 0.0, 0, -1])
-            c[1] += X
-            c[2] += Y
-            c[3] += 1
-            if c[4] != i:
-                c[0] += 1
-                c[4] = i
-    return {k: (c[1] / c[3], c[2] / c[3]) for k, c in cells.items() if c[0] >= min_scans}
+        keep = d < 4.0
+        m.add_scan(rows[i, 1], rows[i, 2], rows[i, 3], a[keep], d[keep])
+    return m.finish(min_scans)
 
 
 def raycast(occ, x, y, th, beams, max_range=4.0, step=0.01):
-    """First statically occupied cell along each beam; range = that cell's mean surface point projected on the beam."""
-    r = np.arange(0.2, max_range, step)
-    ang = th + beams
-    kx = np.floor((x + np.cos(ang)[:, None] * r[None, :]) / CELL).astype(int)
-    ky = np.floor((y + np.sin(ang)[:, None] * r[None, :]) / CELL).astype(int)
-    out = np.full(len(beams), np.inf)
-    for bi in range(len(beams)):
-        for j in range(len(r)):
-            m = occ.get((kx[bi, j], ky[bi, j]))
-            if m is not None:
-                out[bi] = (m[0] - x) * math.cos(ang[bi]) + (m[1] - y) * math.sin(ang[bi])
-                break
-    return out
+    return occ.raycast(x, y, th, beams, max_range, step)
 
 
 def lidar_check(log, rows, yaw, n_test=12):
@@ -95,7 +137,7 @@ def lidar_check(log, rows, yaw, n_test=12):
     ae = np.abs(e)
     return {"beams_compared": int(len(e)), "median_abs_error_cm": float(np.median(ae) * 100),
             "p90_abs_error_cm": float(np.percentile(ae, 90) * 100), "within_5cm_pct": float((ae < 0.05).mean() * 100),
-            "bias_cm": float(np.median(e) * 100), "map_cells": int(len(segs)), "test_scans": int(len(test))}, examples, e
+            "bias_cm": float(np.median(e) * 100), "map_cells": int(segs.occ.sum()), "test_scans": int(len(test))}, examples, e
 
 
 def motion_check(log, rows, horizon=3.0):
