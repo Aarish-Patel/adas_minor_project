@@ -92,6 +92,11 @@
 
 <div id="side" class="glass">
   <div><h4>Driving assists</h4><div id="assists"></div></div>
+  <div><h4>Driver intent (learned model)</h4>
+    <div class="lbl" style="margin-top:6px"><span>Risk the driver crashes on their own</span><span id="riskTxt">—</span></div>
+    <div class="bar"><i id="riskBar" style="background:var(--green)"></i></div>
+    <div class="lbl"><span id="trustTxt">no threat ahead</span><span id="reactTxt">reacts at — m</span></div>
+  </div>
   <div><h4>Front camera</h4><div id="cam">Not fitted yet.<br>Planned: object labels on LiDAR clusters, AR path overlay, depth for obstacles below the LiDAR plane.</div></div>
   <h4>Events</h4>
   <div id="events"></div>
@@ -264,6 +269,18 @@ function update(d) {
   const msg = evasive || (action ? `Safety filter: ${action}` : '');
   al.textContent = msg; al.className = 'glass' + (msg ? ' show ' + (cls === 'bad' ? 'red' : cls === 'warn' ? 'amber' : 'teal') : '');
   if (msg) event(msg);
+
+  // learned driver intent
+  const it = d.intent || {};
+  if (it.p_crash == null) { $('riskTxt').textContent = '—'; $('riskBar').style.width = '0%'; $('trustTxt').textContent = 'no threat ahead'; }
+  else {
+    const pc = it.p_crash;
+    $('riskTxt').textContent = Math.round(pc * 100) + '%';
+    $('riskBar').style.width = Math.round(pc * 100) + '%';
+    $('riskBar').style.background = pc > 0.5 ? 'var(--red)' : pc > 0.2 ? 'var(--amber)' : 'var(--green)';
+    $('trustTxt').textContent = it.trusted ? 'driver is handling it - no takeover' : 'ADAS ready to take over';
+  }
+  $('reactTxt').textContent = `reacts at ${it.reaction_m != null ? it.reaction_m.toFixed(2) : '—'} m`;
 
   // assists
   enabled = a.enabled || {};

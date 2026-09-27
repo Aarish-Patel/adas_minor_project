@@ -49,7 +49,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] D7. Show the twin report figures in the dashboard (Diagnostics mode) and as slides.
 - [ ] C6. Room map (Cartographer-style submaps) for localisation, point-to-point navigation, return-to-start.
 
-- [ ] B14. Put the learned intent model + driver profile into the relay on the car (features from live scans,
+- [x] B14. (done: relay samples the stick on a 50 ms clock, features from live scans, P(crash) < 0.5 -> no evasive takeover; dashboard 'Driver intent' card with risk bar, trust state, learned reaction distance) Put the learned intent model + driver profile into the relay on the car (features from live scans,
   `pi/intent_net.json`), shown on the dashboard (risk gauge, "driver is avoiding it" message).
 - [ ] B15. Retrain the intent model on real drive logs as they accumulate (the relay records stick + scans).
 

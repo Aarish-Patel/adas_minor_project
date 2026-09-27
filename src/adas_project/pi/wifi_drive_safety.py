@@ -111,6 +111,7 @@ WIDE_CONE_DEG = 90
 # "path": emergency braking from the body swept along the commanded path (pi/path_gate.py) - passing beside
 # something does not stop the car, turning into it does. "cone": the older fixed cones + +-90 deg body alarm.
 GATE_MODE = "path"
+INTENT_TRUST = 0.5         # learned intent: no swerve when P(driver crashes on their own) is below this (Monte Carlo operating point)
 SCAN_LOST_S = 0.5          # path gate: no new LiDAR scan for this long -> no throttle
 BODY_HARD_FLOOR_M = 0.30
 
@@ -484,6 +485,7 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
             "sim": GUI_STATE["data"].get("sim"),              # ground truth, only when run in the laptop simulator
             "plan": GUI_STATE["data"].get("plan"),
             "drive": GUI_STATE["data"].get("drive"),
+            "intent": GUI_STATE["data"].get("intent"),
         }
 
 
@@ -657,6 +659,14 @@ def main():
     from pi.relay_assists import K_CURV_PER_SERVO_DEG as assist_k
     last_servo_cmd = assist.centre
     gate_delta = 0.0
+    # learned intent model (trained in sim/train_intent_net.py; pi/intent_net.json) + this driver's profile
+    from adas.intent_net import DriverProfile, IntentNet, features as intent_features
+    from pi.relay_assists import driver_intent
+    _inet_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "intent_net.json")
+    intent_net = IntentNet(_inet_path) if os.path.exists(_inet_path) else None
+    intent_profile = DriverProfile()
+    intent_hist, intent_last_t = [], 0.0
+    intent_servo_now, intent_pwm_now = assist.centre, 0.0
     follow = FollowController(VP, TUNING.speed_model)   # adaptive cruise / follow-the-leader,
                                                           # opt-in via FOLLOW_ON/FOLLOW_OFF
     logger = DriveLogger(LOG_DIR)
@@ -764,6 +774,39 @@ def main():
             driver_text = text
             if not adas_override:
                 _apts, _aseq = clr.read_points_seq()
+                # learned driver intent (adas/intent_net.py): will this driver handle the threat themselves?
+                # decides only whether the evasive steer may take over; braking stays pure physics
+                for _ln in driver_text.splitlines():
+                    _q = _ln.split()
+                    if len(_q) == 3 and _q[0] == "A":
+                        try:
+                            intent_servo_now = (float(_q[1]) + float(_q[2])) / 2.0
+                        except ValueError:
+                            pass
+                    elif len(_q) == 2 and _q[0] == "M":
+                        try:
+                            intent_pwm_now = -float(_q[1]) if WIRE_MOTOR_REVERSED else float(_q[1])
+                        except ValueError:
+                            pass
+                _now_i = time.time()
+                if _now_i - intent_last_t >= 0.05:               # the model was trained on a 50 ms clock
+                    intent_last_t = _now_i
+                    intent_hist = (intent_hist + [intent_servo_now])[-80:]
+                    intent_p, intent_trust = None, False
+                    if intent_net is not None:
+                        _f = intent_features(intent_hist, intent_pwm_now, vest.v,
+                                             RelayAssists.points_vehicle_frame(_apts, assist.p.lidar_x),
+                                             assist.p, assist.centre, assist_k, profile=intent_profile)
+                        if _f is not None:
+                            intent_profile.update(intent_hist, _f[len(_f) - 5] * 1.5)
+                            intent_p = intent_net.crash_probability(_f)
+                            intent_trust = intent_p < INTENT_TRUST
+                    assist.assists.intent_hold = intent_trust
+                    assist.assists.intent_k_rate = (driver_intent(intent_hist, 0.05, assist.centre) or 0.0) if intent_trust else None
+                    with GUI_STATE["lock"]:
+                        GUI_STATE["data"]["intent"] = {"p_crash": None if intent_p is None else round(intent_p, 3),
+                                                       "trusted": intent_trust,
+                                                       "reaction_m": round(intent_profile.reaction_distance, 2)}
                 text = "\n".join(assist.process([ln.strip() for ln in text.splitlines() if ln.strip()], _apts, _aseq))
                 if assist.assists.evading:
                     # the fixed straight-ahead cone would keep braking for an obstacle the car is steering
