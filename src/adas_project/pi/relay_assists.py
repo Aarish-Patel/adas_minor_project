@@ -49,6 +49,20 @@ def apply_car_model(tuning, path=None):
         return f"ignored ({e})"
 
 
+def driver_intent(servo_hist, dt, centre, activity_deg=3.0, attention_s=1.0, window=4):
+    """Driver state from the stick (driver-state-adaptive ADAS). None = no stick activity for `attention_s`
+    (a lapse: nothing says the driver is handling it). Otherwise the driver is attentive and this returns the rate at
+    which they are changing the path curvature (1/m per s, + = turning more to the LEFT; 0.0 = attentive, holding).
+    servo_hist: recent servo commands, oldest first, one per control tick of `dt` seconds."""
+    n = int(round(attention_s / dt)) + 1
+    if len(servo_hist) < max(n, window + 1):
+        return None
+    if np.ptp(np.asarray(servo_hist[-n:], float)) < activity_deg:
+        return None
+    ds = servo_hist[-1] - servo_hist[-1 - window]
+    return -K_CURV_PER_SERVO_DEG * ds / (window * dt)
+
+
 class RelayAssists:
     NAMES = ("evasive", "centring", "limiter", "narrow", "proximity")
 

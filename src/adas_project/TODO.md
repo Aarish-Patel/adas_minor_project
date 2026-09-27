@@ -60,6 +60,13 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   car's own relay code, side by side runs.
 - [ ] D5. (run, but NO difference yet: the steering-trend intent predictor in `pi/path_gate.py` never changed a decision - 12 needless interventions in both. Next: a learned intent model (GRU over stick/throttle/speed history, RESEARCH.md 4) predicting the driver's path distribution, and a driver model that telegraphs intent (gradual steering) so the comparison is fair) **Intent-aware vs not intent-aware** comparison on the same Monte Carlo runs (crashes, interruptions,
   warning lead time).
+- [ ] D8. (in progress: done (a) smooth drivers + lapsing/late styles + body-width/bumper fixes in the driver model, (b) counterfactual ground truth, (c) driver-state-adaptive timing + curvature-rate prediction. Result 48 drives: interventions 99 -> 72, needless speed limits 43 -> 25, crashes 0 both, BUT needless takeovers 17 -> 21. Next: learned intent model (MLP on stick history + LiDAR free distances, trained on held-out scenarios)) **Intent-aware must show a significant, genuine difference** (user requirement, esp. drivers already
+  avoiding the obstacle). Steps: (a) smooth, rate-limited human steering + driver styles (lapsing / late but
+  correct avoider) in `sim/relay_mc.py`; (b) counterfactual ground truth for "needless" (fork the sim at each
+  intervention, let the driver continue without ADAS for 2 s: would they have crashed?); (c) intent-aware ADAS:
+  attentive-driver detection from steering activity + predicted path with the driver's steering rate, used by the
+  gate and the evasive trigger; lapsed drivers get normal ADAS; (d) re-run, report crashes AND needless
+  interventions per driver style.
 - [ ] D6. GUI "connection lost" flicker while the planner runs.
 
 ## E. GUI (EV-grade frontend)

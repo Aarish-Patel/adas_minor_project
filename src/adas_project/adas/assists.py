@@ -39,6 +39,7 @@ class AssistConfig:
     evade_release_s: float = 0.35    # (unused since the return-to-line phase; kept for old configs)
     evade_candidates: int = 17
     evade_period: float = 0.08       # s between re-planning (the sweep is the expensive part)
+    evade_ttc_attentive: float = 0.9  # s: an attentive (actively steering) driver is given more time to act
     trigger_margin: float = 0.03     # m: the driver's path must really touch (+3 cm) to trigger a swerve
     evade_ttc: float = 1.6           # s: only step in when contact is this close in time...
     evade_min_v: float = 0.18        # m/s: ...and the car is moving at least this fast (creeping = the driver's call)
@@ -114,6 +115,7 @@ class DrivingAssists:
         self._plan_poses = None
         self._plan_clear = None
         self.pose_fix = None            # (x, y, th) from scan matching, start frame, set from outside
+        self.intent_k_rate = None       # driver's curvature rate (1/m/s) when attentive, else None; set from outside
         self._planner = None
         self._track_i = 0
         self._x_goal_v = 1.0
@@ -238,10 +240,16 @@ class DrivingAssists:
 
         if self.phase is None:
             easing = len(self._pwm_hist) >= 6 and pwm < 0.85 * max(self._pwm_hist[:-2])
-            d_drv = self._contact(pts, k_drv, look + 0.4, c.trigger_margin)   # a real contact course, not a near miss
+            if self.intent_k_rate is not None:       # intent-aware: an attentive driver's path keeps curving
+                from .geometry import contact_along_changing_curvature
+                d_drv = contact_along_changing_curvature(pts, k_drv, self.intent_k_rate, v, 1, self.p,
+                                                         horizon=look + 0.4, margin=c.trigger_margin)
+            else:
+                d_drv = self._contact(pts, k_drv, look + 0.4, c.trigger_margin)   # a real contact course
             ttc = d_drv / max(v, 1e-3)
             stuck = v < 0.05 and d_drv < 0.35             # held at an obstacle with the throttle on
-            if not stuck and (v < c.evade_min_v or easing or d_drv >= look or ttc > c.evade_ttc):
+            ttc_limit = c.evade_ttc if self.intent_k_rate is None else c.evade_ttc_attentive
+            if not stuck and (v < c.evade_min_v or easing or d_drv >= look or ttc > ttc_limit):
                 self._trigger_for = 0.0
                 return steer, None
             self._trigger_for += dt
@@ -266,6 +274,8 @@ class DrivingAssists:
         pts_s = self._to_start_frame(pts)
         if self._since_plan >= c.replan_period:
             self._since_plan = 0.0              # new scans: keep the plan if it is still clear, otherwise re-plan
+            if self.phase == "WAIT":
+                self._since_plan = -0.3             # searching again: every 0.6 s, not every 0.3 s
             if self.phase == "WAIT" or not self._path_still_clear(pts_s):
                 path = self._hastar_plan(pts_s, allow_reverse=False)
                 if path is None:

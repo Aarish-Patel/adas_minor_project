@@ -57,17 +57,27 @@ class HumanDriver:
     """Heads for the goal, steers round what it sees (ground truth) every 0.3 s, and has attention lapses:
     1-2 s where it keeps doing whatever it was doing (the hazards the ADAS exists for)."""
 
-    def __init__(self, world, goal, rng, params, k_curv, centre):
+    STEER_RATE = 90.0          # servo degrees per second: people move the stick smoothly, not in jumps
+
+    def __init__(self, world, goal, rng, params, k_curv, centre, style="lapsing"):
+        """style 'lapsing': looks well ahead but has attention lapses (the hazards the ADAS is for).
+        style 'late': never lapses, but only reacts to obstacles close in and then steers round them - correct
+        driving that a naive ADAS mistakes for a threat."""
         self.w, self.goal, self.p = world, goal, params
         self.k, self.c = k_curv, centre
+        self.style = style
         self.cruise = rng.uniform(120, 200)
+        self.look = 1.3 if style == "lapsing" else rng.uniform(0.7, 0.9)
+        self.turn_len = 0.6 if style == "lapsing" else 0.4          # a late driver steers more decisively
+        self.steer_rate = self.STEER_RATE if style == "lapsing" else 180.0
         self.lapses = []
         t = rng.exponential(5.0)
-        while t < T_MAX:
+        while style == "lapsing" and t < T_MAX:
             d = rng.uniform(1.0, 2.0)
             self.lapses.append((t, t + d))
             t += d + rng.exponential(5.0)
         self.servo, self.pwm, self.next_decide = centre, 0.0, 0.3
+        self.target = centre
         self.stuck_for, self.recover_until, self.recover_servo = 0.0, -1.0, centre
 
     def lapsed(self, t):
@@ -87,26 +97,42 @@ class HumanDriver:
             self.recover_servo = self.c                          # back straight away from what the nose is on
             self.next_decide = t + 1.3
             return self.recover_servo, 0.0
-        if t < self.next_decide or self.lapsed(t):
+        if self.lapsed(t):
             return self.servo, self.pwm
-        self.next_decide = t + 0.3
+        if t < self.next_decide:
+            return self._slew(), self.pwm
+        self.next_decide = t + 0.2
         x, y, th = pose
         gx, gy = self.goal
         best, best_cost = 0.0, 1e9
         for cand in np.radians(np.arange(-60, 61, 10)):
             h = th + cand
-            clear = min(self._ray(x, y, h), 1.5)
+            clear = min(self._ray(x, y, h), self.look + 0.3)
             want = math.atan2(gy - y, gx - x)
             err = abs((h - want + math.pi) % (2 * math.pi) - math.pi)
-            cost = err + 3.0 * max(0.0, 0.9 - clear)
+            cost = err + 3.0 * max(0.0, self.look - clear)
             if cost < best_cost:
                 best, best_cost = cand, cost
-        kappa_left = best / 0.6                                  # turn toward it over ~0.6 m
-        self.servo = float(np.clip(self.c - kappa_left / self.k, 50, 125))
+        kappa_left = best / self.turn_len                        # turn toward it
+        self.target = float(np.clip(self.c - kappa_left / self.k, 50, 125))
         self.pwm = self.cruise
-        return self.servo, self.pwm
+        return self._slew(), self.pwm
+
+    def _slew(self):
+        step = self.steer_rate * DT
+        self.servo += max(-step, min(step, self.target - self.servo))
+        return self.servo
+
+    def clone(self):
+        import copy
+        return copy.copy(self)
 
     def _ray(self, x, y, h):
+        """Free distance for the whole body width: three parallel rays (centre and both sides)."""
+        nx, ny = -math.sin(h), math.cos(h)
+        return min(self._ray1(x + o * nx, y + o * ny, h) for o in (-0.12, 0.0, 0.12))
+
+    def _ray1(self, x, y, h):
         best = 9.0
         dx, dy = math.cos(h), math.sin(h)
         for (x1, y1, x2, y2) in self.w.segments():
@@ -118,7 +144,28 @@ class HumanDriver:
             u = ((x1 - x) * dy - (y1 - y) * dx) / den
             if tt > 0 and 0 <= u <= 1:
                 best = min(best, tt)
-        return best - 0.1                                        # roughly: from the front of the car
+        return best - self.p.front_x                             # the ray starts at the rear axle
+
+
+def counterfactual_crash(car, driver, t0, horizon=2.0):
+    """Ground truth for "was this intervention needed?": fork the simulation now, let the SAME driver carry on
+    with no ADAS for `horizon` seconds (their own reactions, their own lapses), and see whether they crash."""
+    from sim.hw_sim import VirtualCar
+    c2 = VirtualCar(car.world, car.p, (car.x, car.y, car.th), car.reversed, threaded=False)
+    c2.v, c2.servo, c2.servo_cmd, c2.pwm = car.v, car.servo, car.servo_cmd, car.pwm
+    c2.queue, c2.clock, c2.last_cmd_t = list(car.queue), car.clock, car.last_cmd_t
+    d2 = driver.clone()
+    t = t0
+    while t < t0 + horizon:
+        x, y, th, v, *_ = c2.pose()
+        s, u = d2.command(t, (x, y, th), v)
+        c2.command(f"A {s:.1f} {s:.1f}", now=t)
+        c2.command(f"M {-int(u)}", now=t)
+        t += DT
+        c2.step_to(t)
+        if c2.crash_count:
+            return True
+    return False
 
 
 def would_hit(world, params, pose, v, servo, k, c, horizon=2.0, direction=1):
@@ -137,11 +184,11 @@ def would_hit(world, params, pose, v, servo, k, c, horizon=2.0, direction=1):
 
 # ------------------------------------------------------------------ one run
 def run(args):
-    seed, variant = args
+    seed, variant, style = args if len(args) == 3 else (*args, "lapsing")
     from adas.aeb import SpeedEstimator
     from adas.config import load_tuning
     from pi.path_gate import PathGate
-    from pi.relay_assists import K_CURV_PER_SERVO_DEG as K, RelayAssists
+    from pi.relay_assists import K_CURV_PER_SERVO_DEG as K, RelayAssists, driver_intent
     from sim.hw_sim import SimLidar, VirtualCar
 
     tun = load_tuning(os.path.join(HERE, "..", "pi", "tuning_real_car.json"))
@@ -153,7 +200,7 @@ def run(args):
     car = VirtualCar(world, p, (0.0, 0.0, 0.0), threaded=False)
     car.last_cmd_t = 0.0
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
-    driver = HumanDriver(world, goal, np.random.default_rng(seed + 1000), p, K, assist.centre)
+    driver = HumanDriver(world, goal, np.random.default_rng(seed + 1000), p, K, assist.centre, style)
     gate = PathGate(p, tun.speed_model)
     vest = SpeedEstimator(tun.speed_model)
     if variant != "off":
@@ -185,11 +232,12 @@ def run(args):
             seq += 1
             gate.on_scan(RelayAssists.points_vehicle_frame(pts, p.lidar_x), seq)
         d_servo, d_pwm = driver.command(t, (x, y, th), v)
-        servo_hist = (servo_hist + [d_servo])[-7:]
+        servo_hist = (servo_hist + [d_servo])[-25:]
         lines = [f"A {d_servo:.1f} {d_servo:.1f}", f"M {-int(d_pwm)}"]
         servo_out, phys = d_servo, d_pwm
         intervening = False
         if variant != "off":
+            assist.assists.intent_k_rate = driver_intent(servo_hist, DT, assist.centre) if variant == "adas+intent" else None
             out = assist.process(lines, pts, seq, now=t)
             for ln in out:
                 q = ln.split()
@@ -198,11 +246,8 @@ def run(args):
                 elif q[0] == "M":
                     phys = -float(q[1])
             delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
-            d_int = None
-            if variant == "adas+intent" and len(servo_hist) >= 7:
-                rate = (servo_hist[-1] - servo_hist[0]) / (DT * 6)
-                d_int = math.atan(-K * (servo_out + rate * 0.4 - assist.centre) * p.wheelbase)
-            g_phys, _ = gate.decide(DT, phys, delta, vest.v, 0.0, d_int)
+            k_rate = driver_intent(servo_hist, DT, assist.centre) if variant == "adas+intent" else None
+            g_phys, _ = gate.decide(DT, phys, delta, vest.v, 0.0, k_rate)
             kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
                                                                  ("steer" if abs(servo_out - d_servo) > 1.0 else None))
             intervening = kind is not None
@@ -212,7 +257,7 @@ def run(args):
         vest.update(DT, phys)
         if intervening and not was_intervening:
             interventions += 1
-            if not would_hit(world, p, (x, y, th), v, d_servo, K, assist.centre, direction=1 if d_pwm >= 0 else -1):
+            if not counterfactual_crash(car, driver, t):
                 fp += 1
                 events.append((x, y, "fp", kind))
             else:
@@ -226,29 +271,35 @@ def run(args):
         trace.append((round(x, 3), round(y, 3)))
     x, y, th, v, *_ = car.pose()
     crashed = car.crash_count > 0
-    return {"seed": seed, "variant": variant, "crashed": crashed, "reached": reached, "min_clear": float(min_clear),
+    return {"seed": seed, "variant": variant, "style": style, "crashed": crashed, "reached": reached, "min_clear": float(min_clear),
             "interventions": interventions, "false_positives": fp, "lapses": len(driver.lapses),
             "trace": trace, "events": events, "goal": goal}
 
 
 def main(runs=24):
-    jobs = [(s, v) for s in range(runs) for v in VARIANTS]
+    jobs = [(sd, v, st) for sd in range(runs) for v in VARIANTS for st in ("lapsing", "late")]
     with ProcessPoolExecutor() as ex:
         res = list(ex.map(run, jobs, chunksize=1))
     summ = {}
-    for v in VARIANTS:
-        r = [x for x in res if x["variant"] == v]
-        n = len(r)
-        summ[v] = {"runs": n, "crashes": sum(x["crashed"] for x in r), "reached_goal": sum(x["reached"] is not None for x in r),
-                   "interventions": sum(x["interventions"] for x in r), "false_positives": sum(x["false_positives"] for x in r),
-                   "median_time_to_goal_s": float(np.median([x["reached"] for x in r if x["reached"]] or [np.nan])),
-                   "min_clearance_cm": float(min(x["min_clear"] for x in r) * 100)}
-    for v, s in summ.items():
-        print(f"{v:12s} crashes {s['crashes']:2d}/{s['runs']}  goal {s['reached_goal']:2d}  interventions {s['interventions']:3d}  "
-              f"false positives {s['false_positives']:3d}  median time {s['median_time_to_goal_s']:.1f} s  min clearance {s['min_clearance_cm']:.0f} cm")
+    for st in ("lapsing", "late", "all"):
+        for v in VARIANTS:
+            r = [x for x in res if x["variant"] == v and (st == "all" or x["style"] == st)]
+            summ[f"{st}/{v}"] = {"runs": len(r), "crashes": sum(x["crashed"] for x in r),
+                                 "reached_goal": sum(x["reached"] is not None for x in r),
+                                 "interventions": sum(x["interventions"] for x in r),
+                                 "needless": sum(x["false_positives"] for x in r),
+                                 "needless_takeovers": sum(1 for x in r for e in x["events"] if e[2] == "fp" and e[3] in ("evasive", "steer")),
+                                 "needless_brakes": sum(1 for x in r for e in x["events"] if e[2] == "fp" and str(e[3]).startswith("gate:") and "limited" not in str(e[3])),
+                                 "needless_limits": sum(1 for x in r for e in x["events"] if e[2] == "fp" and e[3] == "gate:limited"),
+                                 "median_time_s": float(np.median([x["reached"] for x in r if x["reached"]] or [np.nan])),
+                                 "min_clearance_cm": float(min(x["min_clear"] for x in r) * 100)}
+    print(f"{'driver / system':24s} crashes  goal  interv.  needless: takeover brake limit   median time")
+    for k, s_ in summ.items():
+        print(f"{k:24s} {s_['crashes']:3d}/{s_['runs']:<3d} {s_['reached_goal']:4d}  {s_['interventions']:7d}  "
+              f"{s_['needless_takeovers']:17d} {s_['needless_brakes']:5d} {s_['needless_limits']:5d}   {s_['median_time_s']:6.1f} s")
     json.dump({"summary": summ, "runs": [{k: v for k, v in x.items() if k != "trace"} for x in res]},
               open(os.path.join(HERE, "..", "models", "relay_mc.json"), "w"), indent=1, default=str)
-    figure(res, summ)
+    figure([x for x in res if x["style"] == "lapsing"], {v: summ[f"all/{v}"] for v in VARIANTS})
     return summ
 
 
@@ -264,7 +315,7 @@ def figure(res, summ, panels=12):
         for x1, y1, x2, y2 in world.segments():
             ax.plot([x1, x2], [y1, y2], color="#94a3b8", lw=1)
         for v in VARIANTS:
-            r = next(x for x in res if x["seed"] == s and x["variant"] == v)
+            r = next(x for x in res if x["seed"] == s and x["variant"] == v and x.get("style", "lapsing") == "lapsing")
             tr = np.array(r["trace"]) if r["trace"] else np.zeros((1, 2))
             ax.plot(tr[:, 0], tr[:, 1], color=cols[v], lw=1.6 if v != "off" else 1.0)
             if r["crashed"]:
@@ -275,7 +326,7 @@ def figure(res, summ, panels=12):
     names = list(VARIANTS)
     ax.bar(names, [summ[v]["crashes"] for v in names], color=[cols[v] for v in names]); ax.set_title("crashes")
     ax = fig.add_subplot(3, 5, 15)
-    ax.bar(names, [summ[v]["false_positives"] for v in names], color=[cols[v] for v in names]); ax.set_title("needless interventions")
+    ax.bar(names, [summ[v]["needless"] for v in names], color=[cols[v] for v in names]); ax.set_title("needless interventions (counterfactual)")
     fig.suptitle("Monte Carlo on the car's own decision code (digital twin): red = no ADAS, blue = ADAS, "
                  "teal = ADAS + driver intent;  x = crash, * = goal", y=0.995)
     fig.tight_layout()

@@ -16,12 +16,12 @@ import math
 
 import numpy as np
 
-from adas.geometry import travel_distance_to_contact
+from adas.geometry import contact_along_changing_curvature, travel_distance_to_contact
 from adas.memory import ObstacleMemory
 
 INTENT_MIN_DELTA = 0.03    # rad: the steering trend must be meaningful
-INTENT_FLOOR_M = 0.25      # m: below this free distance only the current path counts
-INTENT_MAX_GAIN_M = 0.6    # m: the prediction can add at most this much free distance
+INTENT_FLOOR_M = 0.12      # m: below this free distance only the current path counts
+INTENT_MAX_GAIN_M = 1.2    # m: the prediction can add at most this much free distance
 FOS = 1.3                  # the stopping distance must fit into the free distance 1.3 times over
 BODY_MARGIN_M = 0.03       # extra clearance around the whole body
 BASE_M = 0.05              # standoff kept at walking pace (bumper to obstacle)
@@ -156,7 +156,7 @@ class PathGate:
         a, r = DECEL, REACTION_S
         return -a * r + math.sqrt((a * r) ** 2 + 2 * a * room)
 
-    def decide(self, dt, physical, delta, v_est, closing=0.0, delta_intent=None):
+    def decide(self, dt, physical, delta, v_est, closing=0.0, intent_k_rate=None):
         """physical: the throttle to be sent (+ forward). delta: commanded steering angle (rad). v_est: speed
         estimate (+ forward), closing: LiDAR-measured closing speed toward what is ahead in the travel direction.
         Returns (physical to send, braking?)."""
@@ -167,13 +167,19 @@ class PathGate:
             return 0, False
         direction = 1 if physical > 0 else -1
         free, n_blind = self.free_distance(delta, direction)
-        # intent-aware: the driver's steering trend says where they will be steering shortly. If THAT path is
-        # clear, a clip of the current arc is not treated as a threat (fewer needless interventions) - except at
-        # close range, where only the current path counts.
-        if delta_intent is not None and abs(delta_intent - delta) > INTENT_MIN_DELTA and free > INTENT_FLOOR_M:
-            free_i, _ = self.free_distance(delta_intent, direction, slop=False)
+        # intent-aware (only for an ATTENTIVE driver - intent_k_rate is None when the stick shows no recent
+        # activity, i.e. a lapse): predict the path with the curvature changing at the driver's current steering
+        # rate. A driver already steering away from the obstacle is predicted to miss it, so a clip of the frozen
+        # current arc is not treated as a threat. Close in, only the current path counts.
+        if intent_k_rate is not None and free > INTENT_FLOOR_M:
+            blind = self.memory.blind_points()
+            pts = np.vstack([self.pts, blind]) if len(blind) else self.pts
+            pts = self._drop_receding(pts, delta, direction)
+            k0 = math.tan(delta) / self.p.wheelbase
+            free_i = contact_along_changing_curvature(pts, k0, intent_k_rate, v_est, direction, self.p,
+                                                      horizon=HORIZON_M, margin=BODY_MARGIN_M)
             if free_i > free:
-                self.info["intent"] = f"driver steering away - using the predicted path ({free_i:.2f} m free)"
+                self.info["intent"] = f"driver is steering away - predicted path free {min(free_i, 9):.2f} m"
                 free = min(free_i, free + INTENT_MAX_GAIN_M)
         v = max(abs(v_est) if v_est * direction > 0 else 0.0, closing)
         v_ok = self.allowed_speed(free)

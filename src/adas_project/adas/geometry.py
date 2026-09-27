@@ -35,6 +35,31 @@ def _corridor_filter(pts, delta, direction, p, horizon, margin):
     return pts[keep]
 
 
+def contact_along_changing_curvature(points, k0, k_rate, v, direction, p, horizon=1.6, step=0.02, margin=0.02,
+                                     kappa_max=1.6):
+    """Like travel_distance_to_contact, but the curvature keeps changing at the driver's current steering rate:
+    kappa(t) = k0 + k_rate * t (clamped), t = s / v. This is the intent-aware prediction of where an ATTENTIVE
+    driver is going (a driver already steering away from an obstacle is predicted to miss it)."""
+    if len(points) == 0:
+        return np.inf
+    v = max(abs(v), 0.15)
+    n = int(horizon / step)
+    s = np.arange(1, n + 1) * step
+    kap = np.clip(k0 + k_rate * (s / v), -kappa_max, kappa_max)
+    th = np.cumsum(kap * step) * direction
+    x = np.cumsum(np.cos(th) * step) * direction
+    y = np.cumsum(np.sin(th) * step) * direction
+    pts = points[np.hypot(points[:, 0], points[:, 1]) < horizon + p.front_x + margin + 0.2]
+    if len(pts) == 0:
+        return np.inf
+    c, sn = np.cos(th)[:, None], np.sin(th)[:, None]
+    dx, dy = pts[None, :, 0] - x[:, None], pts[None, :, 1] - y[:, None]
+    lx, ly = c * dx + sn * dy, -sn * dx + c * dy
+    inside = (lx >= p.rear_x - margin) & (lx <= p.front_x + margin) & (np.abs(ly) <= p.width / 2 + margin)
+    hit = np.flatnonzero(inside.any(axis=1))
+    return float(s[hit[0]]) if len(hit) else np.inf
+
+
 def travel_distance_to_contact(points, delta, direction, p, horizon=2.0, step=0.02, margin=0.02):
     """How far the car can travel along its current steering arc before touching a point.
 
