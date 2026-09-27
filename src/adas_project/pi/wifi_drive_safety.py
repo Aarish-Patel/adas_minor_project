@@ -476,6 +476,8 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
             "follow_enabled": bool(follow_enabled), "follow_lead": follow_lead,
             "assist": GUI_STATE["data"].get("assist"),        # kept: set separately by the assist code
             "gate": GUI_STATE["data"].get("gate"),
+            "sim": GUI_STATE["data"].get("sim"),              # ground truth, only when run in the laptop simulator
+            "plan": GUI_STATE["data"].get("plan"),
         }
 
 
@@ -509,6 +511,9 @@ def gui_update_distances(front_track, rear_track, body_min_front, body_min_rear)
         GUI_STATE["data"]["body_min_rear"] = body_min_rear
 
 
+EXTRA_POST = {}     # path -> callable; filled by tools/sim_car.py (simulator reset), empty on the car
+
+
 def start_gui_server(clr):
     import http.server
     import json as _json
@@ -536,6 +541,15 @@ def start_gui_server(clr):
                 self.end_headers()
 
         def do_POST(self):
+            if self.path in EXTRA_POST:                       # e.g. the laptop simulator's reset button
+                EXTRA_POST[self.path]()
+                body = b'{"ok": true}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
             routes = {"/api/override/on": b"ADAS_OVERRIDE_ON", "/api/override/off": b"ADAS_OVERRIDE_OFF",
                       "/api/follow/on": b"FOLLOW_ON", "/api/follow/off": b"FOLLOW_OFF"}
             cmd = routes.get(self.path)
@@ -657,6 +671,8 @@ def main():
         while True:
             try:
                 data, addr = sock.recvfrom(256)
+            except ConnectionResetError:
+                continue      # Windows only (laptop simulator): a reply went to a sender that already closed
             except socket.timeout:
                 # dead-man: the driver link is quiet. Keep the last command alive for 0.5 s (the ESP32's own
                 # 500 ms timeout would otherwise cut the motor instantly), then ramp the throttle down smoothly.
@@ -732,7 +748,8 @@ def main():
             # the last word on the throttle
             driver_text = text
             if not adas_override:
-                text = "\n".join(assist.process([ln.strip() for ln in text.splitlines() if ln.strip()], clr.read_points()))
+                _apts, _aseq = clr.read_points_seq()
+                text = "\n".join(assist.process([ln.strip() for ln in text.splitlines() if ln.strip()], _apts, _aseq))
                 if assist.assists.evading:
                     # the fixed straight-ahead cone would keep braking for an obstacle the car is steering
                     # around; the evasive planner has checked its own path (full body sweep + margin), so the
@@ -887,11 +904,23 @@ def main():
             clr.set_motion_state(final_physical, last_steer_offset)
             esp.write(("\n".join(out_lines) + "\n").encode())
             last_physical = float(final_physical)
+            # GUI: where the body is heading at the driver's stick/throttle (X = first contact), plus any planned
+            # manoeuvre and the original line it returns to
+            phys_cmd = -pwm_commanded if WIRE_MOTOR_REVERSED else pwm_commanded
+            plan = pgate.overlay(gate_delta, (phys_cmd > 0) - (phys_cmd < 0), vest.v,
+                                 TUNING.speed_model.speed(phys_cmd)) if phys_cmd else None
+            prev = assist.assists.preview() if assist.assists.evading else None
+            if prev is not None:
+                plan = plan or {}
+                to_polar = lambda xy: [[round(float(-math.degrees(math.atan2(y, x - assist.p.lidar_x))), 1),
+                                        round(float(math.hypot(x - assist.p.lidar_x, y)), 3)] for x, y in xy]
+                plan["maneuver"], plan["line"] = to_polar(prev[0]), to_polar(prev[1])
             vest.update(dt_pkt, final_physical)
             with GUI_STATE["lock"]:
                 GUI_STATE["data"]["assist"] = {"level": assist.level, "info": assist.info, "enabled": assist.enabled(),
                                                "changed": assist.changed}
                 GUI_STATE["data"]["gate"] = gate_info
+                GUI_STATE["data"]["plan"] = plan
             # what the driver asked for vs what the ADAS let through - the raw material for intent learning
             dlog.driver(inp=driver_text.strip(), assisted=text.strip() if assist.changed else None,
                         assist_level=assist.level, assist_info=assist.info or None,

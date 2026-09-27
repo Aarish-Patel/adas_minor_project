@@ -31,6 +31,8 @@ CREEP_MIN_M = 0.06
 BRAKE_OVER_V = 0.15        # brake actively only when this much faster than allowed
 BRAKE_GAIN = 300.0         # PWM per m/s over
 BRAKE_PWM_MAX = 140
+BRAKE_MAX_S = 0.3          # s of active braking per event (never enough to drive the car backwards)
+LATCH_RELEASE_M = 0.08     # the hold after braking lets go once the free distance grows this much
 
 
 class PathGate:
@@ -41,6 +43,8 @@ class PathGate:
         self.pts = np.empty((0, 2))
         self.seq = None
         self.info = {}
+        self.latch = None          # (direction, free distance) while holding after a brake
+        self.brake_t = 0.0
 
     def on_scan(self, pts_vehicle, seq):
         """New LiDAR scan (vehicle frame: x forward from the rear axle, y left)."""
@@ -66,6 +70,48 @@ class PathGate:
             best = min(best, d)
         return best, len(blind)
 
+    def overlay(self, delta, direction, v, v_cmd, horizon_s=2.5):
+        """What the GUI draws: the path the body will follow at the current stick and throttle (the front of the
+        car, and the two front corners = the swept width), and where it would first touch something (X), with
+        distance and time to contact. All in the GUI's polar form (angle clockwise from ahead, distance from
+        the LiDAR)."""
+        if direction == 0:
+            return None
+        blind = self.memory.blind_points()
+        pts = np.vstack([self.pts, blind]) if len(blind) else self.pts
+        hit = travel_distance_to_contact(pts, delta, direction, self.p, horizon=HORIZON_M, margin=0.0) \
+            if len(pts) else math.inf
+        speed = max(abs(v), abs(v_cmd), 0.12)
+        length = min(HORIZON_M, speed * horizon_s)
+        end = min(length, hit) if math.isfinite(hit) else length
+        k = math.tan(delta) / self.p.wheelbase
+        s = direction * np.linspace(0.0, max(end, 0.02), 30)
+        if abs(k) < 1e-6:
+            px, py, psi = s, np.zeros_like(s), np.zeros_like(s)
+        else:
+            psi = k * s
+            px, py = np.sin(psi) / k, (1 - np.cos(psi)) / k
+        tip = self.p.front_x if direction > 0 else self.p.rear_x
+        hw = self.p.width / 2
+        c, sn = np.cos(psi), np.sin(psi)
+
+        def polar(xs, ys):
+            dx, dy = xs - self.p.lidar_x, ys - self.p.lidar_y
+            return [[round(float(-math.degrees(math.atan2(b, a))), 1), round(float(math.hypot(a, b)), 3)]
+                    for a, b in zip(dx, dy)]
+        centre = polar(px + c * tip, py + sn * tip)
+        left = polar(px + c * tip - sn * hw, py + sn * tip + c * hw)
+        right = polar(px + c * tip + sn * hw, py + sn * tip - c * hw)
+        out = {"pred": centre, "left": left, "right": right, "hit": None, "hit_m": None, "ttc": None,
+               "state": self.info.get("action") and ("limited" if self.info["action"] == "limited" else "collision")
+               or "clear"}
+        if math.isfinite(hit) and hit <= length:
+            out["hit"], out["hit_m"] = centre[-1], round(hit, 2)
+            out["ttc"] = round(hit / speed, 1)
+            out["state"] = "collision" if hit < max(0.3, speed * 1.5) else (
+                "limited" if out["state"] == "clear" else out["state"])
+        return out
+
     @staticmethod
     def allowed_speed(free):
         """Largest v with FOS * (BASE + v*REACTION + v^2/2a) <= free."""
@@ -82,6 +128,7 @@ class PathGate:
         self.memory.advance(dt, v_est, delta)
         self.info = {}
         if physical == 0:
+            self.latch = None                     # the driver let go: the hold is released
             return 0, False
         direction = 1 if physical > 0 else -1
         free, n_blind = self.free_distance(delta, direction)
@@ -93,7 +140,22 @@ class PathGate:
             v_ok = 0.0
         self.info = {"free_m": round(free, 3) if math.isfinite(free) else None, "v_allowed": round(v_ok, 2),
                      "blind_pts": n_blind}
+        # latch: after braking for an obstacle, hold the throttle at zero toward it (no brake/throttle/brake
+        # stutter) until the driver lets go or reverses, or the free distance has clearly grown again
+        if self.latch is not None:
+            l_dir, l_free = self.latch
+            if l_dir != direction or free > l_free + LATCH_RELEASE_M:
+                self.latch = None
+            else:
+                self.brake_t += dt
+                if self.brake_t < BRAKE_MAX_S and v > v_ok + BRAKE_OVER_V:
+                    self.info["action"] = "braking"
+                    return -direction * int(min(BRAKE_PWM_MAX, BRAKE_GAIN * (v - v_ok))), True
+                self.info["action"] = "holding (stopped for an obstacle - release the throttle)"
+                return 0, False
         if v > v_ok + BRAKE_OVER_V and free < HORIZON_M:
+            self.latch = (direction, free)
+            self.brake_t = 0.0
             pulse = min(BRAKE_PWM_MAX, BRAKE_GAIN * (v - v_ok))
             self.info["action"] = "braking"
             return -direction * int(pulse), True

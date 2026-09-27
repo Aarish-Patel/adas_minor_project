@@ -76,6 +76,8 @@
     <button class="aBtn" data-a="proximity">Side/rear alerts</button>
     <button class="aBtn" data-a="all" data-all="on">All on</button>
     <button class="aBtn" data-a="all" data-all="off">All off</button>
+    <span id="simBar" style="display:none;margin-left:auto;font-size:12px;color:#94a3b8">SIMULATOR <b id="simWorld"></b>
+      &nbsp;crashes <b id="simCrashes">0</b>&nbsp; <button class="aBtn" id="simReset">RESET CAR</button></span>
   </div>
   <div id="canvasWrap">
     <canvas id="c"></canvas>
@@ -95,7 +97,8 @@ window.addEventListener('resize', resize);
 resize();
 
 const MAX_RANGE_M = 3.0;   // outer ring of the view
-const CAR_LEN_M = 0.20, CAR_WID_M = 0.14;   // wheelbase/width, for drawing the car outline
+const CAR_LEN_M = 0.20, CAR_WID_M = 0.14;   // (legacy)
+const BODY_FRONT_M = 0.16, BODY_REAR_M = 0.17, BODY_HALF_W_M = 0.10;   // measured from the LiDAR
 
 function draw(data) {
   const w = canvas.width, h = canvas.height;
@@ -135,6 +138,18 @@ function draw(data) {
   cone(0, 25, data.front_blocked);
   cone(180, 25, data.rear_blocked);
 
+  const P = (a, d) => { const r = (a - 90) * Math.PI / 180; return [cx + Math.cos(r) * d * scale, cy + Math.sin(r) * d * scale]; };
+  function poly(pts, color, width, dash) {
+    if (!pts || pts.length < 2) return;
+    ctx.beginPath();
+    pts.forEach(([a, d], i) => { const [x, y] = P(a, d); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.strokeStyle = color; ctx.lineWidth = width * devicePixelRatio;
+    ctx.setLineDash(dash ? dash.map(v => v * devicePixelRatio) : []);
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  // simulator only: the true walls, under the scan
+  if (data.sim) for (const wpts of (data.sim.walls || [])) poly(wpts, '#475569', 3);
+
   // LiDAR points - bearing 0 = up (car's front), car-frame angle convention matches the relay
   ctx.fillStyle = '#60a5fa';
   for (const [angleDeg, distM] of (data.points || [])) {
@@ -164,22 +179,48 @@ function draw(data) {
     }
   }
 
-  // car outline (rectangle, front pointing up)
-  const carPxLen = CAR_LEN_M * scale, carPxWid = CAR_WID_M * scale;
+  // predicted path (where the body will go at the current stick/throttle) and any planned manoeuvre
+  const plan = data.plan;
+  if (plan) {
+    if (plan.line) poly(plan.line, '#94a3b8', 1.5, [6, 6]);                 // the original line
+    if (plan.maneuver) poly(plan.maneuver, '#22d3ee', 3);                   // the planned manoeuvre
+    const col = plan.state === 'collision' ? '#f87171' : plan.state === 'limited' ? '#facc15' : '#34d399';
+    if (plan.left) poly(plan.left, col, 1.5, [3, 4]);                       // the swept body edges
+    if (plan.right) poly(plan.right, col, 1.5, [3, 4]);
+    if (plan.pred) poly(plan.pred, col, 2.5);
+    if (plan.hit) {                                                          // where the body would touch: X
+      const [x, y] = P(plan.hit[0], plan.hit[1]), k = 9 * devicePixelRatio;
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 4 * devicePixelRatio;
+      ctx.beginPath(); ctx.moveTo(x - k, y - k); ctx.lineTo(x + k, y + k); ctx.moveTo(x + k, y - k); ctx.lineTo(x - k, y + k); ctx.stroke();
+      if (plan.ttc != null) {
+        ctx.fillStyle = '#fecaca'; ctx.font = `bold ${12 * devicePixelRatio}px sans-serif`;
+        ctx.fillText(`${plan.hit_m.toFixed(2)} m  /  ${plan.ttc.toFixed(1)} s`, x + k + 4, y + 4);
+      }
+    }
+  }
+
+  // car outline: the measured body around the LiDAR (front 16 cm, rear 17 cm, 20 cm wide), front pointing up
   ctx.save();
   ctx.translate(cx, cy);
   const steerAvg = ((data.steer_a1 ?? 90) + (data.steer_a2 ?? 90)) / 2 - 90;
-  ctx.fillStyle = (data.body_alert_front || data.body_alert_rear) ? '#f87171' : '#e5ecff';
-  ctx.fillRect(-carPxWid / 2, -carPxLen / 2, carPxWid, carPxLen);
+  const crashed = data.sim && data.sim.crashed;
+  ctx.fillStyle = crashed ? '#ef4444' : (data.body_alert_front || data.body_alert_rear) ? '#f87171' : '#e5ecff';
+  ctx.globalAlpha = 0.85;
+  ctx.fillRect(-BODY_HALF_W_M * scale, -BODY_FRONT_M * scale, 2 * BODY_HALF_W_M * scale, (BODY_FRONT_M + BODY_REAR_M) * scale);
+  ctx.globalAlpha = 1;
   // steering indicator line from the front
   ctx.strokeStyle = '#facc15';
   ctx.lineWidth = 2 * devicePixelRatio;
   ctx.beginPath();
-  ctx.moveTo(0, -carPxLen / 2);
+  ctx.moveTo(0, -BODY_FRONT_M * scale);
   const steerRad = steerAvg * Math.PI / 180 * 0.6;
-  ctx.lineTo(Math.sin(steerRad) * 18 * devicePixelRatio, -carPxLen / 2 - Math.cos(steerRad) * 18 * devicePixelRatio);
+  ctx.lineTo(Math.sin(steerRad) * 18 * devicePixelRatio, -BODY_FRONT_M * scale - Math.cos(steerRad) * 18 * devicePixelRatio);
   ctx.stroke();
   ctx.restore();
+  if (crashed) {
+    ctx.fillStyle = '#ef4444'; ctx.font = `bold ${26 * devicePixelRatio}px sans-serif`;
+    ctx.fillText('CRASH', cx - 45 * devicePixelRatio, cy + 60 * devicePixelRatio);
+  }
 }
 
 function fmt(v, unit) { return (v === null || v === undefined) ? '--' : v.toFixed(2) + (unit || ''); }
@@ -243,6 +284,15 @@ document.querySelectorAll('.aBtn').forEach(b => b.addEventListener('click', asyn
   const on = name === 'all' ? b.dataset.all === 'on' : !assistEnabled[name];
   try { await fetch(`/api/assist/${name}/${on ? 'on' : 'off'}`, { method: 'POST' }); } catch (e) {}
 }));
+document.getElementById('simReset').addEventListener('click', () => fetch('/api/sim/reset', { method: 'POST' }));
+function applySim(data) {
+  const bar = document.getElementById('simBar');
+  bar.style.display = data.sim ? 'inline' : 'none';
+  if (data.sim) {
+    document.getElementById('simWorld').textContent = data.sim.world || '';
+    document.getElementById('simCrashes').textContent = data.sim.crashes || 0;
+  }
+}
 function applyAssists(data) {
   const a = data.assist || {};
   assistEnabled = a.enabled || {};
@@ -298,6 +348,7 @@ async function poll() {
     } else { tp.classList.remove('show'); }
     applyMode(data);
     applyAssists(data);
+    applySim(data);
 
     draw(data);
   } catch (e) {

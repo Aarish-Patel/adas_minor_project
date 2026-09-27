@@ -357,7 +357,10 @@ def drive():
 
 
 def main():
+    global ESP32_IP
     args = sys.argv[1:]
+    if "--ip" in args:                      # e.g. --ip 127.0.0.1 to drive the laptop simulator (tools/sim_car.py)
+        ESP32_IP = args[args.index("--ip") + 1]
 
     if "--table" in args:
         print_table()

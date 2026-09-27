@@ -16,6 +16,7 @@ import numpy as np
 from adas.aeb import SpeedEstimator
 from adas.assists import DrivingAssists
 from adas.vehicle_params import VehicleParams, delta_to_steer, steer_to_delta
+from pi.scanmatch import Odometry, polar_to_xy
 
 K_CURV_PER_SERVO_DEG = 0.0656      # fitted from the logging drive (sim/fitted_car.json)
 SERVO_TRAVEL = (57.0, 53.0)        # degrees right / left of centre the servo can move
@@ -44,6 +45,8 @@ class RelayAssists:
         self.last_t = None
         self.last_servo = self.centre
         self.info, self.level, self.changed = {}, 0, False
+        self.odo = None                # scan-matching odometry, only while a manoeuvre runs
+        self._odo_seq = None
 
     def enabled(self):
         return {k: bool(v) for k, v in self.assists.enabled.items()}
@@ -73,7 +76,26 @@ class RelayAssists:
         d = np.array([p[1] for p in points])
         return np.column_stack([lidar_x + d * np.cos(a), -d * np.sin(a)])
 
-    def process(self, lines, points):
+    def _odometry(self, points, seq, stick):
+        """While a manoeuvre runs, track the car by matching each LiDAR scan against the one taken when it began
+        (pi/scanmatch.py - ~1 cm on the car in the obstacle-avoidance demo) and hand the pose to the assist."""
+        a = self.assists
+        if not a.evading:
+            self.odo = None
+            return
+        if seq is None or seq == self._odo_seq or not points:
+            return
+        self._odo_seq = seq
+        xy = polar_to_xy(points)                  # car angle clockwise-positive -> pi frame (y right)
+        kappa_right = -math.tan(steer_to_delta(stick, self.p)) / self.p.wheelbase
+        if self.odo is None:
+            self.odo = Odometry()
+        pose = self.odo.update(xy, time.time(), self.est.v, kappa_right)
+        xl, yl, thl = float(pose[0]), -float(pose[1]), -float(pose[2])       # LiDAR pose, y left
+        lx = self.p.lidar_x
+        a.pose_fix = (xl - lx * math.cos(thl) + lx, yl - lx * math.sin(thl), thl)   # rear axle, start frame
+
+    def process(self, lines, points, seq=None):
         """lines: the driver's packet lines. Returns the lines to hand on to the safety gate."""
         now = time.time()
         dt = 0.05 if self.last_t is None else min(0.2, max(0.005, now - self.last_t))
@@ -99,7 +121,9 @@ class RelayAssists:
             self.info, self.level = {}, 0
             return lines
         pts = self.points_vehicle_frame(points, self.p.lidar_x)
+        self._odometry(points, seq, stick)
         s_out, p_out, self.level = self.assists.update(dt, pts, stick, physical, self.est.v)
+        self._odometry(points, seq, stick)     # a manoeuvre that just began: this scan is its reference
         self.info = dict(self.assists.info)
         out = list(lines)
         if abs(s_out - stick) > 1e-3:
