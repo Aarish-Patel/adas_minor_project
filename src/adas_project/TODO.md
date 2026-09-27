@@ -1,55 +1,73 @@
-# Remaining tasks (as of 2026-09-28)
+# Task list
 
-## Blocking the next car session
-1. **Deploy to the Pi.** The Pi still runs the version whose obstacle memory created a phantom wall and blocked
-   forward driving. Deploy `adas/` and `pi/` (commits since `32fdb5a`: memory pruning, brake latch, lattice
-   evasive planner, scan-matching odometry, predicted-path overlay, GUI), restart `rc-relay`, and check a forward
-   drive before anything else.
+Every task, asked for or noticed, is written here first and checked off when done. Unfinished work keeps its
+current state in the note. Algorithm choices and paper citations are in `RESEARCH.md`.
 
-## In progress (uncommitted)
-2. **Physics-informed ML car model** (`adas/car_model.py`, `sim/car_model_eval.py`). First version was worse than
-   the plain fit on held-out legs (15-19 cm vs 5.7 cm, 3 s open loop). Rewritten (motor ODE fitted by output error,
-   smooth ML corrections on the steady-speed curve and servo linkage) but NOT re-run. Next: run
-   `python -m sim.car_model_eval`, compare, commit only if it beats the plain fit.
-3. **Use the model everywhere** once it is good: relay speed estimate, the gate's speed caps (`pwm_for_speed`),
-   curvature from servo for prediction/planning, and the simulator's virtual car (`sim/hw_sim.py`).
-4. **Start-of-drive calibration run**: turn the panel's Logging drive into "calibration drive": drive the legs,
-   fit the model on the Pi, save `pi/car_model.json`, show the fit on the GUI. (Runs only when the user asks.)
+## A. Blocking the next car session
+- [ ] A1. **Deploy to the Pi.** The Pi still runs the version whose obstacle memory made a phantom wall and blocked
+  forward driving. Deploy `adas/` and `pi/`, restart `rc-relay`, check a forward drive first.
 
-## Known issues to fix
-5. Evasive steer triggers too late for wide obstacles (40 cm box -> brakes instead of swerving). Plan earlier when
-   the needed offset is large.
-6. Brief throttle cut mid-manoeuvre in the doorway run (t = 3.6 s) - find the cause in the sim log.
-7. GUI "connection lost" flicker while the planner runs (planner on the relay thread starves the GUI server).
-8. Relay speed model (hand-measured 0.896 m/s / 48.5 PWM) disagrees with the logs -> speed-cap overshoot. Fixed
-   by task 3.
-9. Corridor centring, limiter, narrow gap and side/rear alerts not re-checked since the path gate replaced the
-   cone gate.
-10. `pi/path_predict.py` `VP` still has the old body (14 cm wide); anything still using it should use
-    `pi/relay_assists.car_params`.
+## B. Safety and planning (the car must be impossible to crash, with minimal false interruptions)
+- [ ] B1. **Research** planning/safety algorithms and pick them (RESEARCH.md): Hybrid A* for the evasive path,
+  a minimally-invasive safety filter (control barrier functions) for braking/steering corrections, fallback
+  manoeuvres.
+- [ ] B2. **Evasive steer gets stuck in the doorway scenario, especially at full throttle** (user report). Replace the
+  offset lattice with a Hybrid A* (or equivalent researched) planner over the LiDAR occupancy grid, aimed at the
+  driver's desired path; re-plan quickly when execution gets stuck; speed limited to what the plan can do.
+- [ ] B3. Wide obstacles trigger too late (40 cm box -> brakes instead of swerving). Plan earlier when the needed
+  offset is large. (Likely solved by B2.)
+- [ ] B4. Brief throttle cut mid-manoeuvre in the doorway run (t = 3.6 s): find the cause in the sim log.
+- [ ] B5. Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
+  real logs) and tune down.
+- [ ] B6. Corridor centring, limiter, narrow gap and side/rear alerts not re-checked since the path gate replaced the
+  cone gate.
+- [ ] B7. `pi/path_predict.py` `VP` still has the old body (14 cm wide): switch users to `pi/relay_assists.car_params`.
 
-## Verification the user asked for
-11. User drives the laptop simulator (`python tools/sim_car.py --world doorway`, then
-    `python rc_controller.py --ip 127.0.0.1`, GUI http://localhost:8090/) and reports issues; fix from the sim
-    logs in `logs/sim/`.
-12. Then the same on the real car, with its drive logs.
+## C. Localisation and car model
+- [ ] C1. **Research accurate 2D LiDAR odometry** (linear and angular velocity from the LiDAR is poor now):
+  range-flow / ICP variants, filter fusion with the commands (RESEARCH.md), then implement and measure on logs.
+- [ ] C2. Physics-informed ML car model (`adas/car_model.py`, `sim/car_model_eval.py`, uncommitted). First version lost
+  to the plain fit (15-19 cm vs 5.7 cm). Rewritten, NOT re-run. Commit only if it beats the plain fit.
+- [ ] C3. Use the model everywhere: relay speed estimate, gate speed caps, curvature for prediction/planning,
+  the simulator's virtual car. (Fixes the relay's speed-model mismatch.)
+- [ ] C4. Start-of-drive calibration run (panel): drive the legs, fit on the Pi, save `pi/car_model.json`, show the
+  fit. Runs only when the user asks.
 
-## Digital twin for the evaluator (requested, NOT done)
-17. **3D view of the car simulator, alongside the car GUI.** Today the two are separate: the 3D viewer
-    (`python server.py`, :8765) runs the older simulator ADAS pipeline, NOT the car's relay, so it does not show
-    the path gate, brake latch, obstacle memory, lattice evasive steer or scan-matching odometry. Needed:
-    - stream the virtual car (`sim/hw_sim.py`: true pose, world, LiDAR scan) and the relay's plan/assist/gate
-      state from `tools/sim_car.py` to the 3D viewer, so one drive shows in both: 3D (world, car, LiDAR rays,
-      predicted path, collision X, manoeuvre + original line) and the 2D car GUI (:8090)
-    - 3D car model with the measured body (20 x 44 cm, wheelbase 20 cm) and steering from the servo angle
-    - worlds shared between both (`sim/hw_worlds.py`), including `log:` rooms rebuilt from real scans
-18. **Accuracy to the real car, shown as evidence:** the virtual car's motor/steering must come from the fitted
-    model (task 2/3), and a "twin check" page: replay a real drive log's commands in the simulator and overlay the
-    simulated path on the real (scan-matched) path, with the error. That is the digital-twin / testing-cycle
-    demo: real drive -> log -> fit -> simulate -> compare -> fix -> redeploy.
+## D. Simulator / digital twin
+- [ ] D1. **3D view of the car simulator next to the car GUI**: one drive shown in 3D (world, car with the measured
+  body and live steering, LiDAR rays, predicted path, collision X, manoeuvre + original line) and in the 2D GUI.
+- [ ] D2. **Twin accuracy evidence**: replay a real log's commands in the simulator, overlay simulated vs real
+  (scan-matched) path with the error; the digital-twin testing cycle page.
+- [ ] D3. **Real LiDAR vs simulated LiDAR demo**: take real scans from a log, rebuild the room, raycast the simulated
+  LiDAR from the same poses, show both overlaid with the range error statistics.
+- [ ] D4. **Visual Monte Carlo** of real-world scenarios (random rooms, obstacles, pedestrians, driver lapses) on the
+  car's own relay code, side by side runs.
+- [ ] D5. **Intent-aware vs not intent-aware** comparison on the same Monte Carlo runs (crashes, interruptions,
+  warning lead time).
+- [ ] D6. GUI "connection lost" flicker while the planner runs.
 
-## Later
-13. Tests for the new pieces (path gate, memory pruning, lattice planner, hw simulator) in `tests/`.
-14. Update `STATUS.md` and `README.md` (simulator instructions, assists, path gate).
-15. Results/slides: add evasive-steer and braking results from sim + car logs.
-16. Calibrations only when the user asks (LiDAR yaw 63.4 deg is the current value; speed/turn not re-done).
+## E. GUI (EV-grade frontend)
+- [ ] E1. Redesign: EV-style dashboard (speed, gear/direction, ADAS state, predicted path, alerts, camera slot),
+  useful modes (Drive, Assist, Autonomy, Diagnostics, Replay), all relevant information visible.
+- [ ] E2. Show "what might happen": predicted path, time to collision, intent probabilities, planned manoeuvre,
+  alternatives considered.
+
+## F. Autonomy (show everything the car can do)
+- [ ] F1. List and expose all autonomy modes in the GUI: obstacle avoidance run, follow-the-leader, return to start,
+  explore/map the room, point-to-point navigation (click a goal on the map), auto-park (with camera later).
+
+## G. Camera (one camera, front or rear) - plan first
+- [ ] G1. Write the camera plan (RESEARCH.md): what it adds to every existing and future feature.
+
+## H. Keep improving
+- [ ] H1. Keep a running list of new feature ideas (autonomy, ML, visualisation) as the car is observed.
+
+## I. Verification
+- [ ] I1. User drives the laptop simulator and reports issues; fix from `logs/sim/`.
+- [ ] I2. Same on the real car.
+
+## J. Housekeeping
+- [ ] J1. Tests for the new pieces (path gate, memory pruning, planner, hw simulator).
+- [ ] J2. Update `STATUS.md` and `README.md`.
+- [ ] J3. Results/slides from sim + car logs.
+- [ ] J4. Calibrations only when the user asks (LiDAR yaw 63.4 deg current).
