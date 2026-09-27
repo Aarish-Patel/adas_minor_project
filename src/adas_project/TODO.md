@@ -11,10 +11,10 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] B1. **Research** (done: RESEARCH.md sections 1-2) planning/safety algorithms and pick them (RESEARCH.md): Hybrid A* for the evasive path,
   a minimally-invasive safety filter (control barrier functions) for braking/steering corrections, fallback
   manoeuvres.
-- [ ] B2. **Evasive steer gets stuck in the doorway scenario, especially at full throttle** (user report). Replace the
+- [x] B2. (done, awaiting the user's sim drive: Hybrid A* `adas/hybrid_astar.py`, pure pursuit, speed cap 0.40 m/s, reverse legs, wait-and-retry keeping the original line; doorway at full throttle passes through the relay, no crash) **Evasive steer gets stuck in the doorway scenario, especially at full throttle** (user report). Replace the
   offset lattice with a Hybrid A* (or equivalent researched) planner over the LiDAR occupancy grid, aimed at the
   driver's desired path; re-plan quickly when execution gets stuck; speed limited to what the plan can do.
-- [ ] B3. Wide obstacles trigger too late (40 cm box -> brakes instead of swerving). Plan earlier when the needed
+- [x] B3. (done: 40 cm box now swerves, 13 cm clearance) Wide obstacles trigger too late (40 cm box -> brakes instead of swerving). Plan earlier when the needed
   offset is large. (Likely solved by B2.)
 - [ ] B4. Brief throttle cut mid-manoeuvre in the doorway run (t = 3.6 s): find the cause in the sim log.
 - [ ] B5. Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
@@ -25,7 +25,10 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 
 - [ ] B8. CBF safety filter (RESEARCH.md 2) replacing the heuristic speed caps in `pi/path_gate.py`.
 - [ ] B9. MPPI local fallback when Hybrid A* has no path or execution deviates.
-- [ ] B10. "Unstuck" mode with reversing (Reeds-Shepp) - the user's option 1.
+- [x] B10. (done inside B2: the planner adds reverse legs when no forward path exists) "Unstuck" mode with reversing (Reeds-Shepp) - the user's option 1.
+
+- [ ] B11. Brake hold stops 0.75 m short of a wall at full speed (old speed model in the relay) - fixed by C3.
+- [ ] B12. Unit tests for the Hybrid A* planner and the evasive state machine (doorway, boxed, reverse case).
 
 ## C. Localisation and car model
 - [ ] C1. **Research accurate 2D LiDAR odometry** (research done: RESEARCH.md section 3 - RF2O + KISS-ICP + EKF; implementation NOT done) (linear and angular velocity from the LiDAR is poor now):
