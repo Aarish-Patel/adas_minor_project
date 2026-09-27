@@ -74,9 +74,10 @@ def real_profile(path=TUNING, fitted=None):
             params = replace(params, max_inner_left_deg=round(ratio * SERVO_TRAVEL_DEG[1], 1),
                              max_inner_right_deg=round(ratio * SERVO_TRAVEL_DEG[0], 1))
     dyn = Dynamics(speed_model=speed_model, tau_motor=tau, accel_max=3.0, brake_max=4.0, coast_decel=coast, tau_steer=0.08)
-    # LiDAR as the car really runs it (standard scan mode): ~280 points per rotation at ~13 rotations/s
-    # (measured on the Pi, 45 s stationary soak test) - NOT the A3's datasheet density
-    lidar = dict(rate_hz=13.0, n_points=280, min_range=t.lidar_min_range, noise_std=0.01, dropout=0.03)
+    # LiDAR as the car really runs it: Slamtec SDK "Sensitivity" mode (pi/lidar_dense.py), ~1360 samples per
+    # rotation (~950 with a return) at ~10 rotations/s, measured on the Pi. With RC_LIDAR_DENSE=0 the car falls
+    # back to the rplidar library's standard scan: ~280 samples at ~13 rotations/s - use lidar_legacy for that.
+    lidar = dict(rate_hz=10.0, n_points=1360, min_range=t.lidar_min_range, noise_std=0.01, dropout=0.03)
     return RealProfile(params, aeb, speed_model, dyn, lidar, t, "fitted from drive logs" if fit else "hand measurements")
 
 

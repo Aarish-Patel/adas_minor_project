@@ -37,6 +37,7 @@ import serial
 from rplidar import RPLidar
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pi.lidar_dense import open_lidar  # noqa: E402  (high-density SDK stream, falls back to rplidar)
 from adas.config import load_tuning  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -127,7 +128,7 @@ class Rig:
         self.esp.write(b"A 90 90\nM 0\n")
 
         self.lidar_port = lidar_port
-        self.lidar = RPLidar(lidar_port, baudrate=256000, timeout=3)
+        self.lidar = open_lidar(lidar_port)
         self._lock = threading.Lock()
         self._front = self._rear = self._bearing = None
         self._floor = self._floor_bearing = None   # closest point anywhere in the 360 scan
@@ -226,7 +227,7 @@ class Rig:
                     pass
                 time.sleep(1.0)
                 try:
-                    self.lidar = RPLidar(self.lidar_port, baudrate=256000, timeout=3)
+                    self.lidar = open_lidar(self.lidar_port)
                 except Exception as e2:
                     print("reconnect failed:", e2)
                     time.sleep(1.0)

@@ -30,6 +30,7 @@ import serial
 from rplidar import RPLidar
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pi.lidar_dense import open_lidar  # noqa: E402  (high-density SDK stream, falls back to rplidar)
 from adas.config import load_tuning  # noqa: E402
 from adas.tracking import Tracker, moving_object_contact  # noqa: E402
 from adas.acc import FollowController  # noqa: E402
@@ -223,7 +224,7 @@ class Clearance:
     """Background thread: keeps the latest min clearance + closing speed, ahead and behind."""
 
     def __init__(self, port):
-        self.lidar = RPLidar(port, baudrate=256000, timeout=3)
+        self.lidar = open_lidar(port)
         self.front_track = DirectionTrack()
         self.rear_track = DirectionTrack()
         self.body_min_front = None   # closest point in the WIDE front half (+-90deg)
