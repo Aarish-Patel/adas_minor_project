@@ -24,7 +24,14 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] B16. **Minimise speed cuts and needless interventions until only extreme, unpredictable driving gets one**
   (user request). Normal and reasonably sloppy driving must never be slowed, braked or steered. Target in the
   Monte Carlo (counterfactual ground truth): needless speed limits and needless takeovers close to 0 with crashes
-  still 0; then confirm on real logs. Current: 53 needless speed limits and 7 needless takeovers in 48 drives.
+  still 0; then confirm on real logs. Was: 53 needless speed limits and 7 needless takeovers in 48 drives.
+  Step 1 done: the gate sweeps only the steering the car can be on before the next decision (the commands of the
+  last 0.3 s + a model error of 0.08 1/m + 15 %, instead of a fixed +-0.35 1/m band) and uses a speed-dependent
+  protective field (1.2 cm margin up to 0.15 m/s, 2 cm up to 0.4, 3 cm above, as AGV scanners do). 48 drives,
+  crashes still 0: brake-only interventions 188 -> 88 (needless limits 117 -> 37, needless brakes 6 -> 0);
+  ADAS 99 -> 54 (limits 43 -> 7, brakes 5 -> 0, takeovers 17 -> 12); ADAS+intent 93 -> 48 (limits 53 -> 14,
+  brakes 6 -> 0, takeovers 7), 48/48 reach the goal. 32 cm gap now passes untouched. Next: intent still trades
+  takeovers for limits (total needless 19 vs 21) - use the intent in the soft speed cap; check FOS.
 - [ ] B6. (re-checked on the relay code with `python -m sim.relay_scenarios`, 11 scenarios incl. the relay's intent
   model via the new shared `RelayIntent`: 10/11 pass - evasive box, doorway full throttle, driver already avoiding,
   full speed at a wall, centring, centring yields, limiter, narrow won't fit, proximity, no slowing beside a wall.

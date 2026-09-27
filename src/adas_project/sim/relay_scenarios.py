@@ -208,13 +208,19 @@ def limiter():
     return ok, f"full throttle at full lock: lateral acceleration {a_on:.2f} m/s^2 with the limiter, {a_off:.2f} without"
 
 
+def aim_at_centre(pwm, gain_y=3.0, gain_th=1.5):
+    """A driver who keeps aiming at y = 0 (the gap's centre line) - a steady stick drifts with the twin's small
+    steering-centre error, as the real car does."""
+    return lambda t, x, y, th, v: (max(-1.0, min(1.0, -gain_y * y - gain_th * th)), pwm if t > 0.3 else 0.0)
+
+
 def gap(width_m, assists=("narrow",)):
     from sim.world import Box
     w = _world()
     half = width_m / 2
     w.add(Box(2.4, half + 0.15, 0.3, 0.3))
     w.add(Box(2.4, -half - 0.15, 0.3, 0.3))
-    return run(w, steady(150), 10, assists)
+    return run(w, aim_at_centre(150), 16, assists, stop_when=lambda t, x, y, th, v: x > 3.2)
 
 
 def narrow_wont_fit():
@@ -225,8 +231,12 @@ def narrow_wont_fit():
 
 def narrow_tight_fits():
     r = gap(0.32)
-    ok = (not r["collided"]) and r["x"] > 3.0
-    return ok, f"32 cm gap: passed through (x {r['x']:.1f} m), closest {r['min_clear'] * 100:.0f} cm"
+    bare = gap(0.32, ())
+    slowed = sum(1 for row in bare["trace"] if row[0] > 0.5 and row[6] < row[5] - 1)
+    ok = (not r["collided"]) and r["x"] > 3.0 and (not bare["collided"]) and bare["x"] > 3.0 and slowed == 0
+    return ok, (f"32 cm gap (6 cm each side): with the narrow-gap assist slowed and passed, closest "
+                f"{r['min_clear'] * 100:.0f} cm; with no assist the brake gate let it through untouched "
+                f"(throttle reduced on {slowed} ticks)")
 
 
 def proximity():

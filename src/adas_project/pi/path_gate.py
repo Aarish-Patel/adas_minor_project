@@ -23,11 +23,21 @@ INTENT_MIN_DELTA = 0.03    # rad: the steering trend must be meaningful
 INTENT_FLOOR_M = 0.12      # m: below this free distance only the current path counts
 INTENT_MAX_GAIN_M = 1.2    # m: the prediction can add at most this much free distance
 FOS = 1.3                  # the stopping distance must fit into the free distance 1.3 times over
-BODY_MARGIN_M = 0.03       # extra clearance around the whole body
+BODY_MARGIN_M = 0.03       # extra clearance around the whole body (at speed)
+# Speed-dependent protective field, as laser scanners on AGVs switch field size with speed (ISO 3691-4): up to each
+# speed the body margin is smaller, so the car can slow down and fit through a tight gap it would be refused at
+# speed. (speed limit m/s, margin m); above the last level BODY_MARGIN_M applies.
+MARGIN_LEVELS = ((0.15, 0.012), (0.40, 0.02))
 BASE_M = 0.05              # standoff kept at walking pace (bumper to obstacle)
 REACTION_S = 0.20          # LiDAR scan + relay + motor delay (fitted command delay 0.12 s + scan period)
 DECEL = 1.2                # m/s^2 the car stops at when the throttle is cut (logs: 1-7 cm roll-out at ~0.3 m/s)
-KAPPA_SLOP = 0.35          # 1/m: also sweep this much tighter and wider than commanded
+KAPPA_SLOP = 0.35          # 1/m: the old fixed band (kept for comparison: GATE_BAND = "fixed")
+# Steering the car can actually be on before the next decision (least-restrictive safety filter, Hsu/Hu/Fisac 2023):
+# every arc between the previous command and this one (servo slew during the command delay), widened by the
+# steering model's error - 0.08 1/m plus 15 % of the curvature (the fitted left/right gains differ by ~+-15 %).
+KAPPA_ERR_ABS = 0.08
+KAPPA_ERR_REL = 0.15
+GATE_BAND = "transition"
 HORIZON_M = 1.6
 CREEP_V = 0.10             # m/s allowed while there is still more than CREEP_MIN_M free (parking, nosing up)
 CREEP_MIN_M = 0.06
@@ -48,6 +58,8 @@ class PathGate:
         self.info = {}
         self.latch = None          # (direction, free distance) while holding after a brake
         self.brake_t = 0.0
+        self.k_hist = []           # (age s, curvature) of recent steering commands: where the servo may still be
+        self.k_window = REACTION_S + 0.10
 
     def on_scan(self, pts_vehicle, seq):
         """New LiDAR scan (vehicle frame: x forward from the rear axle, y left)."""
@@ -58,23 +70,34 @@ class PathGate:
         self.memory.prune_contradicted(pts_vehicle)     # never trust memory over what the LiDAR sees now
         self.memory.add_scan(pts_vehicle)
 
-    def free_distance(self, delta, direction, slop=True):
+    def free_distance(self, delta, direction, slop=True, margin=BODY_MARGIN_M):
         """How far the rear axle can travel along the commanded path (and its tighter/wider neighbours)
         before the body plus margin touches anything."""
         blind = self.memory.blind_points()
         pts = np.vstack([self.pts, blind]) if len(blind) else self.pts
         if len(pts) == 0:
             return math.inf, 0
-        pts = self._drop_receding(pts, delta, direction)
+        pts = self._drop_receding(pts, delta, direction, margin=margin)
         if len(pts) == 0:
             return math.inf, len(blind)
-        k = math.tan(delta) / self.p.wheelbase
         best = math.inf
-        for kk in ((k, k + KAPPA_SLOP, k - KAPPA_SLOP) if slop else (k,)):
+        for kk in (self.band(delta) if slop else (math.tan(delta) / self.p.wheelbase,)):
             d = travel_distance_to_contact(pts, math.atan(kk * self.p.wheelbase), direction, self.p,
-                                           horizon=HORIZON_M, margin=BODY_MARGIN_M)
+                                           horizon=HORIZON_M, margin=margin)
             best = min(best, d)
         return best, len(blind)
+
+    def band(self, delta):
+        """The curvatures to sweep for this steering command."""
+        k = math.tan(delta) / self.p.wheelbase
+        if GATE_BAND == "fixed":
+            return (k, k + KAPPA_SLOP, k - KAPPA_SLOP)
+        ks = [k] + [kk for _, kk in self.k_hist]
+        lo, hi = min(ks), max(ks)
+        lo -= KAPPA_ERR_ABS + KAPPA_ERR_REL * abs(lo)
+        hi += KAPPA_ERR_ABS + KAPPA_ERR_REL * abs(hi)
+        n = 3 + min(4, int((hi - lo) / 0.3))
+        return tuple(np.linspace(lo, hi, n)) + (k,)
 
     def overlay(self, delta, direction, v, v_cmd, horizon_s=2.5):
         """What the GUI draws: the path the body will follow at the current stick and throttle (the front of the
@@ -126,12 +149,12 @@ class PathGate:
         ey = np.maximum(np.abs(ly) - self.p.width / 2, 0.0)
         return np.hypot(ex, ey)
 
-    def _drop_receding(self, pts, delta, direction, probe=0.05):
+    def _drop_receding(self, pts, delta, direction, probe=0.05, margin=BODY_MARGIN_M):
         """Points already inside the body margin right now would make every direction look blocked (the car
         freezes next to a box, unable even to back away). Such points only count if the next few centimetres of
         this motion bring the body closer to them."""
         d0 = self._body_dist(pts, 0.0, 0.0, 0.0)
-        m = BODY_MARGIN_M + 0.01              # the same square-cornered margin box the path sweep uses
+        m = margin + 0.01                     # the same square-cornered margin box the path sweep uses
         close = (pts[:, 0] >= self.p.rear_x - m) & (pts[:, 0] <= self.p.front_x + m) & \
                 (np.abs(pts[:, 1]) <= self.p.width / 2 + m)
         if not close.any():
@@ -162,11 +185,15 @@ class PathGate:
         Returns (physical to send, braking?)."""
         self.memory.advance(dt, v_est, delta)
         self.info = {}
+        self.k_hist = [(age + dt, kk) for age, kk in self.k_hist if age + dt <= self.k_window]
+        k_now = math.tan(delta) / self.p.wheelbase
         if physical == 0:
             self.latch = None                     # the driver let go: the hold is released
+            self.k_hist.append((0.0, k_now))
             return 0, False
         direction = 1 if physical > 0 else -1
         free, n_blind = self.free_distance(delta, direction)
+        self.k_hist.append((0.0, k_now))
         # intent-aware (only for an ATTENTIVE driver - intent_k_rate is None when the stick shows no recent
         # activity, i.e. a lapse): predict the path with the curvature changing at the driver's current steering
         # rate. A driver already steering away from the obstacle is predicted to miss it, so a clip of the frozen
@@ -183,8 +210,16 @@ class PathGate:
                 free = min(free_i, free + INTENT_MAX_GAIN_M)
         v = max(abs(v_est) if v_est * direction > 0 else 0.0, closing)
         v_ok = self.allowed_speed(free)
-        if free > CREEP_MIN_M:
+        f_creep = free
+        if v_ok < MARGIN_LEVELS[-1][0]:            # slower speeds may use their smaller protective field
+            for v_lvl, m in MARGIN_LEVELS[::-1]:
+                f_creep, _ = self.free_distance(delta, direction, margin=m)
+                v_l = min(v_lvl, self.allowed_speed(f_creep))
+                if v_l > v_ok:
+                    v_ok, free = v_l, f_creep
+        if f_creep > CREEP_MIN_M:
             v_ok = max(v_ok, CREEP_V)
+            free = max(free, f_creep)
         else:
             v_ok = 0.0
         self.info.update({"free_m": round(free, 3) if math.isfinite(free) else None, "v_allowed": round(v_ok, 2),
