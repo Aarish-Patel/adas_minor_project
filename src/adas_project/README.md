@@ -1,8 +1,36 @@
 # RC-ADAS
 
-An ADAS testbed for the RC car: collision warning and automatic braking, driver-intent-aware
-warnings, marker-guided auto-parking, follow-the-leader, traffic-sign speed adaptation. It runs in a
-3D simulator today and on the Raspberry Pi + ESP32 car later, **using the same code** (`adas/`).
+An intent-aware ADAS for an RC car (Raspberry Pi 5 + RPLIDAR A3 + ESP32): path-predicted emergency braking,
+Hybrid A* evasive steering, a learned driver-intent model that decides when to take the wheel, driving assists and
+click-to-go autonomy. The car's own relay code also runs on the laptop against a digital twin (fitted car model +
+simulated LiDAR), so every feature is tested there before the car. Current state: `STATUS.md`; open work:
+`TODO.md`; methods and papers: `RESEARCH.md`.
+
+## The digital twin (the car's code on the laptop)
+
+```bash
+python tools/sim_car.py --world doorway      # worlds: doorway, room, corridor, gap, open, log:<drive log>
+python rc_controller.py --ip 127.0.0.1       # drive it (Xbox pad or keyboard)
+```
+Open http://localhost:8090/ (2D view: assist buttons, predicted path + collision X, planned manoeuvre; click the
+map to drive there autonomously while holding the throttle) or http://localhost:8090/dash (3D EV dashboard).
+
+| Check | Command | What it shows |
+|---|---|---|
+| Assist scenarios | `python -m sim.relay_scenarios` | 11 pass/fail cases on the relay code |
+| Monte Carlo | `python -m sim.relay_mc 48` then `python -m sim.mc_stats` | crashes, goals, needless interventions and their burden; intent-aware vs not, paired tests |
+| Intent model | `python -m sim.train_intent_net 80` | trains `pi/intent_net.json`, held-out AUC |
+| Autonomy | `python -m sim.autonav_eval` | click-to-go on 6 goals -> `reports/autonav.png` |
+| Twin accuracy | `python -m sim.twin_report` | replays a real drive log: path and LiDAR error |
+| Car model | `python -m sim.car_model_eval` | physics vs physics+ML motor/steering model on held-out legs |
+
+Key files: `pi/wifi_drive_safety.py` (the relay), `pi/path_gate.py` (braking), `pi/relay_assists.py` (assists,
+intent, autonomy in the relay), `adas/hybrid_astar.py`, `adas/autonav.py`, `adas/intent_net.py`,
+`adas/car_model.py`, `sim/hw_sim.py` (virtual car + LiDAR), `pi/dash/` (3D dashboard).
+
+## The earlier laptop simulator (3D viewer)
+
+Everything below is the first simulator (`server.py`), kept for its scenario, parking and camera work.
 
 ## Run it
 

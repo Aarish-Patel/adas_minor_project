@@ -154,6 +154,20 @@ class IntentTests(unittest.TestCase):
         self.assertGreater(net.crash_probability(f), 0.3)                 # frozen stick at a wall: risky
 
 
+class RelayScenarioTests(unittest.TestCase):
+    """The car's relay code on the digital twin (sim/relay_scenarios.py)."""
+
+    def test_no_needless_slowing_beside_a_wall(self):
+        from sim.relay_scenarios import passing_beside_a_wall
+        ok, detail = passing_beside_a_wall()
+        self.assertTrue(ok, detail)
+
+    def test_full_speed_at_a_wall_stops_close_without_contact(self):
+        from sim.relay_scenarios import wall_full_speed
+        ok, detail = wall_full_speed()
+        self.assertTrue(ok, detail)
+
+
 class MonteCarloSmoke(unittest.TestCase):
     def test_adas_prevents_a_crash_the_driver_alone_has(self):
         SEED = 1                                            # a room where the lapsing driver crashes alone

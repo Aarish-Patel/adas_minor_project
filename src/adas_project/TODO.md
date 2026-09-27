@@ -130,7 +130,8 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] I2. Same on the real car.
 
 ## J. Housekeeping
-- [ ] J1. (partly done: tests/test_planning_safety.py - Hybrid A* doorway/reverse/boxed, gate beside-wall/head-on/not-frozen/phantom/latch, intent model, Monte Carlo smoke; 50 tests pass. Still: hw simulator, dashboard) Tests for the new pieces (path gate, memory pruning, planner, hw simulator).
-- [ ] J2. Update `STATUS.md` and `README.md`.
+- [ ] J1. (partly done: tests/test_planning_safety.py - Hybrid A* doorway/reverse/boxed, click-to-go (6), gate beside-wall/head-on/not-frozen/phantom/latch, intent model, relay scenarios on the twin (2), Monte Carlo smoke; 58 tests pass. Still: dashboard) Tests for the new pieces (path gate, memory pruning, planner, hw simulator).
+- [x] J2. (done: STATUS.md rewritten for the current state - what is/isn't on the car, calibration in use, results;
+  README.md leads with the digital twin and its checks, the older simulator kept below) Update `STATUS.md` and `README.md`.
 - [ ] J3. Results/slides from sim + car logs.
 - [ ] J4. Calibrations only when the user asks (LiDAR yaw 63.4 deg current).
