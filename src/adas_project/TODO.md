@@ -8,7 +8,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   forward driving. Deploy `adas/` and `pi/`, restart `rc-relay`, check a forward drive first.
 
 ## B. Safety and planning (the car must be impossible to crash, with minimal false interruptions)
-- [ ] B1. **Research** planning/safety algorithms and pick them (RESEARCH.md): Hybrid A* for the evasive path,
+- [x] B1. **Research** (done: RESEARCH.md sections 1-2) planning/safety algorithms and pick them (RESEARCH.md): Hybrid A* for the evasive path,
   a minimally-invasive safety filter (control barrier functions) for braking/steering corrections, fallback
   manoeuvres.
 - [ ] B2. **Evasive steer gets stuck in the doorway scenario, especially at full throttle** (user report). Replace the
@@ -23,8 +23,12 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   cone gate.
 - [ ] B7. `pi/path_predict.py` `VP` still has the old body (14 cm wide): switch users to `pi/relay_assists.car_params`.
 
+- [ ] B8. CBF safety filter (RESEARCH.md 2) replacing the heuristic speed caps in `pi/path_gate.py`.
+- [ ] B9. MPPI local fallback when Hybrid A* has no path or execution deviates.
+- [ ] B10. "Unstuck" mode with reversing (Reeds-Shepp) - the user's option 1.
+
 ## C. Localisation and car model
-- [ ] C1. **Research accurate 2D LiDAR odometry** (linear and angular velocity from the LiDAR is poor now):
+- [ ] C1. **Research accurate 2D LiDAR odometry** (research done: RESEARCH.md section 3 - RF2O + KISS-ICP + EKF; implementation NOT done) (linear and angular velocity from the LiDAR is poor now):
   range-flow / ICP variants, filter fusion with the commands (RESEARCH.md), then implement and measure on logs.
 - [ ] C2. Physics-informed ML car model (`adas/car_model.py`, `sim/car_model_eval.py`, uncommitted). First version lost
   to the plain fit (15-19 cm vs 5.7 cm). Rewritten, NOT re-run. Commit only if it beats the plain fit.
@@ -32,6 +36,9 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   the simulator's virtual car. (Fixes the relay's speed-model mismatch.)
 - [ ] C4. Start-of-drive calibration run (panel): drive the legs, fit on the Pi, save `pi/car_model.json`, show the
   fit. Runs only when the user asks.
+
+- [ ] C5. RF2O range-flow odometry for speed and yaw rate; EKF fusing it with the car model.
+- [ ] C6. Room map (Cartographer-style submaps) for localisation, point-to-point navigation, return-to-start.
 
 ## D. Simulator / digital twin
 - [ ] D1. **3D view of the car simulator next to the car GUI**: one drive shown in 3D (world, car with the measured
@@ -57,10 +64,10 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   explore/map the room, point-to-point navigation (click a goal on the map), auto-park (with camera later).
 
 ## G. Camera (one camera, front or rear) - plan first
-- [ ] G1. Write the camera plan (RESEARCH.md): what it adds to every existing and future feature.
+- [x] G1. Write the camera plan (done: RESEARCH.md section 5) (RESEARCH.md): what it adds to every existing and future feature.
 
 ## H. Keep improving
-- [ ] H1. Keep a running list of new feature ideas (autonomy, ML, visualisation) as the car is observed.
+- [ ] H1. (ongoing: RESEARCH.md section 6) Keep a running list of new feature ideas (autonomy, ML, visualisation) as the car is observed.
 
 ## I. Verification
 - [ ] I1. User drives the laptop simulator and reports issues; fix from `logs/sim/`.
