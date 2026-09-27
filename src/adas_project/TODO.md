@@ -19,6 +19,10 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] B4. Brief throttle cut mid-manoeuvre in the doorway run (t = 3.6 s): find the cause in the sim log.
 - [ ] B5. (12 -> 9 needless of 44 by triggering evasive steer only on real contact courses; narrowing the gate's steering-slop band made it worse (13), reverted. Remaining: 5 gate speed-limits, 4 evasive)  Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
   real logs) and tune down.
+- [ ] B16. **Minimise speed cuts and needless interventions until only extreme, unpredictable driving gets one**
+  (user request). Normal and reasonably sloppy driving must never be slowed, braked or steered. Target in the
+  Monte Carlo (counterfactual ground truth): needless speed limits and needless takeovers close to 0 with crashes
+  still 0; then confirm on real logs. Current: 53 needless speed limits and 7 needless takeovers in 48 drives.
 - [ ] B6. Corridor centring, limiter, narrow gap and side/rear alerts not re-checked since the path gate replaced the
   cone gate.
 - [ ] B7. `pi/path_predict.py` `VP` still has the old body (14 cm wide): switch users to `pi/relay_assists.car_params`.
@@ -68,13 +72,18 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] D6. GUI "connection lost" flicker while the planner runs.
 
 ## E. GUI (EV-grade frontend)
-- [ ] E1. (v1 done: `pi/dash/index.html` at /dash on the car and in the simulator - 3D scene, speed/gear/throttle/steering cluster, time-to-contact ring, mode chip, alert banner, assist toggles, events, camera slot. Still to do: modes page (Drive/Assist/Autonomy/Diagnostics/Replay), intent bars, map) Redesign: EV-style dashboard (speed, gear/direction, ADAS state, predicted path, alerts, camera slot),
+- [ ] E1. (v1 done: `pi/dash/index.html` at /dash on the car and in the simulator - 3D scene, speed/gear/throttle/steering cluster, time-to-contact ring, mode chip, alert banner, assist toggles, events, camera slot. Still to do: modes page (Drive/Assist/Autonomy/Diagnostics/Replay), intent bars, map - to be built in the native GUI, E3) Redesign: EV-style dashboard (speed, gear/direction, ADAS state, predicted path, alerts, camera slot),
   useful modes (Drive, Assist, Autonomy, Diagnostics, Replay), all relevant information visible.
+- [ ] E3. **Native (locally running) GUI instead of web GUIs** (user request), above all for the 3D simulator /
+  digital twin: browser rendering and HTTP polling add lag. Follow the field's norm (Gazebo, CARLA, Webots and
+  RViz are native apps): pick a native Python 3D toolkit, measure frame rate and input-to-screen latency against
+  the web dashboard, and build the remaining E1 modes there. Keep the web page only for viewing from a phone.
 - [ ] E2. Show "what might happen": predicted path, time to collision, intent probabilities, planned manoeuvre,
   alternatives considered.
 
 ## F. Autonomy (show everything the car can do)
-- [ ] F1. List and expose all autonomy modes in the GUI: obstacle avoidance run, follow-the-leader, return to start,
+- [ ] F1. (started: `adas/autonav.py` click-to-go planner/tracker written, NOT tested, NOT wired into the relay or
+  dashboard, uncommitted) List and expose all autonomy modes in the GUI: obstacle avoidance run, follow-the-leader, return to start,
   explore/map the room, point-to-point navigation (click a goal on the map), auto-park (with camera later).
 
 ## G. Camera (one camera, front or rear) - plan first
