@@ -28,6 +28,8 @@ MODES = {
            "prep": "Put ONE obstacle straight ahead (about 1.4 m from the car's start spot), with about 3.5 m clear along the line and room on both sides. The car backs up to get run-up first."},
     "all": {"title": "Run everything", "script": "pi/run_all.py",
             "prep": "Runs LiDAR front, steering centre, speed + stopping, turning and the obstacle-avoidance demo in order. It pauses and tells you how to set up the arena before each group; nothing is applied automatically."},
+    "logdrive": {"title": "Logging drive (simulator data)", "script": "pi/log_drive.py",
+                 "prep": "The car drives short legs forward and back at several speeds and steering angles, checking the LiDAR for room before each leg. Needs about 1.5 m clear ahead and behind. About 2 minutes. Everything is logged for fitting the simulator."},
     "lidar": {"title": "Calibrate LiDAR front", "script": "pi/lidar_front_cal.py",
               "prep": "Put ONE object dead-centre in front of the car, 0.3-1.2 m away. The car does not move."},
     "center": {"title": "Calibrate steering centre", "script": "pi/center_fine.py",
