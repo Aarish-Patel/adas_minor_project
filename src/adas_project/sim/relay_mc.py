@@ -145,6 +145,8 @@ def run(args):
     from sim.hw_sim import SimLidar, VirtualCar
 
     tun = load_tuning(os.path.join(HERE, "..", "pi", "tuning_real_car.json"))
+    from pi.relay_assists import apply_car_model
+    apply_car_model(tun)                         # the same fitted model the relay uses
     world, goal, rng = scenario(seed)
     assist = RelayAssists(tun)
     p = assist.p
@@ -161,6 +163,7 @@ def run(args):
     servo_hist = []
     trace, events = [], []
     interventions = fp = 0
+    kind = None
     was_intervening = False
     min_clear, reached = 9.0, None
     while t < T_MAX:
@@ -200,7 +203,9 @@ def run(args):
                 rate = (servo_hist[-1] - servo_hist[0]) / (DT * 6)
                 d_int = math.atan(-K * (servo_out + rate * 0.4 - assist.centre) * p.wheelbase)
             g_phys, _ = gate.decide(DT, phys, delta, vest.v, 0.0, d_int)
-            intervening = assist.assists.evading or abs(g_phys - phys) > 1.0 or abs(servo_out - d_servo) > 1.0
+            kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
+                                                                 ("steer" if abs(servo_out - d_servo) > 1.0 else None))
+            intervening = kind is not None
             phys = g_phys
         else:
             gate.memory.advance(DT, vest.v, 0.0)
@@ -209,9 +214,9 @@ def run(args):
             interventions += 1
             if not would_hit(world, p, (x, y, th), v, d_servo, K, assist.centre, direction=1 if d_pwm >= 0 else -1):
                 fp += 1
-                events.append((x, y, "fp"))
+                events.append((x, y, "fp", kind))
             else:
-                events.append((x, y, "ok"))
+                events.append((x, y, "ok", kind))
         was_intervening = intervening
         car.command(f"A {servo_out:.1f} {servo_out:.1f}", now=t)
         car.command(f"M {-int(phys)}", now=t)

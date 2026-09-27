@@ -39,6 +39,7 @@ class AssistConfig:
     evade_release_s: float = 0.35    # (unused since the return-to-line phase; kept for old configs)
     evade_candidates: int = 17
     evade_period: float = 0.08       # s between re-planning (the sweep is the expensive part)
+    trigger_margin: float = 0.03     # m: the driver's path must really touch (+3 cm) to trigger a swerve
     evade_ttc: float = 1.6           # s: only step in when contact is this close in time...
     evade_min_v: float = 0.18        # m/s: ...and the car is moving at least this fast (creeping = the driver's call)
     evade_confirm_s: float = 0.15    # s the threat must persist (one noisy scan never swerves the car)
@@ -237,7 +238,7 @@ class DrivingAssists:
 
         if self.phase is None:
             easing = len(self._pwm_hist) >= 6 and pwm < 0.85 * max(self._pwm_hist[:-2])
-            d_drv = self._contact(pts, k_drv, look + 0.4)
+            d_drv = self._contact(pts, k_drv, look + 0.4, c.trigger_margin)   # a real contact course, not a near miss
             ttc = d_drv / max(v, 1e-3)
             stuck = v < 0.05 and d_drv < 0.35             # held at an obstacle with the throttle on
             if not stuck and (v < c.evade_min_v or easing or d_drv >= look or ttc > c.evade_ttc):

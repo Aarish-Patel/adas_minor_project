@@ -38,6 +38,11 @@ from pi.path_predict import VP, delta_for_offset  # noqa: E402
 
 TUNING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuning_real_car.json")
 TUNING = load_tuning(TUNING_PATH)
+# the car model fitted from drive logs (pi/car_model.json) replaces the hand-measured speed model
+from pi.relay_assists import apply_car_model  # noqa: E402
+_cm = apply_car_model(TUNING)
+if _cm:
+    print("car model from drive logs:", _cm)
 
 UDP_PORT = 4210
 

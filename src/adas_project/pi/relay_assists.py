@@ -32,6 +32,23 @@ def car_params(mount, wheelbase=0.20, lidar_x=0.12):
                          max_inner_left_deg=ratio * SERVO_TRAVEL[1], max_inner_right_deg=ratio * SERVO_TRAVEL[0])
 
 
+def apply_car_model(tuning, path=None):
+    """Use the car model fitted from drive logs (pi/car_model.json, from sim/log_fit.py) for the speed model.
+    Returns a short description, or None if there is no usable file (the tuning file's model is kept)."""
+    import json
+    import os
+    from adas.aeb import SpeedModel
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "car_model.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        cm = json.load(open(path))
+        tuning.speed_model = SpeedModel(v_max=cm["speed_model"]["v_max"], deadband=cm["speed_model"]["deadband"])
+        return f"v_max {tuning.speed_model.v_max} m/s, dead-band {tuning.speed_model.deadband} PWM"
+    except Exception as e:                 # a broken file must never stop the relay
+        return f"ignored ({e})"
+
+
 class RelayAssists:
     NAMES = ("evasive", "centring", "limiter", "narrow", "proximity")
 

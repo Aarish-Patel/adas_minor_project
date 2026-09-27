@@ -1,0 +1,12 @@
+{
+  "source": "sim/log_fit.py on 20260928_004952_log_drive.jsonl.gz",
+  "speed_model": {
+    "v_max": 0.8335,
+    "deadband": 11.19
+  },
+  "tau_motor": 0.033,
+  "delay_s": 0.12,
+  "k_curv_per_deg": 0.06561,
+  "servo_centre": 86.76,
+  "validation_3s_median_cm": 4.9
+}

@@ -17,7 +17,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] B3. (done: 40 cm box now swerves, 13 cm clearance) Wide obstacles trigger too late (40 cm box -> brakes instead of swerving). Plan earlier when the needed
   offset is large. (Likely solved by B2.)
 - [ ] B4. Brief throttle cut mid-manoeuvre in the doorway run (t = 3.6 s): find the cause in the sim log.
-- [ ] B5. (measured: 12 of 39 interventions needless in the Monte Carlo; still to tune down) Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
+- [ ] B5. (12 -> 9 needless of 44 by triggering evasive steer only on real contact courses; narrowing the gate's steering-slop band made it worse (13), reverted. Remaining: 5 gate speed-limits, 4 evasive)  Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
   real logs) and tune down.
 - [ ] B6. Corridor centring, limiter, narrow gap and side/rear alerts not re-checked since the path gate replaced the
   cone gate.
@@ -37,7 +37,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   range-flow / ICP variants, filter fusion with the commands (RESEARCH.md), then implement and measure on logs.
 - [ ] C2. Physics-informed ML car model (`adas/car_model.py`, `sim/car_model_eval.py`, uncommitted). First version lost
   to the plain fit (15-19 cm vs 5.7 cm). Rewritten, NOT re-run. Commit only if it beats the plain fit.
-- [ ] C3. Use the model everywhere: relay speed estimate, gate speed caps, curvature for prediction/planning,
+- [ ] C3. (speed model done: `pi/car_model.json` from the logging drive, loaded by the relay and the Monte Carlo via `apply_car_model`; min clearance 4 -> 6 cm. Still to do: curvature/servo centre in the relay, the ML model when C2 passes) Use the model everywhere: relay speed estimate, gate speed caps, curvature for prediction/planning,
   the simulator's virtual car. (Fixes the relay's speed-model mismatch.)
 - [ ] C4. Start-of-drive calibration run (panel): drive the legs, fit on the Pi, save `pi/car_model.json`, show the
   fit. Runs only when the user asks.
