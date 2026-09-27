@@ -39,9 +39,12 @@ class AssistConfig:
     evade_release_s: float = 0.35    # (unused since the return-to-line phase; kept for old configs)
     evade_candidates: int = 17
     evade_period: float = 0.08       # s between re-planning (the sweep is the expensive part)
-    evade_ttc_attentive: float = 0.9  # s: an attentive (actively steering) driver is given more time to act
+    # swerve trigger times from the relay Monte Carlo (96 paired drives, sim/relay_mc.py): 1.2 s instead of 1.6 s
+    # cut needless steering takeovers 34 -> 12 with 0 crashes and the same goals reached; the brake gate still
+    # stops the car if a swerve comes too late
+    evade_ttc_attentive: float = 0.7  # s: an attentive (actively steering) driver is given more time to act
     trigger_margin: float = 0.03     # m: the driver's path must really touch (+3 cm) to trigger a swerve
-    evade_ttc: float = 1.6           # s: only step in when contact is this close in time...
+    evade_ttc: float = 1.2           # s: only step in when contact is this close in time...
     evade_min_v: float = 0.18        # m/s: ...and the car is moving at least this fast (creeping = the driver's call)
     evade_confirm_s: float = 0.15    # s the threat must persist (one noisy scan never swerves the car)
     evade_driver_override: float = 0.45   # stick: a driver steering harder than this takes over at once

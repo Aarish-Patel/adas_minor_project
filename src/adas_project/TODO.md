@@ -30,19 +30,26 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   protective field (1.2 cm margin up to 0.15 m/s, 2 cm up to 0.4, 3 cm above, as AGV scanners do). 48 drives,
   crashes still 0: brake-only interventions 188 -> 88 (needless limits 117 -> 37, needless brakes 6 -> 0);
   ADAS 99 -> 54 (limits 43 -> 7, brakes 5 -> 0, takeovers 17 -> 12); ADAS+intent 93 -> 48 (limits 53 -> 14,
-  brakes 6 -> 0, takeovers 7), 48/48 reach the goal. 32 cm gap now passes untouched. Next: intent still trades
-  takeovers for limits (total needless 19 vs 21) - use the intent in the soft speed cap; check FOS.
-- [ ] B6. (re-checked on the relay code with `python -m sim.relay_scenarios`, 11 scenarios incl. the relay's intent
-  model via the new shared `RelayIntent`: 10/11 pass - evasive box, doorway full throttle, driver already avoiding,
-  full speed at a wall, centring, centring yields, limiter, narrow won't fit, proximity, no slowing beside a wall.
-  FAILS: 32 cm gap for the 20 cm car - the gate's fixed steering band (KAPPA_SLOP) makes the gap edges look like
-  threats and the car stops in front of a gap it fits through -> B16/B8 steering filter) Corridor centring, limiter,
-  narrow gap and side/rear alerts not re-checked since the path gate replaced the cone gate.
+  brakes 6 -> 0, takeovers 7), 48/48 reach the goal. 32 cm gap now passes untouched.
+  Step 2 done: composite sweep (earlier command only for the command-delay distance, then the current one);
+  swerve trigger 1.6 -> 1.2 s (0.9 -> 0.7 s attentive); Monte Carlo now measures the burden (seconds overridden,
+  wheel taken, throttle removed) and where each needless intervention happened (free / stopping distance),
+  `python -m sim.mc_stats`. 96 drives, 0 crashes: ADAS needless takeovers 34 -> 12, overridden needlessly
+  185 s -> 81 s (73 s with intent). Tried and rejected: later soft cap for trusted drivers (more brakes).
+  Remaining: needless limits are all inside 1.3x the stopping distance (late swerves) - the next lever is a
+  better speed estimate (C5) so FOS 1.3 can come down safely, or steering-based avoidance at the last point to
+  steer (B8/B9).
+- [x] B6. (done: `python -m sim.relay_scenarios` on the relay code incl. the relay's intent model, 11/11 pass -
+  evasive box, doorway full throttle, driver already avoiding, full speed at a wall, centring, centring yields,
+  limiter, narrow won't fit, 32 cm gap fits (passes untouched after B16), proximity, no slowing beside a wall)
+  Corridor centring, limiter, narrow gap and side/rear alerts re-checked since the path gate replaced the cone gate.
 - [x] B7. (done: `VP` = measured body 20 cm wide / front 0.28 / rear -0.05 from the tuning file, steering = the
   fitted 0.0656 rad/m per servo degree about the calibrated centre, the same as the path gate; the old turn-radius
   table is only a fallback) `pi/path_predict.py` `VP` still had the old body (14 cm wide).
 
-- [ ] B8. CBF safety filter (RESEARCH.md 2) replacing the heuristic speed caps in `pi/path_gate.py`.
+- [ ] B8. (partly: the gate is now a least-restrictive filter over the reachable steering with a speed-dependent
+  protective field - B16; still to do: steering correction instead of braking when a nearby arc is safe, i.e. the
+  QP over (steering, throttle)) CBF safety filter (RESEARCH.md 2) replacing the heuristic speed caps in `pi/path_gate.py`.
 - [ ] B9. MPPI local fallback when Hybrid A* has no path or execution deviates.
 - [x] B10. (done inside B2: the planner adds reverse legs when no forward path exists) "Unstuck" mode with reversing (Reeds-Shepp) - the user's option 1.
 

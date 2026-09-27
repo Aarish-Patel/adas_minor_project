@@ -78,7 +78,7 @@ class RelayIntent:
         self.profile = DriverProfile()
         self.assist, self.trust_threshold = assist, trust
         self.hist, self.last_t = [], None
-        self.p_crash, self.trusted = None, False
+        self.p_crash, self.trusted, self.attentive = None, False, False
 
     def update(self, now, servo, physical, v, points):
         """servo: the driver's servo command, physical: the driver's throttle (+ forward), points: relay format."""
@@ -96,12 +96,19 @@ class RelayIntent:
                 self.profile.update(self.hist, f[len(f) - 5] * 1.5)
                 self.p_crash = self.net.crash_probability(f)
                 self.trusted = self.p_crash < self.trust_threshold
+        k_rate = driver_intent(self.hist, 0.05, a.centre)
+        self.attentive = k_rate is not None            # the stick moved in the last second
         a.assists.intent_hold = self.trusted
-        a.assists.intent_k_rate = (driver_intent(self.hist, 0.05, a.centre) or 0.0) if self.trusted else None
+        a.assists.intent_k_rate = (k_rate or 0.0) if self.trusted else None
+
+    @property
+    def gate_trust(self):
+        """For the brake gate's later soft cap: the model trusts the driver AND they are active on the stick."""
+        return self.trusted and self.attentive
 
     def gui(self):
         return {"p_crash": None if self.p_crash is None else round(self.p_crash, 3), "trusted": self.trusted,
-                "reaction_m": round(self.profile.reaction_distance, 2)}
+                "attentive": self.attentive, "reaction_m": round(self.profile.reaction_distance, 2)}
 
 
 class RelayAssists:

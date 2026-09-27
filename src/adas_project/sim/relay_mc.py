@@ -26,6 +26,7 @@ SCAN_DT = 0.1
 T_MAX = 30.0
 VARIANTS = ("off", "brake-only", "adas", "adas+intent")
 TRUST_THRESHOLD = float(os.environ.get("RC_TRUST", "0.5"))   # hold the swerve when P(driver crashes) is below this
+FOS_TRUSTED = os.environ.get("RC_FOS_TRUSTED")                 # sweep the gate's soft-cap FOS for trusted drivers
 
 
 # ------------------------------------------------------------------ scenarios
@@ -193,10 +194,18 @@ def run(args):
     from sim.hw_sim import SimLidar, VirtualCar
 
     tun = load_tuning(os.path.join(HERE, "..", "pi", "tuning_real_car.json"))
+    import pi.path_gate
+    if FOS_TRUSTED:
+        pi.path_gate.FOS_TRUSTED = float(FOS_TRUSTED)
+    if os.environ.get("RC_K_WINDOW"):
+        pi.path_gate.K_WINDOW_S = float(os.environ["RC_K_WINDOW"])
     from pi.relay_assists import apply_car_model
     apply_car_model(tun)                         # the same fitted model the relay uses
     world, goal, rng = scenario(seed)
     assist = RelayAssists(tun)
+    if os.environ.get("RC_EVADE_TTC"):             # sweep the evasive trigger: "<normal>,<attentive>" seconds
+        a_n, a_a = (float(s) for s in os.environ["RC_EVADE_TTC"].split(","))
+        assist.assists.cfg.evade_ttc, assist.assists.cfg.evade_ttc_attentive = a_n, a_a
     p = assist.p
     car = VirtualCar(world, p, (0.0, 0.0, 0.0), threaded=False)
     car.last_cmd_t = 0.0
@@ -218,6 +227,8 @@ def run(args):
     kind = None
     p_crash = None
     was_intervening = False
+    ep_fp = False
+    burden = {f"{a}{b}": 0.0 for a in ("needless", "needed") for b in ("_s", "_steer_s", "_throttle_s")}
     min_clear, reached = 9.0, None
     while t < T_MAX:
         x, y, th, v, servo_now, pwm_now, crashed = car.pose()
@@ -258,7 +269,8 @@ def run(args):
                     phys = -float(q[1])
             delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
             # intent decides whether to take over the STEERING (evasive hold above); braking stays pure physics
-            g_phys, _ = gate.decide(DT, phys, delta, vest.v, 0.0, None)
+            g_phys, _ = gate.decide(DT, phys, delta, vest.v, 0.0, None,
+                                    trusted=rint is not None and rint.gate_trust)
             kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
                                                                  ("steer" if abs(servo_out - d_servo) > 1.0 else None))
             intervening = kind is not None
@@ -268,12 +280,28 @@ def run(args):
         vest.update(DT, phys)
         if intervening and not was_intervening:
             interventions += 1
+            # how deep inside its stopping envelope was the car on the DRIVER's own path: free distance / physical
+            # stopping distance (1.0 = the last moment braking could still stop it)
+            from pi.path_gate import BASE_M, DECEL, REACTION_S
+            d_delta = math.atan(-K * (d_servo - assist.centre) * p.wheelbase)
+            f_drv, _ = gate.free_distance(d_delta, 1 if d_pwm >= 0 else -1, slop=False)
+            stop = BASE_M + abs(v) * REACTION_S + v * v / (2 * DECEL)
+            ratio = round(f_drv / stop, 2) if math.isfinite(f_drv) else None
             if not counterfactual_crash(car, driver, t):
                 fp += 1
                 events.append((x, y, "fp", kind, None if p_crash is None else round(p_crash, 3), driver.lapsed(t),
-                               round(rint.profile.reaction_distance, 2) if rint is not None else None))
+                               round(rint.profile.reaction_distance, 2) if rint is not None else None, ratio))
             else:
-                events.append((x, y, "ok", kind))
+                events.append((x, y, "ok", kind, ratio))
+            ep_fp = events[-1][2] == "fp"
+        if intervening:
+            # how much the driver felt it: seconds overridden, seconds the wheel was taken, share of throttle removed
+            steer_taken = abs(servo_out - d_servo) > 1.0
+            cut = max(0.0, (d_pwm - phys) / d_pwm) if d_pwm > 0 else (1.0 if phys != d_pwm else 0.0)
+            key = "needless" if ep_fp else "needed"
+            burden[key + "_s"] += DT
+            burden[key + "_steer_s"] += DT * steer_taken
+            burden[key + "_throttle_s"] += DT * min(1.0, cut)
         was_intervening = intervening
         car.command(f"A {servo_out:.1f} {servo_out:.1f}", now=t)
         car.command(f"M {-int(phys)}", now=t)
@@ -285,7 +313,7 @@ def run(args):
     crashed = car.crash_count > 0
     return {"seed": seed, "variant": variant, "style": style, "crashed": crashed, "reached": reached, "min_clear": float(min_clear),
             "interventions": interventions, "false_positives": fp, "lapses": len(driver.lapses),
-            "trace": trace, "events": events, "goal": goal}
+            "trace": trace, "events": events, "goal": goal, "burden": {k: round(v, 2) for k, v in burden.items()}}
 
 
 def main(runs=24):

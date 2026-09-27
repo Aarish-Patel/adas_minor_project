@@ -75,7 +75,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
             elif q[0] == "M":
                 phys = -float(q[1])
         delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
-        g_phys, g_brake = gate.decide(DT, phys, delta, vest.v, 0.0, None)
+        g_phys, g_brake = gate.decide(DT, phys, delta, vest.v, 0.0, None, trusted=rint.gate_trust)
         vest.update(DT, g_phys)
         rec["infos"].update(f"{k}: {s}" for k, s in assist.info.items())
         rec["max_level"] = max(rec["max_level"], assist.level)

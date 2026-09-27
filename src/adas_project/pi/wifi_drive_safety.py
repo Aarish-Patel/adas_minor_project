@@ -858,7 +858,8 @@ def main():
                     braking = False
                     if GATE_MODE == "path":
                         closing = front_track.speed if physical > 0 else rear_track.speed
-                        g_phys, g_brake = pgate.decide(dt_pkt, physical, gate_delta, vest.v, closing)
+                        g_phys, g_brake = pgate.decide(dt_pkt, physical, gate_delta, vest.v, closing,
+                                                       trusted=rintent.gate_trust and not adas_override)
                         gate_info = dict(pgate.info)
                         if pkt_now - last_seq_t > SCAN_LOST_S and physical != 0:
                             g_phys, g_brake = 0, False

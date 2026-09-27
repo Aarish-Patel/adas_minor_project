@@ -50,6 +50,19 @@ Non-Convex Constraints*, arXiv 2507.02438, 2025).
   otherwise it changes it as little as possible - first steering, then throttle.
 - This replaces the hand-tuned speed-cap formula in `pi/path_gate.py` with a principled guarantee.
 
+**Done so far (least-restrictive filter in `pi/path_gate.py`)** - the gate only reacts to what the car can actually
+do before its next decision (Hsu, Hu & Fisac, *The Safety Filter: A Unified View of Safety-Critical Control in
+Autonomous Systems*, Annual Review of Control, Robotics, and Autonomous Systems 2024; Wabersich & Zeilinger,
+predictive safety filter, Automatica 2021):
+- the swept path is a composite: any steering command of the last 0.25 s for the command-delay distance (fitted
+  0.12 s delay + servo slew), then the current command - each widened by the steering model's error (0.08 1/m +
+  15 %, the fitted left/right gains differ by ~15 %). The old fixed +-0.35 1/m band is gone;
+- speed-dependent protective field, as AGV laser scanners switch field size with speed (ISO 3691-4): body margin
+  1.2 cm up to 0.15 m/s, 2 cm up to 0.4 m/s, 3 cm above - so the car can slow and pass a tight gap it fits;
+- braking unchanged: stopping distance x 1.3 must fit the free distance; active braking above the physical limit.
+Result (96 paired Monte Carlo drives, 0 crashes before and after): brake-only needless speed limits 117/48 drives
+-> 79/96 drives; needless brakes -> ~0; a 32 cm gap for the 20 cm car now passes untouched.
+
 ## 3. LiDAR localisation (why speed and turn rate from the LiDAR were poor, and the fix)
 
 **Why they were poor:** scan-to-scan point-to-point ICP with fixed correspondence gates, velocity by
@@ -79,21 +92,33 @@ Plan: GRU over the recent stick/throttle/speed history + scene features -> distr
 intended path; the safety filter and warnings use the predicted path distribution instead of the current stick
 only. Measured in the Monte Carlo as intent-aware vs not (crashes, interruptions, warning lead time).
 
-### Result (sim/relay_mc.py, sim/train_intent_net.py)
+### Result (sim/relay_mc.py, sim/mc_stats.py, sim/train_intent_net.py)
 Learned crash-risk model (MLP on stick history, stick activity, time since the stick moved, LiDAR free distance on
 five candidate arcs, and an online personal reaction-distance profile), trained on simulated drivers, tested on
 held-out rooms: AUC 0.86-0.88. Used only to decide whether to take over the STEERING; braking stays pure physics.
-48 paired drives (lapsing + late-but-competent drivers), counterfactual ground truth:
+The relay, the Monte Carlo and the scenario checks all run the same class (`pi/relay_assists.RelayIntent`).
 
-| | crashes | reach goal | interventions | needless steering takeovers | needless speed limits |
-|---|---|---|---|---|---|
-| no ADAS | 13 | 35 | - | - | - |
-| brake only | 0 | 32 | 188 | 0 | 117 |
-| ADAS (brake + evasive) | 0 | 47 | 99 | 17 | 43 |
-| ADAS + learned intent (threshold 0.5) | 0 | 47 | 92 | 7 | 53 |
+96 paired drives (48 random rooms x lapsing / late-but-competent drivers), the car's own relay code on the twin,
+counterfactual ground truth ("needless" = the driver alone would not have crashed within 2 s). Current settings
+(least-restrictive gate, swerve trigger 1.2 s / 0.7 s attentive):
 
-Needless takeovers -59%: 10 runs better, 0 worse, one-sided Wilcoxon signed-rank p = 0.0008. Threshold sweep
-0.05 -> 0.9: takeovers 13 -> 4, crashes 0 at every threshold (the stopping-distance brake is the safety net).
+| | crashes | reach goal | interventions | needless takeovers | needless brakes | needless limits | wheel taken needlessly | overridden needlessly |
+|---|---|---|---|---|---|---|---|---|
+| no ADAS | 26 | 70 | - | - | - | - | - | - |
+| brake only | 0 | 85 | 196 | 0 | 4 | 79 | 0 s | 67 s |
+| ADAS (brake + evasive) | 0 | 95 | 77 | 12 | 1 | 19 | 70 s | 81 s |
+| ADAS + learned intent | 0 | 95 | 95 | 6 | 1 | 35 | 59 s | 73 s |
+
+- Intent halves needless steering takeovers (12 -> 6; 7 drives better, 1 worse; one-sided Wilcoxon p = 0.017). A
+  swerve it holds back for an attentive driver becomes at most a brief speed trim by the physics brake, so the
+  total time the driver was overridden is about equal (81 -> 73 s, n.s.).
+- If the ADAS is tuned to help early (swerve at 1.6 s), intent is significantly better on every severity measure:
+  takeovers 34 -> 13 (p = 0.0001), wheel taken needlessly 171 -> 103 s (p = 0.0009), overridden needlessly
+  185 -> 117 s (p = 0.002), throttle removed 64 -> 39 throttle-s (p = 0.008).
+- Remaining needless speed limits happen with the driver's own path inside 1.3x its stopping distance (the brake's
+  safety factor): the driver was faster than they could stop and swerved late - physics, not a tuning choice.
+- Tried and rejected: a later soft cap for trusted drivers (FOS 1.1 / 1.0) - fewer limits but more brakes and
+  swerves (21 -> 22 needless). Earlier result (48 drives, old gate): takeovers 17 -> 7, p = 0.0008.
 
 ## 5. Camera plan (one camera; front-facing chosen - it helps every forward feature, rear only helps reversing)
 
