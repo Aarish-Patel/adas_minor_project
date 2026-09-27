@@ -16,8 +16,13 @@ import numpy as np
 
 
 class ObstacleMemory:
-    def __init__(self, p, blind_radius=0.24, keep_radius=1.2, max_age=3.0, max_points=400):
+    def __init__(self, p, blind_radius=0.24, keep_radius=1.2, max_age=3.0, max_points=400, max_travel=None):
+        """max_travel (m): if set, a point is also kept until the car has driven this far since seeing it -
+        a parked car next to a wall must not forget the wall just because time passed."""
         self.p = p
+        self.max_travel = max_travel
+        self.travel = 0.0                             # distance driven so far (m)
+        self.seen_at = np.empty(0)                    # self.travel when each point was stored
         self.blind_radius = blind_radius
         self.keep_radius = keep_radius
         self.max_age = max_age
@@ -33,6 +38,7 @@ class ObstacleMemory:
         self.y += v * math.sin(mid) * dt
         self.theta += omega * dt
         self.age += dt
+        self.travel += abs(v) * dt
 
     def _to_local(self, pts):
         c, s = math.cos(self.theta), math.sin(self.theta)
@@ -54,7 +60,7 @@ class ObstacleMemory:
             dist, _ = cKDTree(points).query(v)
             visible = d_lidar > self.blind_radius + 0.03
             keep = ~visible | (dist < 0.10)
-            self.pts, self.age = self.pts[keep], self.age[keep]
+            self.pts, self.age, self.seen_at = self.pts[keep], self.age[keep], self.seen_at[keep]
 
         # 2) remember the near part of the new scan, except moving objects
         if len(points):
@@ -68,12 +74,19 @@ class ObstacleMemory:
             if len(near):
                 self.pts = np.vstack([self.pts, self._to_local(near)])
                 self.age = np.concatenate([self.age, np.zeros(len(near))])
+                self.seen_at = np.concatenate([self.seen_at, np.full(len(near), self.travel)])
 
-        keep = self.age < self.max_age
-        self.pts, self.age = self.pts[keep], self.age[keep]
+        if self.max_travel is None:
+            keep = self.age < self.max_age
+        else:
+            keep = (self.travel - self.seen_at < self.max_travel) & (self.age < self.max_age)
+        self.pts, self.age, self.seen_at = self.pts[keep], self.age[keep], self.seen_at[keep]
         if len(self.pts) > self.max_points:
-            idx = np.linspace(0, len(self.pts) - 1, self.max_points).astype(int)
-            self.pts, self.age = self.pts[idx], self.age[idx]
+            # thin the points far from the car first; the ones in and near the blind ring matter most
+            v = self._to_vehicle(self.pts)
+            d = np.hypot(v[:, 0] - self.p.lidar_x, v[:, 1] - self.p.lidar_y)
+            order = np.argsort(d)[: self.max_points]
+            self.pts, self.age, self.seen_at = self.pts[order], self.age[order], self.seen_at[order]
 
     def blind_points(self):
         """Remembered points that lie inside the blind ring right now, in the vehicle frame."""

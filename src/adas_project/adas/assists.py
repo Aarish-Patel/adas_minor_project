@@ -36,9 +36,25 @@ class AssistConfig:
     evade_time: float = 2.2          # s: look this far ahead along the driver's path (plus stopping distance)
     evade_min_look: float = 1.1      # m: never less - must react before the relay's front-cone braking (~1.0 m)
     evade_margin: float = 0.07       # m of body clearance an evasive path must keep
-    evade_release_s: float = 0.35    # s the driver's own path must stay clear before control is handed back
+    evade_release_s: float = 0.35    # (unused since the return-to-line phase; kept for old configs)
     evade_candidates: int = 17
     evade_period: float = 0.08       # s between re-planning (the sweep is the expensive part)
+    evade_ttc: float = 1.6           # s: only step in when contact is this close in time...
+    evade_min_v: float = 0.18        # m/s: ...and the car is moving at least this fast (creeping = the driver's call)
+    evade_confirm_s: float = 0.15    # s the threat must persist (one noisy scan never swerves the car)
+    evade_driver_override: float = 0.45   # stick: a driver steering harder than this takes over at once
+    evade_max_s: float = 15.0        # s: a manoeuvre never lasts longer...
+    evade_max_past: float = 2.5      # m: ...or goes further than this past the obstacle
+    return_look: float = 1.2         # m: aim this far ahead on the original line when rejoining it (gentle)
+    pass_margin: float = 0.03        # m body clearance used once alongside the obstacle
+    gap_clear: float = 0.06          # m: a side is used only if the car fits past with this much each side
+    offset_clear: float = 0.12       # m kept between the obstacle edge and the body while passing
+    pass_behind: float = 0.08        # m: return once the rear bumper is this far past the obstacle
+    law_len: float = 0.45            # heading law (as in the obstacle-avoidance demo that ran on the car)
+    law_tau: float = 0.25
+    law_max_deg: float = 28.0
+    return_done_y: float = 0.05      # m and ...
+    return_done_deg: float = 3.0     # ... deg from the original line = rejoined, control handed back
     # corridor / wall centring
     centre_gain_look: float = 0.6    # m: aim this far ahead on the centre line
     centre_window: tuple = (0.0, 0.9)   # m (x, from the rear axle) where the walls are measured
@@ -79,14 +95,21 @@ class DrivingAssists:
         self.evade_side = 0
         self._clear_for = 0.0
         self._since_plan = 1e9
+        self.y_target = 0.0
+        self.box = None
+        self.phase = None               # None, "EVADE" (going around) or "RETURN" (rejoining the original line)
+        self.phase_t = 0.0
+        self.ex = self.ey = self.eth = 0.0   # dead-reckoned pose since the swerve began
+        self._trigger_for = 0.0
+        self._pwm_hist = []
         self._wall_ref = None          # (side, distance) for single-wall following
         self._steer_prev = 0.0
         self.info = {}
 
     # ------------------------------------------------------------------ helpers
-    def _contact(self, points, kappa, horizon):
-        return travel_distance_to_contact(points, math.atan(kappa * self.p.wheelbase), 1, self.p,
-                                          horizon=horizon, margin=self.cfg.evade_margin)
+    def _contact(self, points, kappa, horizon, margin=None):
+        return travel_distance_to_contact(points, math.atan(kappa * self.p.wheelbase), 1, self.p, horizon=horizon,
+                                          margin=self.cfg.evade_margin if margin is None else margin)
 
     def _look(self, v):
         c = self.cfg
@@ -94,52 +117,149 @@ class DrivingAssists:
         return max(c.evade_min_look, v * c.evade_time + stop)
 
     # ------------------------------------------------------------------ evasive steer
+    def _stop_evading(self, why=None):
+        self.evading = False
+        self.phase = None
+        self.evade_side = 0
+        self._trigger_for = 0.0
+        if why:
+            self.info["evasive"] = why
+
+    def _obstacle(self, pts, k_drv, look):
+        """The obstacle on the driver's path (region-grown cluster) and the free room beside it on each side.
+        Returns (box [xmin, xmax, ymin, ymax], free_left, free_right) in the vehicle frame, or None."""
+        c = self.cfg
+        half = self.p.width / 2
+        fx = self.p.front_x
+        lat = pts[:, 1] - 0.5 * k_drv * pts[:, 0] ** 2
+        seed = (pts[:, 0] > fx - 0.05) & (pts[:, 0] < fx + look + 0.3) & (np.abs(lat) < half + c.evade_margin)
+        if seed.sum() < 2:
+            return None
+        near = (pts[:, 0] > fx - 0.3) & (pts[:, 0] < fx + look + 1.2) & (np.abs(pts[:, 1]) < 1.8)
+        cand = pts[near]
+        inside = np.zeros(len(cand), bool)
+        frontier = pts[seed]
+        for _ in range(40):                                   # region grow, 12 cm steps
+            d = np.sqrt(((cand[:, None, :] - frontier[None, :, :]) ** 2).sum(-1)).min(1)
+            grow = (d < 0.12) & ~inside
+            if not grow.any():
+                break
+            inside |= grow
+            frontier = cand[grow]
+        cl = cand[inside]
+        if len(cl) < 2:
+            return None
+        xmin, xmax, ymin, ymax = cl[:, 0].min(), cl[:, 0].max(), cl[:, 1].min(), cl[:, 1].max()
+        others = cand[~inside]
+        band = others[(others[:, 0] > xmin - 0.3) & (others[:, 0] < xmax + 0.4)]
+        left = band[band[:, 1] > ymax][:, 1]
+        right = band[band[:, 1] < ymin][:, 1]
+        free_l = float(left.min() - ymax) if len(left) else 1.5
+        free_r = float(ymin - right.max()) if len(right) else 1.5
+        return [float(xmin), float(xmax), float(ymin), float(ymax)], free_l, free_r
+
+    def _to_start_frame(self, pts):
+        c, s = math.cos(self.eth), math.sin(self.eth)
+        return np.column_stack([self.ex + c * pts[:, 0] - s * pts[:, 1], self.ey + s * pts[:, 0] + c * pts[:, 1]])
+
+    def _heading_law(self, y_ref):
+        """Damped heading control onto the line y = y_ref (the law that rejoined the line on the car in the
+        obstacle-avoidance demo): aim back at the line, close the heading error over law_tau metres."""
+        c = self.cfg
+        th_des = -math.atan((self.ey - y_ref) / c.law_len)
+        th_des = max(-math.radians(c.law_max_deg), min(math.radians(c.law_max_deg), th_des))
+        k = (th_des - self.eth) / c.law_tau
+        return max(-self.kappa_max, min(self.kappa_max, k))
+
     def _evasive(self, dt, pts, steer, pwm, v):
         c = self.cfg
         k_drv = _kappa(steer, self.p)
-        if pwm <= 0 or v < 0.08 or len(pts) == 0:
-            self.evading = False
+        self._pwm_hist = (self._pwm_hist + [pwm])[-12:]
+        if self.phase is not None:                # dead-reckon the manoeuvre (frame: where the swerve began)
+            k_now = _kappa(self._steer_prev, self.p)
+            self.eth += k_now * v * dt
+            self.ex += v * math.cos(self.eth) * dt
+            self.ey += v * math.sin(self.eth) * dt
+            if pwm <= 0:
+                self._stop_evading("driver braked - handed back")
+                return steer, None
+            if abs(steer) > c.evade_driver_override:
+                self._stop_evading("driver steered - handed back")
+                return steer, None
+        if pwm <= 0 or len(pts) == 0:
+            self._trigger_for = 0.0
             return steer, None
         look = self._look(v)
-        d_drv = self._contact(pts, k_drv, look + 0.4)
-        if not self.evading:
-            if d_drv >= look:
+        half = self.p.width / 2
+
+        if self.phase is None:
+            easing = len(self._pwm_hist) >= 6 and pwm < 0.85 * max(self._pwm_hist[:-2])
+            d_drv = self._contact(pts, k_drv, look + 0.4)
+            ttc = d_drv / max(v, 1e-3)
+            if v < c.evade_min_v or easing or d_drv >= look or ttc > c.evade_ttc:
+                self._trigger_for = 0.0
                 return steer, None
-            self._since_plan = 1e9                # trouble ahead: plan now
-        self._since_plan += dt
-        if self._since_plan >= c.evade_period:
-            self._since_plan = 0.0
-            best = None
-            # an escape path only has to stay clear until just past the obstacle (not the whole look-ahead,
-            # otherwise the side walls of a normal room rule out every swerve)
-            need = min(look + 0.3, max(0.6, min(d_drv, look) + 0.45))
-            for k in np.linspace(-self.kappa_max, self.kappa_max, c.evade_candidates):
-                d = self._contact(pts, k, look + 0.4)
-                if d < need:
-                    continue                      # this path also runs into something
-                side = 1 if k > k_drv else -1
-                cost = abs(k - k_drv) + (0.0 if (self.evade_side == 0 or side == self.evade_side) else 0.6)
-                if best is None or cost < best[0]:
-                    best = (cost, float(k), side)
-            if best is None:
-                if self.evading:                  # nothing clear any more: stop steering, the AEB brakes
-                    self.evading = False
-                    self.evade_side = 0
-                self.info["evasive"] = "no clear path - braking only"
+            self._trigger_for += dt
+            if self._trigger_for < c.evade_confirm_s:
+                return steer, None
+            ob = self._obstacle(pts, k_drv, look)
+            if ob is None:
+                return steer, None
+            box, free_l, free_r = ob
+            need = self.p.width + 2 * c.gap_clear
+            if max(free_l, free_r) < need:
+                self.info["evasive"] = (f"no room either side ({free_l:.2f} / {free_r:.2f} m, car needs {need:.2f} m)"
+                                        " - braking only")
+                self._trigger_for = 0.0
                 return steer, 2
-            _, self.evade_kappa, self.evade_side = best
-            self.evading = True
-        if d_drv >= look:
-            self._clear_for += dt
-            if self._clear_for >= c.evade_release_s:
-                self.evading = False              # the driver's own path is clear: hand back
-                self.evade_side = 0
-                self._clear_for = 0.0
-                self.info["evasive"] = "handed back"
-                return steer, None
-        else:
-            self._clear_for = 0.0
-        self.info["evasive"] = f"steering {'left' if self.evade_side > 0 else 'right'} around an obstacle"
+            self.evade_side = 1 if free_l >= free_r else -1
+            free = free_l if self.evade_side > 0 else free_r
+            clear = min(c.offset_clear, (free - self.p.width) / 2)
+            edge = box[3] if self.evade_side > 0 else box[2]
+            self.y_target = edge + self.evade_side * (half + clear)
+            self.box, self.box0 = box, list(box)
+            self.phase, self.evading = "EVADE", True
+            self.ex = self.ey = self.eth = 0.0
+            self.phase_t = 0.0
+            self._since_plan = 1e9
+        self.phase_t += dt
+        self._since_plan += dt
+
+        # keep the obstacle's extent up to date while beside it (its side becomes visible as the car passes)
+        if self.phase in ("EVADE", "PASS") and self._since_plan >= c.evade_period:
+            self._since_plan = 0.0
+            w = self._to_start_frame(pts)
+            xmin, xmax, ymin, ymax = self.box
+            m = (w[:, 0] > xmin - 0.08) & (w[:, 0] < xmax + 0.25) & (w[:, 1] > ymin - 0.08) & (w[:, 1] < ymax + 0.08)
+            if m.sum() >= 2:
+                xmax = max(xmax, float(w[m, 0].max()))        # depth: grows as the side comes into view
+                y0, y1 = self.box0[2], self.box0[3]           # width: at most 3 cm beyond the first measurement
+                self.box = [xmin, xmax, max(y0 - 0.03, min(ymin, float(w[m, 1].min()))),
+                            min(y1 + 0.03, max(ymax, float(w[m, 1].max())))]
+                edge = self.box[3] if self.evade_side > 0 else self.box[2]
+                target = edge + self.evade_side * (half + c.offset_clear)
+                if (target - self.y_target) * self.evade_side > 0:
+                    self.y_target = target           # the obstacle turned out wider: move out further, never in
+
+        if self.phase == "EVADE" and abs(self.ey - self.y_target) < 0.05 and abs(self.eth) < math.radians(12):
+            self.phase = "PASS"
+        rear_bumper = self.ex + self.p.rear_x
+        if self.phase in ("EVADE", "PASS") and rear_bumper > self.box[1] + c.pass_behind:
+            k_ret = self._heading_law(0.0)
+            if self._contact(pts, k_ret, look + 0.4, c.pass_margin) >= min(look, 0.6):
+                self.phase = "RETURN"
+        if self.phase == "RETURN" and abs(self.ey) < c.return_done_y and abs(self.eth) < math.radians(c.return_done_deg):
+            self._stop_evading("back on the original line - handed back")
+            return steer, None
+        if self.phase_t > c.evade_max_s or self.ex > self.box[1] + c.evade_max_past:
+            self._stop_evading("manoeuvre ended (limit) - handed back")
+            return steer, None
+        self.evade_kappa = self._heading_law(0.0 if self.phase == "RETURN" else self.y_target)
+        side = "left" if self.evade_side > 0 else "right"
+        self.info["evasive"] = {"EVADE": f"steering {side} around an obstacle",
+                                "PASS": f"passing the obstacle ({self.ey * 100:+.0f} cm off the line)",
+                                "RETURN": f"obstacle passed - rejoining the line ({self.ey * 100:+.0f} cm, "
+                                          f"{math.degrees(self.eth):+.0f} deg)"}[self.phase]
         return _steer(self.evade_kappa, self.p), 2
 
     # ------------------------------------------------------------------ corridor / wall centring

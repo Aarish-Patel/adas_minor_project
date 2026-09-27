@@ -103,6 +103,10 @@ MAX_CLOSING_SPEED_M_S = 3.0  # clip absurd speed spikes from noise
 # with forward, matching a live complaint that the car "wouldn't let me steer away and leave
 # or go back" even though going back had nothing to do with that wall.
 WIDE_CONE_DEG = 90
+# "path": emergency braking from the body swept along the commanded path (pi/path_gate.py) - passing beside
+# something does not stop the car, turning into it does. "cone": the older fixed cones + +-90 deg body alarm.
+GATE_MODE = "path"
+SCAN_LOST_S = 0.5          # path gate: no new LiDAR scan for this long -> no throttle
 BODY_HARD_FLOOR_M = 0.30
 
 # Active braking: below this, cutting throttle to 0 (coast) is not enough - actively brake
@@ -230,6 +234,7 @@ class Clearance:
         self.body_min_front = None   # closest point in the WIDE front half (+-90deg)
         self.body_min_rear = None    # closest point in the WIDE rear half (+-90deg)
         self.points = []       # latest full scan, car-frame (angle_deg, dist_m) - for the GUI
+        self.scan_seq = 0      # increments with every scan (the path gate remembers each scan once)
         self.tracker = Tracker()   # moving-object tracking (adas/tracking.py, LiDAR-only)
         self.tracks_info = []      # [{"id","x","y","moving"}] - for the GUI overlay
         self.raw_tracks = []       # the actual Track objects - FollowController needs these,
@@ -324,6 +329,7 @@ class Clearance:
                     self.body_min_front = best_body_front
                     self.body_min_rear = best_body_rear
                     self.points = pts
+                    self.scan_seq += 1
                     self.moving_contact = contact
                     self.tracks_info = [{"id": tr.id, "x": round(tr.pos[0], 3),
                                           "y": round(tr.pos[1], 3), "moving": tr.moving}
@@ -331,6 +337,10 @@ class Clearance:
                     self.raw_tracks = tracks
         except Exception as e:
             print("LiDAR thread stopped:", e)
+
+    def read_points_seq(self):
+        with self.lock:
+            return list(self.points), self.scan_seq
 
     def read_points(self):
         with self.lock:
@@ -465,6 +475,7 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
             "tracks": tracks or [], "moving_blocked": bool(moving_blocked),
             "follow_enabled": bool(follow_enabled), "follow_lead": follow_lead,
             "assist": GUI_STATE["data"].get("assist"),        # kept: set separately by the assist code
+            "gate": GUI_STATE["data"].get("gate"),
         }
 
 
@@ -608,6 +619,15 @@ def main():
     from pi.relay_assists import RelayAssists
     from adas.assists import deadman_pwm
     assist = RelayAssists(TUNING, WIRE_MOTOR_REVERSED)   # driving assists, all off until toggled on
+    from pi.path_gate import PathGate
+    from adas.aeb import SpeedEstimator
+    pgate = PathGate(assist.p, TUNING.speed_model)      # path-predicted emergency braking + obstacle memory
+    vest = SpeedEstimator(TUNING.speed_model)           # speed from what was actually sent to the motor
+    last_pkt_t = time.time()
+    last_seq, last_seq_t = None, time.time()
+    from pi.relay_assists import K_CURV_PER_SERVO_DEG as assist_k
+    last_servo_cmd = assist.centre
+    gate_delta = 0.0
     follow = FollowController(VP, TUNING.speed_model)   # adaptive cruise / follow-the-leader,
                                                           # opt-in via FOLLOW_ON/FOLLOW_OFF
     logger = DriveLogger(LOG_DIR)
@@ -646,9 +666,15 @@ def main():
                 age = now - last_packet_time
                 if last_physical != 0:
                     ft, rt, bmf, bmr = clr.read()
-                    danger = (last_physical > 0 and (gate.blocked("front", ft, now) or gate.body_alert("front", bmf, now))) or \
-                             (last_physical < 0 and (gate.blocked("rear", rt, now) or gate.body_alert("rear", bmr, now)))
-                    new = 0.0 if danger else deadman_pwm(last_physical, age, dt)
+                    gpts, gseq = clr.read_points_seq()
+                    if gseq != last_seq:
+                        last_seq, last_seq_t = gseq, now
+                        pgate.on_scan(RelayAssists.points_vehicle_frame(gpts, assist.p.lidar_x), gseq)
+                    ramp = deadman_pwm(last_physical, age, dt)
+                    capped, _ = pgate.decide(dt, ramp, gate_delta, vest.v, ft.speed if ramp > 0 else rt.speed)
+                    danger = abs(capped) < abs(ramp) - 0.5 or now - last_seq_t > SCAN_LOST_S
+                    new = 0.0 if danger else capped
+                    vest.update(dt, new)
                     if age > 0.5 and last_physical != 0 and new != last_physical:
                         dlog.event("driver link lost - dead-man ramp" if not danger else "driver link lost - obstacle, stopped",
                                    pwm=new)
@@ -713,6 +739,25 @@ def main():
                     # cone stands down. The close-range body alert (body_alert_front) still stops the car.
                     front_blocked = False
 
+            pkt_now = time.time()
+            dt_pkt, last_pkt_t = min(0.2, max(0.005, pkt_now - last_pkt_t)), pkt_now
+            gpts, gseq = clr.read_points_seq()
+            if gseq != last_seq:
+                last_seq, last_seq_t = gseq, pkt_now
+                pgate.on_scan(RelayAssists.points_vehicle_frame(gpts, assist.p.lidar_x), gseq)
+            servo_cmd = None
+            for ln in text.splitlines():
+                q = ln.split()
+                if len(q) == 3 and q[0] == "A":
+                    try:
+                        servo_cmd = (float(q[1]) + float(q[2])) / 2.0
+                    except ValueError:
+                        pass
+            if servo_cmd is not None:
+                last_servo_cmd = servo_cmd
+            gate_delta = math.atan(-assist_k * (last_servo_cmd - assist.centre) * assist.p.wheelbase)
+            gate_info = {}
+
             out_lines = []
             steer_a1 = steer_a2 = None
             pwm_commanded = pwm_sent = 0
@@ -733,7 +778,16 @@ def main():
                     physical = -wire_val if WIRE_MOTOR_REVERSED else wire_val
                     intent.update(physical)
                     braking = False
-                    if adas_override:
+                    if GATE_MODE == "path":
+                        closing = front_track.speed if physical > 0 else rear_track.speed
+                        g_phys, g_brake = pgate.decide(dt_pkt, physical, gate_delta, vest.v, closing)
+                        gate_info = dict(pgate.info)
+                        if pkt_now - last_seq_t > SCAN_LOST_S and physical != 0:
+                            g_phys, g_brake = 0, False
+                            gate_info["action"] = "LiDAR lost"
+                        if not adas_override:
+                            physical, braking = g_phys, g_brake
+                    elif adas_override:
                         pass   # driver has explicitly taken full control - pass through as-is
                     elif physical > 0 and (front_blocked or body_alert_front):
                         if body_alert_front and not front_blocked:
@@ -833,12 +887,15 @@ def main():
             clr.set_motion_state(final_physical, last_steer_offset)
             esp.write(("\n".join(out_lines) + "\n").encode())
             last_physical = float(final_physical)
+            vest.update(dt_pkt, final_physical)
             with GUI_STATE["lock"]:
                 GUI_STATE["data"]["assist"] = {"level": assist.level, "info": assist.info, "enabled": assist.enabled(),
                                                "changed": assist.changed}
+                GUI_STATE["data"]["gate"] = gate_info
             # what the driver asked for vs what the ADAS let through - the raw material for intent learning
             dlog.driver(inp=driver_text.strip(), assisted=text.strip() if assist.changed else None,
                         assist_level=assist.level, assist_info=assist.info or None,
+                        gate=gate_info or None, v_est=round(vest.v, 3), servo_cmd=last_servo_cmd,
                         out=out_lines, pwm_in=pwm_commanded, pwm_out=pwm_sent,
                         front=front_track.dist, rear=rear_track.dist, fb=int(front_blocked), rb=int(rear_blocked),
                         braking=int(braking), moving_blocked=int(moving_blocked), override=int(adas_override),
