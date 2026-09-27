@@ -44,7 +44,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] C6. Room map (Cartographer-style submaps) for localisation, point-to-point navigation, return-to-start.
 
 ## D. Simulator / digital twin
-- [ ] D1. **3D view of the car simulator next to the car GUI**: one drive shown in 3D (world, car with the measured
+- [ ] D1. (v1 done: the /dash 3D view shows the live relay state for the car or the simulator, incl. true walls, predicted path ribbon, contact X, manoeuvre, line. Still to do: world-fixed map frame, 3D obstacle models instead of LiDAR strokes) **3D view of the car simulator next to the car GUI**: one drive shown in 3D (world, car with the measured
   body and live steering, LiDAR rays, predicted path, collision X, manoeuvre + original line) and in the 2D GUI.
 - [ ] D2. **Twin accuracy evidence**: replay a real log's commands in the simulator, overlay simulated vs real
   (scan-matched) path with the error; the digital-twin testing cycle page.
@@ -57,7 +57,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] D6. GUI "connection lost" flicker while the planner runs.
 
 ## E. GUI (EV-grade frontend)
-- [ ] E1. Redesign: EV-style dashboard (speed, gear/direction, ADAS state, predicted path, alerts, camera slot),
+- [ ] E1. (v1 done: `pi/dash/index.html` at /dash on the car and in the simulator - 3D scene, speed/gear/throttle/steering cluster, time-to-contact ring, mode chip, alert banner, assist toggles, events, camera slot. Still to do: modes page (Drive/Assist/Autonomy/Diagnostics/Replay), intent bars, map) Redesign: EV-style dashboard (speed, gear/direction, ADAS state, predicted path, alerts, camera slot),
   useful modes (Drive, Assist, Autonomy, Diagnostics, Replay), all relevant information visible.
 - [ ] E2. Show "what might happen": predicted path, time to collision, intent probabilities, planned manoeuvre,
   alternatives considered.

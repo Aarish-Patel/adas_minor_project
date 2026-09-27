@@ -478,6 +478,7 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
             "gate": GUI_STATE["data"].get("gate"),
             "sim": GUI_STATE["data"].get("sim"),              # ground truth, only when run in the laptop simulator
             "plan": GUI_STATE["data"].get("plan"),
+            "drive": GUI_STATE["data"].get("drive"),
         }
 
 
@@ -525,6 +526,15 @@ def start_gui_server(clr):
         def do_GET(self):
             if self.path == "/" or self.path == "/index.html":
                 self._serve_file("lidar_gui.html", "text/html")
+            elif self.path.split("?")[0] in ("/dash", "/dash/"):
+                self._serve_file(os.path.join("dash", "index.html"), "text/html")
+            elif self.path.startswith("/vendor/") or self.path.startswith("/dash/"):
+                rel = self.path.split("?")[0].lstrip("/")
+                rel = rel[len("dash/"):] if rel.startswith("dash/") else rel
+                if ".." in rel:
+                    self.send_response(404); self.end_headers(); return
+                ctype = "text/javascript" if rel.endswith(".js") else "text/css" if rel.endswith(".css") else "application/octet-stream"
+                self._serve_file(os.path.join("dash", rel), ctype)
             elif self.path.startswith("/api/scan"):
                 with GUI_STATE["lock"]:
                     payload = dict(GUI_STATE["data"])
@@ -921,6 +931,9 @@ def main():
                                                "changed": assist.changed}
                 GUI_STATE["data"]["gate"] = gate_info
                 GUI_STATE["data"]["plan"] = plan
+                GUI_STATE["data"]["drive"] = {"v": round(vest.v, 3), "pwm_in": -pwm_commanded if WIRE_MOTOR_REVERSED else pwm_commanded,
+                                              "pwm_out": -pwm_sent if WIRE_MOTOR_REVERSED else pwm_sent,
+                                              "servo": last_servo_cmd, "centre": assist.centre, "t": time.time()}
             # what the driver asked for vs what the ADAS let through - the raw material for intent learning
             dlog.driver(inp=driver_text.strip(), assisted=text.strip() if assist.changed else None,
                         assist_level=assist.level, assist_info=assist.info or None,
