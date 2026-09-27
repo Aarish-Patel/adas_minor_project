@@ -41,14 +41,18 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   fit. Runs only when the user asks.
 
 - [ ] C5. RF2O range-flow odometry for speed and yaw rate; EKF fusing it with the car model.
+- [ ] C7. Scan de-skewing (KISS-ICP style): the car moves ~3 cm during one 0.1 s LiDAR rotation (measured as a
+  -3.7 cm bias in the twin LiDAR check). De-skew real scans in the odometry, and add the same skew to the
+  simulated LiDAR so the twin reproduces it.
+- [ ] D7. Show the twin report figures in the dashboard (Diagnostics mode) and as slides.
 - [ ] C6. Room map (Cartographer-style submaps) for localisation, point-to-point navigation, return-to-start.
 
 ## D. Simulator / digital twin
 - [ ] D1. (v1 done: the /dash 3D view shows the live relay state for the car or the simulator, incl. true walls, predicted path ribbon, contact X, manoeuvre, line. Still to do: world-fixed map frame, 3D obstacle models instead of LiDAR strokes) **3D view of the car simulator next to the car GUI**: one drive shown in 3D (world, car with the measured
   body and live steering, LiDAR rays, predicted path, collision X, manoeuvre + original line) and in the 2D GUI.
-- [ ] D2. **Twin accuracy evidence**: replay a real log's commands in the simulator, overlay simulated vs real
+- [x] D2. (done v1: `python -m sim.twin_report` -> reports/twin_path.png: 48 x 3 s replays of the real logging drive, twin ends 4.5 cm from the car median, 9.6 cm 90th) **Twin accuracy evidence**: replay a real log's commands in the simulator, overlay simulated vs real
   (scan-matched) path with the error; the digital-twin testing cycle page.
-- [ ] D3. **Real LiDAR vs simulated LiDAR demo**: take real scans from a log, rebuild the room, raycast the simulated
+- [x] D3. (done v1: reports/twin_lidar.png: static occupancy map from even scans, simulated beams at held-out scan poses, median |sim-real| 3.7 cm over 9953 beams; the -3.7 cm bias is scan skew from the car moving during the 0.1 s rotation - see C7) **Real LiDAR vs simulated LiDAR demo**: take real scans from a log, rebuild the room, raycast the simulated
   LiDAR from the same poses, show both overlaid with the range error statistics.
 - [ ] D4. **Visual Monte Carlo** of real-world scenarios (random rooms, obstacles, pedestrians, driver lapses) on the
   car's own relay code, side by side runs.
