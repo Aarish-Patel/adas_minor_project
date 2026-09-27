@@ -44,7 +44,7 @@ class VirtualCar:
     FAILSAFE_S = 0.5            # ESP32 firmware: motor off after this long without a command
     DT = 0.005
 
-    def __init__(self, world, params, start=(0.0, 0.0, 0.0), motor_reversed=True):
+    def __init__(self, world, params, start=(0.0, 0.0, 0.0), motor_reversed=True, threaded=True):
         self.world, self.p = world, params
         self.m = load_car_model()
         self.x, self.y, self.th = start
@@ -58,12 +58,14 @@ class VirtualCar:
         self.crash_count = 0
         self.lock = threading.Lock()
         self.running = True
-        threading.Thread(target=self._run, daemon=True).start()
+        self.clock = 0.0                    # simulated time when not threaded (Monte Carlo)
+        if threaded:
+            threading.Thread(target=self._run, daemon=True).start()
 
     # ---------------------------------------------------------------- ESP32 command handling
-    def command(self, line):
+    def command(self, line, now=None):
         p = line.split()
-        now = time.time()
+        now = time.time() if now is None else now
         with self.lock:
             try:
                 if p[0] == "A" and len(p) == 3:
@@ -125,6 +127,21 @@ class VirtualCar:
             return
         self.crashed = False
         self.x, self.y, self.th = nx, ny, nth
+
+    def step_to(self, t):
+        """Advance the physics to simulated time t (non-threaded use)."""
+        while self.clock + self.DT <= t:
+            self.clock += self.DT
+            due = [q for q in self.queue if q[0] <= self.clock]
+            self.queue = [q for q in self.queue if q[0] > self.clock]
+            for _, kind, val in due:
+                if kind == "A":
+                    self.servo_cmd = max(35.0, min(145.0, val))
+                else:
+                    self.pwm = val
+            if self.clock - self.last_cmd_t > self.FAILSAFE_S:
+                self.pwm = 0.0
+            self._step(self.DT)
 
     def pose(self):
         with self.lock:

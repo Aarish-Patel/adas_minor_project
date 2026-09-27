@@ -17,7 +17,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] B3. (done: 40 cm box now swerves, 13 cm clearance) Wide obstacles trigger too late (40 cm box -> brakes instead of swerving). Plan earlier when the needed
   offset is large. (Likely solved by B2.)
 - [ ] B4. Brief throttle cut mid-manoeuvre in the doorway run (t = 3.6 s): find the cause in the sim log.
-- [ ] B5. Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
+- [ ] B5. (measured: 12 of 39 interventions needless in the Monte Carlo; still to tune down) Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
   real logs) and tune down.
 - [ ] B6. Corridor centring, limiter, narrow gap and side/rear alerts not re-checked since the path gate replaced the
   cone gate.
@@ -28,6 +28,8 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] B10. (done inside B2: the planner adds reverse legs when no forward path exists) "Unstuck" mode with reversing (Reeds-Shepp) - the user's option 1.
 
 - [ ] B11. Brake hold stops 0.75 m short of a wall at full speed (old speed model in the relay) - fixed by C3.
+- [x] B13. (fixed) Car froze next to a box: points already inside the body margin blocked every direction, even
+  backing away. The path gate now ignores close points the motion moves away from (same margin box as the sweep).
 - [ ] B12. Unit tests for the Hybrid A* planner and the evasive state machine (doorway, boxed, reverse case).
 
 ## C. Localisation and car model
@@ -54,9 +56,9 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   (scan-matched) path with the error; the digital-twin testing cycle page.
 - [x] D3. (done v1: reports/twin_lidar.png: static occupancy map from even scans, simulated beams at held-out scan poses, median |sim-real| 3.7 cm over 9953 beams; the -3.7 cm bias is scan skew from the car moving during the 0.1 s rotation - see C7) **Real LiDAR vs simulated LiDAR demo**: take real scans from a log, rebuild the room, raycast the simulated
   LiDAR from the same poses, show both overlaid with the range error statistics.
-- [ ] D4. **Visual Monte Carlo** of real-world scenarios (random rooms, obstacles, pedestrians, driver lapses) on the
+- [x] D4. (done v1: `python -m sim.relay_mc 24` on the car's own decision code -> reports/monte_carlo_relay.png: no ADAS 17/24 crashes, ADAS 0/24 crashes and 24/24 reach the goal, 39 interventions of which 12 needless) **Visual Monte Carlo** of real-world scenarios (random rooms, obstacles, pedestrians, driver lapses) on the
   car's own relay code, side by side runs.
-- [ ] D5. **Intent-aware vs not intent-aware** comparison on the same Monte Carlo runs (crashes, interruptions,
+- [ ] D5. (run, but NO difference yet: the steering-trend intent predictor in `pi/path_gate.py` never changed a decision - 12 needless interventions in both. Next: a learned intent model (GRU over stick/throttle/speed history, RESEARCH.md 4) predicting the driver's path distribution, and a driver model that telegraphs intent (gradual steering) so the comparison is fair) **Intent-aware vs not intent-aware** comparison on the same Monte Carlo runs (crashes, interruptions,
   warning lead time).
 - [ ] D6. GUI "connection lost" flicker while the planner runs.
 

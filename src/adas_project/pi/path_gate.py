@@ -19,6 +19,9 @@ import numpy as np
 from adas.geometry import travel_distance_to_contact
 from adas.memory import ObstacleMemory
 
+INTENT_MIN_DELTA = 0.03    # rad: the steering trend must be meaningful
+INTENT_FLOOR_M = 0.25      # m: below this free distance only the current path counts
+INTENT_MAX_GAIN_M = 0.6    # m: the prediction can add at most this much free distance
 FOS = 1.3                  # the stopping distance must fit into the free distance 1.3 times over
 BODY_MARGIN_M = 0.03       # extra clearance around the whole body
 BASE_M = 0.05              # standoff kept at walking pace (bumper to obstacle)
@@ -55,16 +58,19 @@ class PathGate:
         self.memory.prune_contradicted(pts_vehicle)     # never trust memory over what the LiDAR sees now
         self.memory.add_scan(pts_vehicle)
 
-    def free_distance(self, delta, direction):
+    def free_distance(self, delta, direction, slop=True):
         """How far the rear axle can travel along the commanded path (and its tighter/wider neighbours)
         before the body plus margin touches anything."""
         blind = self.memory.blind_points()
         pts = np.vstack([self.pts, blind]) if len(blind) else self.pts
         if len(pts) == 0:
             return math.inf, 0
+        pts = self._drop_receding(pts, delta, direction)
+        if len(pts) == 0:
+            return math.inf, len(blind)
         k = math.tan(delta) / self.p.wheelbase
         best = math.inf
-        for kk in (k, k + KAPPA_SLOP, k - KAPPA_SLOP):
+        for kk in ((k, k + KAPPA_SLOP, k - KAPPA_SLOP) if slop else (k,)):
             d = travel_distance_to_contact(pts, math.atan(kk * self.p.wheelbase), direction, self.p,
                                            horizon=HORIZON_M, margin=BODY_MARGIN_M)
             best = min(best, d)
@@ -112,6 +118,35 @@ class PathGate:
                 "limited" if out["state"] == "clear" else out["state"])
         return out
 
+    def _body_dist(self, pts, x, y, th):
+        c, s = math.cos(th), math.sin(th)
+        dx, dy = pts[:, 0] - x, pts[:, 1] - y
+        lx, ly = c * dx + s * dy, -s * dx + c * dy
+        ex = np.maximum(np.maximum(self.p.rear_x - lx, 0.0), lx - self.p.front_x)
+        ey = np.maximum(np.abs(ly) - self.p.width / 2, 0.0)
+        return np.hypot(ex, ey)
+
+    def _drop_receding(self, pts, delta, direction, probe=0.05):
+        """Points already inside the body margin right now would make every direction look blocked (the car
+        freezes next to a box, unable even to back away). Such points only count if the next few centimetres of
+        this motion bring the body closer to them."""
+        d0 = self._body_dist(pts, 0.0, 0.0, 0.0)
+        m = BODY_MARGIN_M + 0.01              # the same square-cornered margin box the path sweep uses
+        close = (pts[:, 0] >= self.p.rear_x - m) & (pts[:, 0] <= self.p.front_x + m) & \
+                (np.abs(pts[:, 1]) <= self.p.width / 2 + m)
+        if not close.any():
+            return pts
+        k = math.tan(delta) / self.p.wheelbase
+        s = direction * probe
+        if abs(k) < 1e-6:
+            x1, y1, th1 = s, 0.0, 0.0
+        else:
+            th1 = k * s
+            x1, y1 = math.sin(th1) / k, (1 - math.cos(th1)) / k
+        d1 = self._body_dist(pts, x1, y1, th1)
+        keep = ~close | (d1 < d0 - 1e-4)
+        return pts[keep]
+
     @staticmethod
     def allowed_speed(free):
         """Largest v with FOS * (BASE + v*REACTION + v^2/2a) <= free."""
@@ -121,7 +156,7 @@ class PathGate:
         a, r = DECEL, REACTION_S
         return -a * r + math.sqrt((a * r) ** 2 + 2 * a * room)
 
-    def decide(self, dt, physical, delta, v_est, closing=0.0):
+    def decide(self, dt, physical, delta, v_est, closing=0.0, delta_intent=None):
         """physical: the throttle to be sent (+ forward). delta: commanded steering angle (rad). v_est: speed
         estimate (+ forward), closing: LiDAR-measured closing speed toward what is ahead in the travel direction.
         Returns (physical to send, braking?)."""
@@ -132,14 +167,22 @@ class PathGate:
             return 0, False
         direction = 1 if physical > 0 else -1
         free, n_blind = self.free_distance(delta, direction)
+        # intent-aware: the driver's steering trend says where they will be steering shortly. If THAT path is
+        # clear, a clip of the current arc is not treated as a threat (fewer needless interventions) - except at
+        # close range, where only the current path counts.
+        if delta_intent is not None and abs(delta_intent - delta) > INTENT_MIN_DELTA and free > INTENT_FLOOR_M:
+            free_i, _ = self.free_distance(delta_intent, direction, slop=False)
+            if free_i > free:
+                self.info["intent"] = f"driver steering away - using the predicted path ({free_i:.2f} m free)"
+                free = min(free_i, free + INTENT_MAX_GAIN_M)
         v = max(abs(v_est) if v_est * direction > 0 else 0.0, closing)
         v_ok = self.allowed_speed(free)
         if free > CREEP_MIN_M:
             v_ok = max(v_ok, CREEP_V)
         else:
             v_ok = 0.0
-        self.info = {"free_m": round(free, 3) if math.isfinite(free) else None, "v_allowed": round(v_ok, 2),
-                     "blind_pts": n_blind}
+        self.info.update({"free_m": round(free, 3) if math.isfinite(free) else None, "v_allowed": round(v_ok, 2),
+                          "blind_pts": n_blind})
         # latch: after braking for an obstacle, hold the throttle at zero toward it (no brake/throttle/brake
         # stutter) until the driver lets go or reverses, or the free distance has clearly grown again
         if self.latch is not None:

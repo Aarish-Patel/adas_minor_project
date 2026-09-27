@@ -76,7 +76,7 @@ class RelayAssists:
         d = np.array([p[1] for p in points])
         return np.column_stack([lidar_x + d * np.cos(a), -d * np.sin(a)])
 
-    def _odometry(self, points, seq, stick):
+    def _odometry(self, points, seq, stick, now=None):
         """While a manoeuvre runs, track the car by matching each LiDAR scan against the one taken when it began
         (pi/scanmatch.py - ~1 cm on the car in the obstacle-avoidance demo) and hand the pose to the assist."""
         a = self.assists
@@ -90,14 +90,14 @@ class RelayAssists:
         kappa_right = -math.tan(steer_to_delta(stick, self.p)) / self.p.wheelbase
         if self.odo is None:
             self.odo = Odometry()
-        pose = self.odo.update(xy, time.time(), self.est.v, kappa_right)
+        pose = self.odo.update(xy, time.time() if now is None else now, self.est.v, kappa_right)
         xl, yl, thl = float(pose[0]), -float(pose[1]), -float(pose[2])       # LiDAR pose, y left
         lx = self.p.lidar_x
         a.pose_fix = (xl - lx * math.cos(thl) + lx, yl - lx * math.sin(thl), thl)   # rear axle, start frame
 
-    def process(self, lines, points, seq=None):
+    def process(self, lines, points, seq=None, now=None):
         """lines: the driver's packet lines. Returns the lines to hand on to the safety gate."""
-        now = time.time()
+        now = time.time() if now is None else now
         dt = 0.05 if self.last_t is None else min(0.2, max(0.005, now - self.last_t))
         self.last_t = now
         servo, wire, i_a, i_m = None, None, None, None
@@ -121,9 +121,9 @@ class RelayAssists:
             self.info, self.level = {}, 0
             return lines
         pts = self.points_vehicle_frame(points, self.p.lidar_x)
-        self._odometry(points, seq, stick)
+        self._odometry(points, seq, stick, now)
         s_out, p_out, self.level = self.assists.update(dt, pts, stick, physical, self.est.v)
-        self._odometry(points, seq, stick)     # a manoeuvre that just began: this scan is its reference
+        self._odometry(points, seq, stick, now)     # a manoeuvre that just began: this scan is its reference
         self.info = dict(self.assists.info)
         out = list(lines)
         if abs(s_out - stick) > 1e-3:
