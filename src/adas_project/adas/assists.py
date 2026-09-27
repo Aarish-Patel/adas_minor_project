@@ -116,6 +116,7 @@ class DrivingAssists:
         self._plan_clear = None
         self.pose_fix = None            # (x, y, th) from scan matching, start frame, set from outside
         self.intent_k_rate = None       # driver's curvature rate (1/m/s) when attentive, else None; set from outside
+        self.intent_hold = False        # learned intent: an attentive driver who will handle it - no swerve (outside)
         self._planner = None
         self._track_i = 0
         self._x_goal_v = 1.0
@@ -254,6 +255,9 @@ class DrivingAssists:
                 return steer, None
             self._trigger_for += dt
             if self._trigger_for < c.evade_confirm_s:
+                return steer, None
+            if self.intent_hold:                   # the driver is on it (learned intent) - the brake still watches
+                self.info["evasive"] = "driver is avoiding it - not intervening"
                 return steer, None
             self.ex = self.ey = self.eth = 0.0      # the line frame: the car now, the driver's path straight ahead
             self._x_goal_v = self._x_goal(pts)

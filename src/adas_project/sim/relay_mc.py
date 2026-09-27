@@ -24,7 +24,8 @@ sys.path.insert(0, os.path.join(HERE, ".."))
 DT = 0.05
 SCAN_DT = 0.1
 T_MAX = 30.0
-VARIANTS = ("off", "adas", "adas+intent")
+VARIANTS = ("off", "brake-only", "adas", "adas+intent")
+TRUST_THRESHOLD = float(os.environ.get("RC_TRUST", "0.5"))   # hold the swerve when P(driver crashes) is below this
 
 
 # ------------------------------------------------------------------ scenarios
@@ -201,9 +202,15 @@ def run(args):
     car.last_cmd_t = 0.0
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
     driver = HumanDriver(world, goal, np.random.default_rng(seed + 1000), p, K, assist.centre, style)
+    net = None
+    if variant == "adas+intent":
+        from adas.intent_net import DriverProfile, IntentNet, features
+        net = IntentNet(os.path.join(HERE, "..", "models", "intent_net.json"))
+        prof = DriverProfile()
+    vpts = np.empty((0, 2))
     gate = PathGate(p, tun.speed_model)
     vest = SpeedEstimator(tun.speed_model)
-    if variant != "off":
+    if variant in ("adas", "adas+intent"):
         assist.set("evasive", True)
     t, next_scan, seq = 0.0, 0.0, 0
     pts = []
@@ -211,6 +218,7 @@ def run(args):
     trace, events = [], []
     interventions = fp = 0
     kind = None
+    p_crash = None
     was_intervening = False
     min_clear, reached = 9.0, None
     while t < T_MAX:
@@ -230,14 +238,27 @@ def run(args):
             cw = np.where(cw > 180, cw - 360, cw)
             pts = [(round(float(a), 1), round(float(d), 3)) for a, d, o in zip(cw, r, ok) if o]
             seq += 1
-            gate.on_scan(RelayAssists.points_vehicle_frame(pts, p.lidar_x), seq)
+            vpts = RelayAssists.points_vehicle_frame(pts, p.lidar_x)
+            gate.on_scan(vpts, seq)
         d_servo, d_pwm = driver.command(t, (x, y, th), v)
-        servo_hist = (servo_hist + [d_servo])[-25:]
+        servo_hist = (servo_hist + [d_servo])[-80:]
         lines = [f"A {d_servo:.1f} {d_servo:.1f}", f"M {-int(d_pwm)}"]
         servo_out, phys = d_servo, d_pwm
         intervening = False
         if variant != "off":
-            assist.assists.intent_k_rate = driver_intent(servo_hist, DT, assist.centre) if variant == "adas+intent" else None
+            k_rate, trust, p_crash = None, False, None
+            if net is not None:
+                # learned intent decides whether this driver will handle the threat (personal reaction profile,
+                # stick history, LiDAR free distances); the stopping-distance brake below is never suppressed
+                f = features(servo_hist, d_pwm, v, vpts, p, assist.centre, K, profile=prof)
+                if f is not None:
+                    prof.update(servo_hist, f[len(f) - 5] * 1.5)
+                    p_crash = net.crash_probability(f)
+                    trust = p_crash < TRUST_THRESHOLD
+                if trust:                          # trusted driver: their own predicted path (held arc if not steering)
+                    k_rate = driver_intent(servo_hist, DT, assist.centre) or 0.0
+            assist.assists.intent_k_rate = k_rate if trust else None
+            assist.assists.intent_hold = trust
             out = assist.process(lines, pts, seq, now=t)
             for ln in out:
                 q = ln.split()
@@ -246,8 +267,8 @@ def run(args):
                 elif q[0] == "M":
                     phys = -float(q[1])
             delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
-            k_rate = driver_intent(servo_hist, DT, assist.centre) if variant == "adas+intent" else None
-            g_phys, _ = gate.decide(DT, phys, delta, vest.v, 0.0, k_rate)
+            # intent decides whether to take over the STEERING (evasive hold above); braking stays pure physics
+            g_phys, _ = gate.decide(DT, phys, delta, vest.v, 0.0, None)
             kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
                                                                  ("steer" if abs(servo_out - d_servo) > 1.0 else None))
             intervening = kind is not None
@@ -259,7 +280,8 @@ def run(args):
             interventions += 1
             if not counterfactual_crash(car, driver, t):
                 fp += 1
-                events.append((x, y, "fp", kind))
+                events.append((x, y, "fp", kind, None if p_crash is None else round(p_crash, 3), driver.lapsed(t),
+                               round(prof.reaction_distance, 2) if net is not None else None))
             else:
                 events.append((x, y, "ok", kind))
         was_intervening = intervening
@@ -306,7 +328,7 @@ def main(runs=24):
 def figure(res, summ, panels=12):
     from sim.report import style
     plt = style()
-    cols = {"off": "#ef4444", "adas": "#60a5fa", "adas+intent": "#2dd4bf"}
+    cols = {"off": "#ef4444", "brake-only": "#fbbf24", "adas": "#60a5fa", "adas+intent": "#2dd4bf"}
     seeds = sorted({x["seed"] for x in res})[:panels]
     fig = plt.figure(figsize=(16, 11))
     for k, s in enumerate(seeds):
@@ -314,7 +336,7 @@ def figure(res, summ, panels=12):
         world, goal, _ = scenario(s)
         for x1, y1, x2, y2 in world.segments():
             ax.plot([x1, x2], [y1, y2], color="#94a3b8", lw=1)
-        for v in VARIANTS:
+        for v in ("off", "adas", "adas+intent"):
             r = next(x for x in res if x["seed"] == s and x["variant"] == v and x.get("style", "lapsing") == "lapsing")
             tr = np.array(r["trace"]) if r["trace"] else np.zeros((1, 2))
             ax.plot(tr[:, 0], tr[:, 1], color=cols[v], lw=1.6 if v != "off" else 1.0)

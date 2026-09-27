@@ -70,6 +70,22 @@ Plan: GRU over the recent stick/throttle/speed history + scene features -> distr
 intended path; the safety filter and warnings use the predicted path distribution instead of the current stick
 only. Measured in the Monte Carlo as intent-aware vs not (crashes, interruptions, warning lead time).
 
+### Result (sim/relay_mc.py, sim/train_intent_net.py)
+Learned crash-risk model (MLP on stick history, stick activity, time since the stick moved, LiDAR free distance on
+five candidate arcs, and an online personal reaction-distance profile), trained on simulated drivers, tested on
+held-out rooms: AUC 0.86-0.88. Used only to decide whether to take over the STEERING; braking stays pure physics.
+48 paired drives (lapsing + late-but-competent drivers), counterfactual ground truth:
+
+| | crashes | reach goal | interventions | needless steering takeovers | needless speed limits |
+|---|---|---|---|---|---|
+| no ADAS | 13 | 35 | - | - | - |
+| brake only | 0 | 32 | 188 | 0 | 117 |
+| ADAS (brake + evasive) | 0 | 47 | 99 | 17 | 43 |
+| ADAS + learned intent (threshold 0.5) | 0 | 47 | 92 | 7 | 53 |
+
+Needless takeovers -59%: 10 runs better, 0 worse, one-sided Wilcoxon signed-rank p = 0.0008. Threshold sweep
+0.05 -> 0.9: takeovers 13 -> 4, crashes 0 at every threshold (the stopping-distance brake is the safety net).
+
 ## 5. Camera plan (one camera; front-facing chosen - it helps every forward feature, rear only helps reversing)
 
 | Use | Method | Feeds |

@@ -49,6 +49,10 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] D7. Show the twin report figures in the dashboard (Diagnostics mode) and as slides.
 - [ ] C6. Room map (Cartographer-style submaps) for localisation, point-to-point navigation, return-to-start.
 
+- [ ] B14. Put the learned intent model + driver profile into the relay on the car (features from live scans,
+  `pi/intent_net.json`), shown on the dashboard (risk gauge, "driver is avoiding it" message).
+- [ ] B15. Retrain the intent model on real drive logs as they accumulate (the relay records stick + scans).
+
 ## D. Simulator / digital twin
 - [ ] D1. (v1 done: the /dash 3D view shows the live relay state for the car or the simulator, incl. true walls, predicted path ribbon, contact X, manoeuvre, line. Still to do: world-fixed map frame, 3D obstacle models instead of LiDAR strokes) **3D view of the car simulator next to the car GUI**: one drive shown in 3D (world, car with the measured
   body and live steering, LiDAR rays, predicted path, collision X, manoeuvre + original line) and in the 2D GUI.
@@ -58,15 +62,9 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   LiDAR from the same poses, show both overlaid with the range error statistics.
 - [x] D4. (done v1: `python -m sim.relay_mc 24` on the car's own decision code -> reports/monte_carlo_relay.png: no ADAS 17/24 crashes, ADAS 0/24 crashes and 24/24 reach the goal, 39 interventions of which 12 needless) **Visual Monte Carlo** of real-world scenarios (random rooms, obstacles, pedestrians, driver lapses) on the
   car's own relay code, side by side runs.
-- [ ] D5. (run, but NO difference yet: the steering-trend intent predictor in `pi/path_gate.py` never changed a decision - 12 needless interventions in both. Next: a learned intent model (GRU over stick/throttle/speed history, RESEARCH.md 4) predicting the driver's path distribution, and a driver model that telegraphs intent (gradual steering) so the comparison is fair) **Intent-aware vs not intent-aware** comparison on the same Monte Carlo runs (crashes, interruptions,
+- [x] D5. (done via D8) (was: run, but NO difference yet: the steering-trend intent predictor in `pi/path_gate.py` never changed a decision - 12 needless interventions in both. Next: a learned intent model (GRU over stick/throttle/speed history, RESEARCH.md 4) predicting the driver's path distribution, and a driver model that telegraphs intent (gradual steering) so the comparison is fair) **Intent-aware vs not intent-aware** comparison on the same Monte Carlo runs (crashes, interruptions,
   warning lead time).
-- [ ] D8. (in progress: done (a) smooth drivers + lapsing/late styles + body-width/bumper fixes in the driver model, (b) counterfactual ground truth, (c) driver-state-adaptive timing + curvature-rate prediction. Result 48 drives: interventions 99 -> 72, needless speed limits 43 -> 25, crashes 0 both, BUT needless takeovers 17 -> 21. Next: learned intent model (MLP on stick history + LiDAR free distances, trained on held-out scenarios)) **Intent-aware must show a significant, genuine difference** (user requirement, esp. drivers already
-  avoiding the obstacle). Steps: (a) smooth, rate-limited human steering + driver styles (lapsing / late but
-  correct avoider) in `sim/relay_mc.py`; (b) counterfactual ground truth for "needless" (fork the sim at each
-  intervention, let the driver continue without ADAS for 2 s: would they have crashed?); (c) intent-aware ADAS:
-  attentive-driver detection from steering activity + predicted path with the driver's steering rate, used by the
-  gate and the evasive trigger; lapsed drivers get normal ADAS; (d) re-run, report crashes AND needless
-  interventions per driver style.
+- [x] D8. (done: learned crash-risk intent model, AUC ~0.87 on held-out rooms; intent decides steering takeovers only. 48 paired drives: needless takeovers 17 -> 7 (-59%), 10 better / 0 worse, Wilcoxon p = 0.0008, crashes 0; brake-only baseline added. RESEARCH.md section 4) **Intent-aware must show a significant, genuine difference**
 - [ ] D6. GUI "connection lost" flicker while the planner runs.
 
 ## E. GUI (EV-grade frontend)
