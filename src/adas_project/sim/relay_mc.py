@@ -189,7 +189,7 @@ def run(args):
     from adas.aeb import SpeedEstimator
     from adas.config import load_tuning
     from pi.path_gate import PathGate
-    from pi.relay_assists import K_CURV_PER_SERVO_DEG as K, RelayAssists, driver_intent
+    from pi.relay_assists import K_CURV_PER_SERVO_DEG as K, RelayAssists
     from sim.hw_sim import SimLidar, VirtualCar
 
     tun = load_tuning(os.path.join(HERE, "..", "pi", "tuning_real_car.json"))
@@ -202,11 +202,10 @@ def run(args):
     car.last_cmd_t = 0.0
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
     driver = HumanDriver(world, goal, np.random.default_rng(seed + 1000), p, K, assist.centre, style)
-    net = None
-    if variant == "adas+intent":
-        from adas.intent_net import DriverProfile, IntentNet, features
-        net = IntentNet(os.path.join(HERE, "..", "models", "intent_net.json"))
-        prof = DriverProfile()
+    rint = None
+    if variant == "adas+intent":                 # the relay's own intent code (pi/relay_assists.RelayIntent)
+        from pi.relay_assists import RelayIntent
+        rint = RelayIntent(assist, os.path.join(HERE, "..", "models", "intent_net.json"), trust=TRUST_THRESHOLD)
     vpts = np.empty((0, 2))
     gate = PathGate(p, tun.speed_model)
     vest = SpeedEstimator(tun.speed_model)
@@ -214,7 +213,6 @@ def run(args):
         assist.set("evasive", True)
     t, next_scan, seq = 0.0, 0.0, 0
     pts = []
-    servo_hist = []
     trace, events = [], []
     interventions = fp = 0
     kind = None
@@ -241,24 +239,16 @@ def run(args):
             vpts = RelayAssists.points_vehicle_frame(pts, p.lidar_x)
             gate.on_scan(vpts, seq)
         d_servo, d_pwm = driver.command(t, (x, y, th), v)
-        servo_hist = (servo_hist + [d_servo])[-80:]
         lines = [f"A {d_servo:.1f} {d_servo:.1f}", f"M {-int(d_pwm)}"]
         servo_out, phys = d_servo, d_pwm
         intervening = False
         if variant != "off":
-            k_rate, trust, p_crash = None, False, None
-            if net is not None:
+            p_crash = None
+            if rint is not None:
                 # learned intent decides whether this driver will handle the threat (personal reaction profile,
                 # stick history, LiDAR free distances); the stopping-distance brake below is never suppressed
-                f = features(servo_hist, d_pwm, v, vpts, p, assist.centre, K, profile=prof)
-                if f is not None:
-                    prof.update(servo_hist, f[len(f) - 5] * 1.5)
-                    p_crash = net.crash_probability(f)
-                    trust = p_crash < TRUST_THRESHOLD
-                if trust:                          # trusted driver: their own predicted path (held arc if not steering)
-                    k_rate = driver_intent(servo_hist, DT, assist.centre) or 0.0
-            assist.assists.intent_k_rate = k_rate if trust else None
-            assist.assists.intent_hold = trust
+                rint.update(t, d_servo, d_pwm, vest.v, pts)
+                p_crash = rint.p_crash
             out = assist.process(lines, pts, seq, now=t)
             for ln in out:
                 q = ln.split()
@@ -281,7 +271,7 @@ def run(args):
             if not counterfactual_crash(car, driver, t):
                 fp += 1
                 events.append((x, y, "fp", kind, None if p_crash is None else round(p_crash, 3), driver.lapsed(t),
-                               round(prof.reaction_distance, 2) if net is not None else None))
+                               round(rint.profile.reaction_distance, 2) if rint is not None else None))
             else:
                 events.append((x, y, "ok", kind))
         was_intervening = intervening

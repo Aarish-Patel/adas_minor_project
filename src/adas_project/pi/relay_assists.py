@@ -63,6 +63,47 @@ def driver_intent(servo_hist, dt, centre, activity_deg=3.0, attention_s=1.0, win
     return -K_CURV_PER_SERVO_DEG * ds / (window * dt)
 
 
+class RelayIntent:
+    """The learned driver-intent model (adas/intent_net.py, trained in sim/train_intent_net.py) as the relay runs it:
+    the stick sampled on the 50 ms clock the model was trained on, features from the live scan, the driver's online
+    reaction-distance profile. It decides only whether the evasive steer may take over (sets `intent_hold` and
+    `intent_k_rate` on the assists); braking stays pure physics. One class, used by the relay, the Monte Carlo and
+    the scenario checks, so the simulator runs exactly the car's logic."""
+
+    def __init__(self, assist, path=None, trust=0.5):
+        import os
+        from adas.intent_net import DriverProfile, IntentNet
+        path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "intent_net.json")
+        self.net = IntentNet(path) if os.path.exists(path) else None
+        self.profile = DriverProfile()
+        self.assist, self.trust_threshold = assist, trust
+        self.hist, self.last_t = [], None
+        self.p_crash, self.trusted = None, False
+
+    def update(self, now, servo, physical, v, points):
+        """servo: the driver's servo command, physical: the driver's throttle (+ forward), points: relay format."""
+        from adas.intent_net import features
+        if self.last_t is not None and now - self.last_t < 0.05 - 1e-6:
+            return
+        self.last_t = now
+        a = self.assist
+        self.hist = (self.hist + [servo])[-80:]
+        self.p_crash, self.trusted = None, False
+        if self.net is not None:
+            f = features(self.hist, physical, v, a.points_vehicle_frame(points, a.p.lidar_x), a.p, a.centre,
+                         K_CURV_PER_SERVO_DEG, profile=self.profile)
+            if f is not None:
+                self.profile.update(self.hist, f[len(f) - 5] * 1.5)
+                self.p_crash = self.net.crash_probability(f)
+                self.trusted = self.p_crash < self.trust_threshold
+        a.assists.intent_hold = self.trusted
+        a.assists.intent_k_rate = (driver_intent(self.hist, 0.05, a.centre) or 0.0) if self.trusted else None
+
+    def gui(self):
+        return {"p_crash": None if self.p_crash is None else round(self.p_crash, 3), "trusted": self.trusted,
+                "reaction_m": round(self.profile.reaction_distance, 2)}
+
+
 class RelayAssists:
     NAMES = ("evasive", "centring", "limiter", "narrow", "proximity")
 

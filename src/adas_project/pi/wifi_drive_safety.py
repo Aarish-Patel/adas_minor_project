@@ -669,12 +669,8 @@ def main():
     last_servo_cmd = assist.centre
     gate_delta = 0.0
     # learned intent model (trained in sim/train_intent_net.py; pi/intent_net.json) + this driver's profile
-    from adas.intent_net import DriverProfile, IntentNet, features as intent_features
-    from pi.relay_assists import driver_intent
-    _inet_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "intent_net.json")
-    intent_net = IntentNet(_inet_path) if os.path.exists(_inet_path) else None
-    intent_profile = DriverProfile()
-    intent_hist, intent_last_t = [], 0.0
+    from pi.relay_assists import RelayIntent
+    rintent = RelayIntent(assist, trust=INTENT_TRUST)
     intent_servo_now, intent_pwm_now = assist.centre, 0.0
     follow = FollowController(VP, TUNING.speed_model)   # adaptive cruise / follow-the-leader,
                                                           # opt-in via FOLLOW_ON/FOLLOW_OFF
@@ -811,25 +807,9 @@ def main():
                             intent_pwm_now = -float(_q[1]) if WIRE_MOTOR_REVERSED else float(_q[1])
                         except ValueError:
                             pass
-                _now_i = time.time()
-                if _now_i - intent_last_t >= 0.05:               # the model was trained on a 50 ms clock
-                    intent_last_t = _now_i
-                    intent_hist = (intent_hist + [intent_servo_now])[-80:]
-                    intent_p, intent_trust = None, False
-                    if intent_net is not None:
-                        _f = intent_features(intent_hist, intent_pwm_now, vest.v,
-                                             RelayAssists.points_vehicle_frame(_apts, assist.p.lidar_x),
-                                             assist.p, assist.centre, assist_k, profile=intent_profile)
-                        if _f is not None:
-                            intent_profile.update(intent_hist, _f[len(_f) - 5] * 1.5)
-                            intent_p = intent_net.crash_probability(_f)
-                            intent_trust = intent_p < INTENT_TRUST
-                    assist.assists.intent_hold = intent_trust
-                    assist.assists.intent_k_rate = (driver_intent(intent_hist, 0.05, assist.centre) or 0.0) if intent_trust else None
-                    with GUI_STATE["lock"]:
-                        GUI_STATE["data"]["intent"] = {"p_crash": None if intent_p is None else round(intent_p, 3),
-                                                       "trusted": intent_trust,
-                                                       "reaction_m": round(intent_profile.reaction_distance, 2)}
+                rintent.update(time.time(), intent_servo_now, intent_pwm_now, vest.v, _apts)   # 50 ms clock inside
+                with GUI_STATE["lock"]:
+                    GUI_STATE["data"]["intent"] = rintent.gui()
                 text = "\n".join(assist.process([ln.strip() for ln in text.splitlines() if ln.strip()], _apts, _aseq))
                 if assist.assists.evading or assist.nav.active:
                     # the fixed straight-ahead cone would keep braking for an obstacle the car is steering

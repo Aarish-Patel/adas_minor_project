@@ -16,15 +16,21 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   driver's desired path; re-plan quickly when execution gets stuck; speed limited to what the plan can do.
 - [x] B3. (done: 40 cm box now swerves, 13 cm clearance) Wide obstacles trigger too late (40 cm box -> brakes instead of swerving). Plan earlier when the needed
   offset is large. (Likely solved by B2.)
-- [ ] B4. Brief throttle cut mid-manoeuvre in the doorway run (t = 3.6 s): find the cause in the sim log.
+- [x] B4. (no longer reproduces: `sim/relay_scenarios.py` doorway at full throttle on the relay code - through
+  the door, 6 cm closest, 0 ticks of throttle cut while evading; kept as a regression scenario) Brief throttle cut
+  mid-manoeuvre in the doorway run (t = 3.6 s).
 - [ ] B5. (12 -> 9 needless of 44 by triggering evasive steer only on real contact courses; narrowing the gate's steering-slop band made it worse (13), reverted. Remaining: 5 gate speed-limits, 4 evasive)  Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
   real logs) and tune down.
 - [ ] B16. **Minimise speed cuts and needless interventions until only extreme, unpredictable driving gets one**
   (user request). Normal and reasonably sloppy driving must never be slowed, braked or steered. Target in the
   Monte Carlo (counterfactual ground truth): needless speed limits and needless takeovers close to 0 with crashes
   still 0; then confirm on real logs. Current: 53 needless speed limits and 7 needless takeovers in 48 drives.
-- [ ] B6. Corridor centring, limiter, narrow gap and side/rear alerts not re-checked since the path gate replaced the
-  cone gate.
+- [ ] B6. (re-checked on the relay code with `python -m sim.relay_scenarios`, 11 scenarios incl. the relay's intent
+  model via the new shared `RelayIntent`: 10/11 pass - evasive box, doorway full throttle, driver already avoiding,
+  full speed at a wall, centring, centring yields, limiter, narrow won't fit, proximity, no slowing beside a wall.
+  FAILS: 32 cm gap for the 20 cm car - the gate's fixed steering band (KAPPA_SLOP) makes the gap edges look like
+  threats and the car stops in front of a gap it fits through -> B16/B8 steering filter) Corridor centring, limiter,
+  narrow gap and side/rear alerts not re-checked since the path gate replaced the cone gate.
 - [x] B7. (done: `VP` = measured body 20 cm wide / front 0.28 / rear -0.05 from the tuning file, steering = the
   fitted 0.0656 rad/m per servo degree about the calibrated centre, the same as the path gate; the old turn-radius
   table is only a fallback) `pi/path_predict.py` `VP` still had the old body (14 cm wide).
@@ -33,7 +39,8 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] B9. MPPI local fallback when Hybrid A* has no path or execution deviates.
 - [x] B10. (done inside B2: the planner adds reverse legs when no forward path exists) "Unstuck" mode with reversing (Reeds-Shepp) - the user's option 1.
 
-- [ ] B11. Brake hold stops 0.75 m short of a wall at full speed (old speed model in the relay) - fixed by C3.
+- [x] B11. (checked on the relay code with the fitted speed model: full throttle at a wall now stops 23 cm short,
+  was 0.75 m; regression scenario in `sim/relay_scenarios.py`) Brake hold stopped 0.75 m short of a wall at full speed.
 - [x] B13. (fixed) Car froze next to a box: points already inside the body margin blocked every direction, even
   backing away. The path gate now ignores close points the motion moves away from (same margin box as the sweep).
 - [x] B12. (done in J1) Unit tests for the Hybrid A* planner and the evasive state machine (doorway, boxed, reverse case).
