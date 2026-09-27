@@ -26,11 +26,22 @@ _POS_TABLE = [(0.0, 1e6), (20.0, 2.184), (35.0, 0.633)]
 # negative-offset side - -20deg excluded (unreliable outlier), only 0 and -35 trustworthy
 _NEG_TABLE = [(0.0, 1e6), (35.0, 1.351)]
 
-VP = VehicleParams(
-    wheelbase=0.20, pivot_track=0.07, width=0.14,
-    front_overhang=0.06, rear_overhang=0.05,
-    lidar_x=0.12, lidar_y=0.0,
-)
+def _measured():
+    """The measured body and fitted steering the path gate uses (pi/relay_assists.car_params, the tuning file's
+    ruler measurements; 0.0656 rad/m per servo degree from the logging drive). Falls back to the old numbers if the
+    tuning file is missing."""
+    try:
+        import os
+        from adas.config import load_tuning
+        from pi.relay_assists import K_CURV_PER_SERVO_DEG, car_params
+        tun = load_tuning(os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuning_real_car.json"))
+        return car_params(tun.mount), K_CURV_PER_SERVO_DEG, float(tun.servo.left_center)
+    except Exception:
+        return VehicleParams(wheelbase=0.20, pivot_track=0.07, width=0.14, front_overhang=0.06, rear_overhang=0.05,
+                             lidar_x=0.12, lidar_y=0.0), None, 90.0
+
+
+VP, K_FIT, SERVO_CENTRE = _measured()
 
 
 def radius_for_offset(offset_deg):
@@ -44,7 +55,11 @@ def radius_for_offset(offset_deg):
 def delta_for_offset(offset_deg):
     """The `delta` (bicycle-model steering angle, radians) that reproduces the MEASURED
     radius via adas.geometry's kappa=tan(delta)/wheelbase convention - a back-calculated
-    value, not vehicle_params.steer_to_delta()'s theoretical one."""
+    value, not vehicle_params.steer_to_delta()'s theoretical one.
+    offset_deg = servo - 90; with the fitted model the straight-ahead servo is the calibrated centre, and a
+    positive result turns toward +y of this module's frame (the right, as the relay's legacy code uses it)."""
+    if K_FIT is not None:
+        return math.atan(K_FIT * (offset_deg + 90.0 - SERVO_CENTRE) * VP.wheelbase)
     if abs(offset_deg) < 0.5:
         return 0.0
     R = radius_for_offset(offset_deg)

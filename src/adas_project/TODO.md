@@ -25,7 +25,9 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   still 0; then confirm on real logs. Current: 53 needless speed limits and 7 needless takeovers in 48 drives.
 - [ ] B6. Corridor centring, limiter, narrow gap and side/rear alerts not re-checked since the path gate replaced the
   cone gate.
-- [ ] B7. `pi/path_predict.py` `VP` still has the old body (14 cm wide): switch users to `pi/relay_assists.car_params`.
+- [x] B7. (done: `VP` = measured body 20 cm wide / front 0.28 / rear -0.05 from the tuning file, steering = the
+  fitted 0.0656 rad/m per servo degree about the calibrated centre, the same as the path gate; the old turn-radius
+  table is only a fallback) `pi/path_predict.py` `VP` still had the old body (14 cm wide).
 
 - [ ] B8. CBF safety filter (RESEARCH.md 2) replacing the heuristic speed caps in `pi/path_gate.py`.
 - [ ] B9. MPPI local fallback when Hybrid A* has no path or execution deviates.
