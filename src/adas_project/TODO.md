@@ -35,7 +35,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 ## C. Localisation and car model
 - [ ] C1. **Research accurate 2D LiDAR odometry** (research done: RESEARCH.md section 3 - RF2O + KISS-ICP + EKF; implementation NOT done) (linear and angular velocity from the LiDAR is poor now):
   range-flow / ICP variants, filter fusion with the commands (RESEARCH.md), then implement and measure on logs.
-- [ ] C2. Physics-informed ML car model (`adas/car_model.py`, `sim/car_model_eval.py`, uncommitted). First version lost
+- [x] C2. (done: held-out 3 s error physics 5.5 cm vs plain fit 5.7 cm vs physics+ML 5.8 cm - ML correction not useful on one 2-min drive, so the selection keeps whichever wins; found a steering asymmetry: left 0.0151 vs right 0.0113 rad per servo degree. More varied logs needed for the ML part) Physics-informed ML car model (`adas/car_model.py`, `sim/car_model_eval.py`, uncommitted). First version lost
   to the plain fit (15-19 cm vs 5.7 cm). Rewritten, NOT re-run. Commit only if it beats the plain fit.
 - [ ] C3. (speed model done: `pi/car_model.json` from the logging drive, loaded by the relay and the Monte Carlo via `apply_car_model`; min clearance 4 -> 6 cm. Still to do: curvature/servo centre in the relay, the ML model when C2 passes) Use the model everywhere: relay speed estimate, gate speed caps, curvature for prediction/planning,
   the simulator's virtual car. (Fixes the relay's speed-model mismatch.)
