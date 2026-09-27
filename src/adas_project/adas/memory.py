@@ -88,6 +88,29 @@ class ObstacleMemory:
             order = np.argsort(d)[: self.max_points]
             self.pts, self.age, self.seen_at = self.pts[order], self.age[order], self.seen_at[order]
 
+    def prune_contradicted(self, scan_pts, beam_deg=4.0, slack=0.05):
+        """Drop remembered points the current scan proves are not there: at that bearing (from the LiDAR) the
+        sensor sees something FURTHER away, so the space in between is empty. Dead reckoning from an estimated
+        speed drifts; without this a remembered wall can "approach" the car and block it with nothing there.
+        A bearing with no return at all keeps its points (that is what a truly blind-close object looks like)."""
+        if not len(self.pts) or not len(scan_pts):
+            return
+        lx, ly = self.p.lidar_x, self.p.lidar_y
+        v = self._to_vehicle(self.pts)
+        mb = np.degrees(np.arctan2(v[:, 1] - ly, v[:, 0] - lx))
+        md = np.hypot(v[:, 0] - lx, v[:, 1] - ly)
+        sb = np.degrees(np.arctan2(scan_pts[:, 1] - ly, scan_pts[:, 0] - lx))
+        sd = np.hypot(scan_pts[:, 0] - lx, scan_pts[:, 1] - ly)
+        order = np.argsort(sb)
+        sb, sd = sb[order], sd[order]
+        keep = np.ones(len(v), dtype=bool)
+        for i in range(len(v)):
+            lo = np.searchsorted(sb, mb[i] - beam_deg)
+            hi = np.searchsorted(sb, mb[i] + beam_deg)
+            if hi > lo and sd[lo:hi].max() > md[i] + slack:
+                keep[i] = False
+        self.pts, self.age, self.seen_at = self.pts[keep], self.age[keep], self.seen_at[keep]
+
     def blind_points(self):
         """Remembered points that lie inside the blind ring right now, in the vehicle frame."""
         if not len(self.pts):

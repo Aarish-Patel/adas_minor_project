@@ -36,7 +36,7 @@ BRAKE_PWM_MAX = 140
 class PathGate:
     def __init__(self, params, speed_model):
         self.p, self.model = params, speed_model
-        self.memory = ObstacleMemory(params, blind_radius=0.30, keep_radius=1.2, max_age=60.0, max_points=700,
+        self.memory = ObstacleMemory(params, blind_radius=0.27, keep_radius=1.2, max_age=60.0, max_points=700,
                                      max_travel=1.5)
         self.pts = np.empty((0, 2))
         self.seq = None
@@ -48,6 +48,7 @@ class PathGate:
             return
         self.seq = seq
         self.pts = pts_vehicle
+        self.memory.prune_contradicted(pts_vehicle)     # never trust memory over what the LiDAR sees now
         self.memory.add_scan(pts_vehicle)
 
     def free_distance(self, delta, direction):
