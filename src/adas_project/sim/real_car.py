@@ -11,11 +11,12 @@ Sources (all measured on the car with the final wheel grips, pi/tuning_real_car.
   * LiDAR: RPLIDAR A3M1 as run on the Pi: ~8 scans/s, ~280 usable points, 0.2 m blind zone
 Numbers that are ASSUMPTIONS (not measured) are listed in ASSUMED so reports can say so.
 """
+import json
 import math
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
-from adas.aeb import AEBConfig
+from adas.aeb import AEBConfig, SpeedModel
 from adas.config import load_tuning
 from adas.vehicle_params import VehicleParams
 
@@ -23,6 +24,7 @@ from .car_sim import Dynamics
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TUNING = os.path.join(HERE, "..", "pi", "tuning_real_car.json")
+FITTED = os.path.join(HERE, "fitted_car.json")        # written by sim/log_fit.py from real drive logs
 
 K_CURV_PER_SERVO_DEG = 0.068      # rad/m per servo degree (measured)
 SERVO_TRAVEL_DEG = (57.0, 53.0)   # servo range right / left of centre (30 .. 87 .. 140)
@@ -40,9 +42,10 @@ class RealProfile:
     dynamics: Dynamics
     lidar_kw: dict = field(default_factory=dict)
     tuning: object = None
+    source: str = "hand measurements"
 
 
-def real_profile(path=TUNING):
+def real_profile(path=TUNING, fitted=None):
     t = load_tuning(path)
     m = t.mount
     # geometry measured from the LiDAR; the simulator wants it from the axles
@@ -60,9 +63,33 @@ def real_profile(path=TUNING):
         if k != "margin":
             setattr(aeb, k, v)
     aeb.margin = max(t.aeb.margin, aeb.margin)
-    dyn = Dynamics(speed_model=t.speed_model, tau_motor=0.12, accel_max=3.0, brake_max=4.0, coast_decel=2.5, tau_steer=0.08)
-    return RealProfile(params, aeb, t.speed_model, dyn,
-                       dict(rate_hz=8.0, n_points=1200, min_range=t.lidar_min_range, noise_std=0.01, dropout=0.03), t)
+    speed_model, tau, coast = t.speed_model, 0.12, 2.5
+    fit = load_fitted(fitted)
+    if fit:                                   # values fitted to real drive logs (sim/log_fit.py) beat hand measurements
+        sp = fit["speed"]
+        speed_model = SpeedModel(v_max=sp["v_max"], deadband=sp["deadband"])
+        tau, coast = sp["tau_motor"] + sp.get("delay_s", 0.0), sp["coast_decel"]
+        if fit["steer"].get("identifiable"):
+            ratio = math.degrees(math.atan(fit["steer"]["k_curv_per_deg"] * t.vehicle.wheelbase))
+            params = replace(params, max_inner_left_deg=round(ratio * SERVO_TRAVEL_DEG[1], 1),
+                             max_inner_right_deg=round(ratio * SERVO_TRAVEL_DEG[0], 1))
+    dyn = Dynamics(speed_model=speed_model, tau_motor=tau, accel_max=3.0, brake_max=4.0, coast_decel=coast, tau_steer=0.08)
+    # LiDAR as the car really runs it (standard scan mode): ~280 points per rotation at ~13 rotations/s
+    # (measured on the Pi, 45 s stationary soak test) - NOT the A3's datasheet density
+    lidar = dict(rate_hz=13.0, n_points=280, min_range=t.lidar_min_range, noise_std=0.01, dropout=0.03)
+    return RealProfile(params, aeb, speed_model, dyn, lidar, t, "fitted from drive logs" if fit else "hand measurements")
+
+
+def load_fitted(path=None):
+    """The fitted model, or None. Fits of synthetic logs (they carry the true answer) are never used."""
+    path = FITTED if path is None else path
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        fit = json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return None if "truth" in fit else fit
 
 
 def curvature_to_steer(kappa, params):

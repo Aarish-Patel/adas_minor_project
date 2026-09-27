@@ -260,6 +260,8 @@ class Clearance:
             for scan in self.lidar.iter_scans(max_buf_meas=6000, min_len=5):
                 if not self.running:
                     break
+                if getattr(self, "log", None) is not None:
+                    self.log.scan(scan)
                 best_front = best_rear = None
                 best_body_front = best_body_rear = None
                 pts = []
@@ -576,9 +578,14 @@ def main():
     esp.rts = False
     esp.open()
     time.sleep(1.0)
+    # full-rate recording of scans + every ESP32 line + driver input vs ADAS output (pi/drive_log.py)
+    from pi.drive_log import DriveLog, LoggedSerial
+    dlog = DriveLog("relay", tuning_path=TUNING_PATH)
+    esp = LoggedSerial(esp, dlog)
     esp.write(b"A 90 90\nM 0\n")
 
     clr = Clearance(lidar_port)
+    clr.log = dlog
     clr.start()
     time.sleep(2.0)
 
@@ -769,6 +776,11 @@ def main():
 
             clr.set_motion_state(final_physical, last_steer_offset)
             esp.write(("\n".join(out_lines) + "\n").encode())
+            # what the driver asked for vs what the ADAS let through - the raw material for intent learning
+            dlog.driver(inp=text.strip(), out=out_lines, pwm_in=pwm_commanded, pwm_out=pwm_sent,
+                        front=front_track.dist, rear=rear_track.dist, fb=int(front_blocked), rb=int(rear_blocked),
+                        braking=int(braking), moving_blocked=int(moving_blocked), override=int(adas_override),
+                        follow=int(follow.enabled))
 
             logger.maybe_log(now, {
                 "t": round(now, 3), "steer_a1": steer_a1, "steer_a2": steer_a2,
@@ -807,6 +819,7 @@ def main():
         clr.stop()
         sock.close()
         logger.close()
+        dlog.close()
         print("motor stopped, LiDAR stopped, exiting.")
 
 

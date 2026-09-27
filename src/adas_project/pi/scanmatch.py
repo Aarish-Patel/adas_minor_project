@@ -82,6 +82,7 @@ class Odometry:
         self.ref = None              # the first scan: static reference that stops drift building up
         self.ref_fixes = 0
         self.along_fallbacks = 0     # scans where the along-corridor distance came from the speed prediction
+        self.last_source = None      # 'icp', 'along_pred' (dx predicted) or 'pred' (whole step predicted)
 
     def update(self, xy, t, v_pred, kappa_pred):
         if self.prev is None or self.prev_t is None:
@@ -96,6 +97,7 @@ class Odometry:
         if ok:
             R, tt, th, resid, n_in = res
             dx, dy, dth_used = float(tt[0]), float(tt[1]), th
+            self.last_source = "icp"
             # corridor ambiguity: parallel walls pin down sideways position and heading but not how far the car
             # moved along them, and ICP then slides. If ICP disagrees with the speed prediction and the scans fit
             # just as well at the predicted distance, the scan cannot tell - trust the prediction for dx.
@@ -105,9 +107,11 @@ class Odometry:
                 if r_pred <= resid * 1.15 and n_pred >= 0.9 * n_in:
                     dx = step
                     self.along_fallbacks += 1
+                    self.last_source = "along_pred"
         else:
             dx, dy, dth_used = init
             self.fallbacks += 1
+            self.last_source = "pred"
         x, y, thw = self.pose
         c, s = np.cos(thw), np.sin(thw)
         self.pose = np.array([x + c * dx - s * dy, y + s * dx + c * dy, thw + dth_used])

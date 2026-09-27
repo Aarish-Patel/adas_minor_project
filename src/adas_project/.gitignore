@@ -8,3 +8,6 @@ reports/*.png
 web/data/results.json
 *.log
 tuning_suggested.json
+logs/
+*.jsonl.gz
+sim/fitted_car.json.synthetic

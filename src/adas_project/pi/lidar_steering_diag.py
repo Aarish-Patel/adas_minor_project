@@ -119,6 +119,11 @@ class Rig:
         self.esp.rts = False
         self.esp.open()
         time.sleep(1.0)
+        # every command and scan is recorded (pi/drive_log.py) so the simulator can be fitted to real runs
+        from pi.drive_log import DriveLog, LoggedSerial
+        src = os.path.splitext(os.path.basename(sys.argv[0] or "rig"))[0] or "rig"
+        self.log = DriveLog(src, tuning_path=TUNING_PATH)
+        self.esp = LoggedSerial(self.esp, self.log)
         self.esp.write(b"A 90 90\nM 0\n")
 
         self.lidar_port = lidar_port
@@ -162,6 +167,7 @@ class Rig:
                 for scan in self.lidar.iter_scans(max_buf_meas=6000, min_len=5):
                     if not self._running:
                         return
+                    self.log.scan(scan)
                     front = rear = None
                     bear_best_d, bear_best_a = None, None
                     floor_d, floor_a = None, None
@@ -331,6 +337,7 @@ class Rig:
         self.esp.write(b"M 0\nSTOP\n")
         time.sleep(0.1)
         self.esp.close()
+        self.log.close()
         try:
             self.lidar.stop()
             self.lidar.stop_motor()
