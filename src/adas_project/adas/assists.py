@@ -33,8 +33,8 @@ from .vehicle_params import delta_to_steer, steer_to_delta
 @dataclass
 class AssistConfig:
     # evasive steer
-    evade_time: float = 1.3          # s: look this far ahead along the driver's path (plus stopping distance)
-    evade_min_look: float = 0.7      # m: never look less than this
+    evade_time: float = 2.2          # s: look this far ahead along the driver's path (plus stopping distance)
+    evade_min_look: float = 1.1      # m: never less - must react before the relay's front-cone braking (~1.0 m)
     evade_margin: float = 0.07       # m of body clearance an evasive path must keep
     evade_release_s: float = 0.35    # s the driver's own path must stay clear before control is handed back
     evade_candidates: int = 17
@@ -110,9 +110,12 @@ class DrivingAssists:
         if self._since_plan >= c.evade_period:
             self._since_plan = 0.0
             best = None
+            # an escape path only has to stay clear until just past the obstacle (not the whole look-ahead,
+            # otherwise the side walls of a normal room rule out every swerve)
+            need = min(look + 0.3, max(0.6, min(d_drv, look) + 0.45))
             for k in np.linspace(-self.kappa_max, self.kappa_max, c.evade_candidates):
                 d = self._contact(pts, k, look + 0.4)
-                if d < look + 0.3:
+                if d < need:
                     continue                      # this path also runs into something
                 side = 1 if k > k_drv else -1
                 cost = abs(k - k_drv) + (0.0 if (self.evade_side == 0 or side == self.evade_side) else 0.6)

@@ -707,6 +707,11 @@ def main():
             driver_text = text
             if not adas_override:
                 text = "\n".join(assist.process([ln.strip() for ln in text.splitlines() if ln.strip()], clr.read_points()))
+                if assist.assists.evading:
+                    # the fixed straight-ahead cone would keep braking for an obstacle the car is steering
+                    # around; the evasive planner has checked its own path (full body sweep + margin), so the
+                    # cone stands down. The close-range body alert (body_alert_front) still stops the car.
+                    front_blocked = False
 
             out_lines = []
             steer_a1 = steer_a2 = None
