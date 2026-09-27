@@ -55,6 +55,52 @@ class HybridAStarTests(unittest.TestCase):
         self.assertIsNone(HybridAStar(P).plan(pts, (0.0, 0.0, 0.0), x_goal=2.3))
 
 
+class ClickToGoTests(unittest.TestCase):
+    def test_point_goal_through_the_doorway_forward_only(self):
+        from sim.hw_worlds import doorway
+        path = HybridAStar(P).plan_to_point(world_points(doorway()[0]), (0.0, 0.0, 0.0), (3.4, 0.0))
+        self.assertIsNotNone(path)
+        self.assertLess(math.hypot(path[-1, 0] - 3.4, path[-1, 1]), 0.05)
+        self.assertTrue((path[:, 3] > 0).all())
+
+    def test_goal_behind_in_a_corridor_reverses(self):
+        from sim.hw_worlds import corridor
+        path = HybridAStar(P).plan_to_point(world_points(corridor()[0]), (0.0, 0.0, 0.0), (-0.6, 0.0),
+                                            allow_reverse=True)
+        self.assertIsNotNone(path)
+        self.assertTrue((path[:, 3] < 0).all())
+
+    def test_goal_inside_an_obstacle_is_refused(self):
+        from sim.hw_worlds import doorway
+        self.assertIsNone(HybridAStar(P).plan_to_point(world_points(doorway()[0]), (0.0, 0.0, 0.0), (1.7, 0.0)))
+
+    def test_drives_there_in_the_twin_without_crashing(self):
+        from sim.autonav_eval import drive
+        r = drive("gap", (3.2, -0.7))
+        self.assertTrue(r["ok"], r["why"])
+        self.assertFalse(r["crashed"])
+
+    def test_holds_after_arrival_until_the_throttle_is_released(self):
+        a = RelayAssists(TUN)
+        a.nav.threaded = False
+        self.assertTrue(a.goto(1.0, 0.0, points=[(0.0, 3.0)]))
+        c = f"{a.centre:.0f}"
+        held = [f"A {c} {c}", "M -150"]
+        a.process(held, [(0.0, 3.0)], 1, now=0.0)
+        a.nav.cancel("cancelled from the GUI")
+        self.assertIn("M 0", a.process(held, [(0.0, 3.0)], 2, now=0.05))           # still held: stay stopped
+        a.process([f"A {c} {c}", "M 0"], [(0.0, 3.0)], 3, now=0.10)                  # operator lets go
+        self.assertIn("M -150", a.process(held, [(0.0, 3.0)], 4, now=0.15))         # the driver has it again
+
+    def test_steering_hands_back_at_once(self):
+        a = RelayAssists(TUN)
+        a.nav.threaded = False
+        a.goto(1.5, 0.0, points=[(0.0, 3.0)])
+        out = a.process([f"A {a.centre + 30:.0f} {a.centre + 30:.0f}", "M -150"], [(0.0, 3.0)], 1, now=0.0)
+        self.assertFalse(a.nav.active)
+        self.assertIn("M -150", out)
+
+
 class GateTests(unittest.TestCase):
     def gate(self, pts):
         g = PathGate(P, TUN.speed_model)

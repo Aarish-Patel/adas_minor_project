@@ -486,6 +486,7 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
             "plan": GUI_STATE["data"].get("plan"),
             "drive": GUI_STATE["data"].get("drive"),
             "intent": GUI_STATE["data"].get("intent"),
+            "nav": GUI_STATE["data"].get("nav"),
         }
 
 
@@ -573,6 +574,14 @@ def start_gui_server(clr):
             parts = self.path.strip("/").split("/")          # /api/assist/<name>/<on|off>
             if cmd is None and len(parts) == 4 and parts[:2] == ["api", "assist"] and parts[3] in ("on", "off"):
                 cmd = f"ASSIST {parts[2]} {parts[3].upper()}".encode()
+            if cmd is None and parts[:2] == ["api", "goto"]:     # /api/goto/<x>/<y> (m, vehicle frame) or /api/goto/cancel
+                if len(parts) == 3 and parts[2] == "cancel":
+                    cmd = b"GOTO CANCEL"
+                elif len(parts) == 4:
+                    try:
+                        cmd = f"GOTO {float(parts[2]):.3f} {float(parts[3]):.3f}".encode()
+                    except ValueError:
+                        pass
             if cmd is not None:
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -740,6 +749,20 @@ def main():
                 sock.sendto(b"OK", addr)
                 continue
 
+            if len(parts) >= 2 and parts[0] == "GOTO":      # click-to-go: "GOTO <x> <y>" (m, vehicle frame) / "GOTO CANCEL"
+                if parts[1] == "CANCEL":
+                    assist.nav.cancel("cancelled from the GUI")
+                elif len(parts) == 3:
+                    try:
+                        gx, gy = float(parts[1]), float(parts[2])
+                        gpts, _ = clr.read_points_seq()
+                        assist.goto(gx, gy, gpts)
+                        dlog.event("goto", x=gx, y=gy, state=assist.nav.state, result=assist.nav.msg)
+                    except ValueError:
+                        pass
+                sock.sendto(b"OK", addr)
+                continue
+
             if text.strip() == "PING":
                 esp.reset_input_buffer()
                 esp.write(b"PING\n")
@@ -808,7 +831,7 @@ def main():
                                                        "trusted": intent_trust,
                                                        "reaction_m": round(intent_profile.reaction_distance, 2)}
                 text = "\n".join(assist.process([ln.strip() for ln in text.splitlines() if ln.strip()], _apts, _aseq))
-                if assist.assists.evading:
+                if assist.assists.evading or assist.nav.active:
                     # the fixed straight-ahead cone would keep braking for an obstacle the car is steering
                     # around; the evasive planner has checked its own path (full body sweep + margin), so the
                     # cone stands down. The close-range body alert (body_alert_front) still stops the car.
@@ -968,17 +991,25 @@ def main():
             plan = pgate.overlay(gate_delta, (phys_cmd > 0) - (phys_cmd < 0), vest.v,
                                  TUNING.speed_model.speed(phys_cmd)) if phys_cmd else None
             prev = assist.assists.preview() if assist.assists.evading else None
+            to_polar = lambda xy: [[round(float(-math.degrees(math.atan2(y, x - assist.p.lidar_x))), 1),
+                                    round(float(math.hypot(x - assist.p.lidar_x, y)), 3)] for x, y in xy]
             if prev is not None:
                 plan = plan or {}
-                to_polar = lambda xy: [[round(float(-math.degrees(math.atan2(y, x - assist.p.lidar_x))), 1),
-                                        round(float(math.hypot(x - assist.p.lidar_x, y)), 3)] for x, y in xy]
                 plan["maneuver"], plan["line"] = to_polar(prev[0]), to_polar(prev[1])
+            nav_gui = {"state": assist.nav.state, "msg": assist.nav.msg, "goal": None, "plan_ms": assist.nav.plan_ms}
+            if assist.nav.active:
+                nav_gui["goal"] = to_polar(assist.nav.to_vehicle(np.array([assist.nav.goal])))[0]
+                npath = assist.nav.preview()
+                if npath is not None and len(npath):
+                    plan = plan or {}
+                    plan["maneuver"] = to_polar(npath[::2])
             vest.update(dt_pkt, final_physical)
             with GUI_STATE["lock"]:
                 GUI_STATE["data"]["assist"] = {"level": assist.level, "info": assist.info, "enabled": assist.enabled(),
                                                "changed": assist.changed}
                 GUI_STATE["data"]["gate"] = gate_info
                 GUI_STATE["data"]["plan"] = plan
+                GUI_STATE["data"]["nav"] = nav_gui
                 GUI_STATE["data"]["drive"] = {"v": round(vest.v, 3), "pwm_in": -pwm_commanded if WIRE_MOTOR_REVERSED else pwm_commanded,
                                               "pwm_out": -pwm_sent if WIRE_MOTOR_REVERSED else pwm_sent,
                                               "servo": last_servo_cmd, "centre": assist.centre, "t": time.time()}

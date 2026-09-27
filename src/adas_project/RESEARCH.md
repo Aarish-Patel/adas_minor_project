@@ -21,6 +21,15 @@ semi-structured environments*, IJRR 29(5), 2010 - Stanford "Junior", DARPA Urban
   2025) - re-plan from the current pose when new scans invalidate the path.
 - Tracking the path: pure pursuit on the planned curvature; speed from the curvature and free distance.
 
+**Click-to-go autonomy (`adas/autonav.py`):** the same Hybrid A* with a position goal (any final heading, as in
+goal-region variants used for parking/navigation). The analytic expansion is the single circular arc from a node
+through the goal - exactly what pure pursuit (Coulter, CMU-RI-TR-92-01, 1992) will drive - forward, or backward
+when the goal is behind (Reeds-Shepp-style reversing, Reeds & Shepp 1990). The planner runs in a worker thread, as a
+planner node does in ROS 2 Nav2, and the car holds still while it plans. Supervision follows remote-parking
+practice (Tesla Smart Summon, UNECE R79 remote control manoeuvring): the operator holds a dead-man control (the
+throttle), releasing it stops the car, steering or braking hands back at once, and after the manoeuvre ends the car
+stays stopped until the operator lets go. The path brake still has the last word.
+
 **Quick alternatives when execution gets stuck:** MPPI - Model Predictive Path Integral control (Williams et al.,
 ICRA 2016 / T-RO 2018, "Aggressive driving with MPPI", AutoRally). Samples hundreds of control sequences through the
 car model and weights them by cost; cheap enough on the Pi at ~300 samples x 20 steps. Used as the local

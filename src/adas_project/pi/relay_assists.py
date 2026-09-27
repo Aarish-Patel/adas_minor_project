@@ -78,6 +78,13 @@ class RelayAssists:
         self.info, self.level, self.changed = {}, 0, False
         self.odo = None                # scan-matching odometry, only while a manoeuvre runs
         self._odo_seq = None
+        from adas.autonav import AutoNav
+        self.nav = AutoNav(self.p, self.model)   # click-to-go autonomy (Hybrid A* + pure pursuit)
+        self.nav_pose = (0.0, 0.0, 0.0)
+        self._nav_stick = 0.0
+        self._last_raw = []
+        self._nav_was_active = False
+        self._hold = False
 
     def enabled(self):
         return {k: bool(v) for k, v in self.assists.enabled.items()}
@@ -111,7 +118,7 @@ class RelayAssists:
         """While a manoeuvre runs, track the car by matching each LiDAR scan against the one taken when it began
         (pi/scanmatch.py - ~1 cm on the car in the obstacle-avoidance demo) and hand the pose to the assist."""
         a = self.assists
-        if not a.evading:
+        if not (a.evading or self.nav.active):
             self.odo = None
             return
         if seq is None or seq == self._odo_seq or not points:
@@ -124,7 +131,58 @@ class RelayAssists:
         pose = self.odo.update(xy, time.time() if now is None else now, self.est.v, kappa_right)
         xl, yl, thl = float(pose[0]), -float(pose[1]), -float(pose[2])       # LiDAR pose, y left
         lx = self.p.lidar_x
-        a.pose_fix = (xl - lx * math.cos(thl) + lx, yl - lx * math.sin(thl), thl)   # rear axle, start frame
+        fix = (xl - lx * math.cos(thl) + lx, yl - lx * math.sin(thl), thl)   # rear axle, start frame
+        if self.nav.active:
+            self.nav_pose = fix
+        else:
+            a.pose_fix = fix
+
+    # --- click-to-go autonomy
+    def goto(self, x, y, points=None):
+        """Start driving to (x, y) m in the vehicle frame now (x forward from the rear axle, y left).
+        points: the latest scan (relay format); defaults to the last one seen by process()."""
+        if self.assists.evading:
+            self.assists._stop_evading("autonomy started")
+        self.odo, self.nav_pose = None, (0.0, 0.0, 0.0)
+        raw = points if points else self._last_raw
+        return self.nav.start((float(x), float(y)), self.points_vehicle_frame(raw, self.p.lidar_x))
+
+    def _navigate(self, dt, pts, stick, physical, points, seq, now):
+        """One tick of autonomy. Like Smart Summon, the operator holds the throttle as a dead-man switch: held =
+        drive at the planner's speed, released = stop and wait, stick or brake = cancel and hand back.
+        Returns (stick, physical) to send, or None when the driver has control again."""
+        if abs(stick) > self.assists.cfg.evade_driver_override:
+            self.nav.cancel("driver steered - handed back")
+            return None
+        if physical < -20:
+            self.nav.cancel("driver braked - handed back")
+            return None
+        x, y, th = self.nav_pose                  # dead reckoning between scans; the scan match below corrects it
+        th += math.tan(steer_to_delta(self._nav_stick, self.p)) / self.p.wheelbase * self.est.v * dt
+        self.nav_pose = (x + self.est.v * math.cos(th) * dt, y + self.est.v * math.sin(th) * dt, th)
+        self._odometry(points, seq, self._nav_stick, now)
+        out = self.nav.step(dt, self.nav_pose, pts, self.est.v)
+        if out is None:
+            return None
+        kappa, v_target = out
+        self._nav_stick = delta_to_steer(math.atan(kappa * self.p.wheelbase), self.p)
+        if physical <= 20:
+            self.info = {"autonomy": "paused - hold the throttle to drive"}
+            return self._nav_stick, 0.0
+        self.info = {"autonomy": self.nav.msg}
+        return self._nav_stick, math.copysign(self.model.pwm_for_speed(abs(v_target)), v_target)
+
+    def _rewrite(self, lines, i_a, i_m, servo, physical, dt):
+        """Replace the driver's lines with our own steering (None = keep the driver's) and throttle."""
+        w = -int(round(physical)) if self.reversed else int(round(physical))
+        drop = (i_a, i_m) if servo is not None else (i_m,)
+        out = [ln for i, ln in enumerate(lines) if i not in drop]
+        if servo is not None:
+            out.append(f"A {servo} {servo}")
+        out.append(f"M {w}")
+        self.level, self.changed = 2, True
+        self.est.update(dt, physical)
+        return out
 
     def process(self, lines, points, seq=None, now=None):
         """lines: the driver's packet lines. Returns the lines to hand on to the safety gate."""
@@ -147,6 +205,25 @@ class RelayAssists:
         physical = 0.0 if wire is None else (-wire if self.reversed else wire)
         stick = self.servo_to_stick(servo)
         self.changed = False
+        if points:
+            self._last_raw = points
+        if self.nav.active:
+            nav = self._navigate(dt, self.points_vehicle_frame(points, self.p.lidar_x), stick, physical,
+                                 points, seq, now)
+            if nav is not None:
+                self._nav_was_active = True
+                s_out, p_out = nav
+                sv = int(round(max(35.0, min(145.0, self.stick_to_servo(s_out)))))
+                return self._rewrite(lines, i_a, i_m, sv, p_out, dt)
+        if self._nav_was_active and not self.nav.msg.startswith("driver"):
+            self._hold = True       # autonomy ended by itself (arrived / blocked / GUI): stay stopped until the
+        self._nav_was_active = False            # operator lets go of the throttle, then hand back (as Summon does)
+        if self._hold:
+            if physical <= 20:
+                self._hold = False
+            else:
+                self.info = {"autonomy": f"{self.nav.msg} - release the throttle to drive"}
+                return self._rewrite(lines, i_a, i_m, None, 0.0, dt)
         if not any(self.assists.enabled.values()):
             self.est.update(dt, physical)
             self.info, self.level = {}, 0

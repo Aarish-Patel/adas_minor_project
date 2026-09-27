@@ -82,8 +82,14 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   alternatives considered.
 
 ## F. Autonomy (show everything the car can do)
-- [ ] F1. (started: `adas/autonav.py` click-to-go planner/tracker written, NOT tested, NOT wired into the relay or
-  dashboard, uncommitted) List and expose all autonomy modes in the GUI: obstacle avoidance run, follow-the-leader, return to start,
+- [x] F1a. Click-to-go (done: `adas/autonav.py` - Hybrid A* to a point with a single-arc analytic expansion and
+  Reeds-Shepp-style reverse arcs, planner in a worker thread, pure pursuit + curvature/distance speed profile,
+  re-plan when blocked. Relay: `GOTO x y` / `/api/goto/x/y`, operator holds the throttle as the dead-man switch,
+  steer/brake hands back, holds after arrival until the throttle is released. 2D GUI: click the map. Twin
+  (`python -m sim.autonav_eval` -> reports/autonav.png): 6/6 goals reached - doorway, side goal, furnished room,
+  point beside the car, 52 cm gap, reverse in a corridor - 4-7 cm from the goal, 0 crashes, plans 1-440 ms.
+  End-to-end through the relay in the simulator: doorway and corridor both arrive.)
+- [ ] F1. (click-to-go done, F1a; the rest still to do) List and expose all autonomy modes in the GUI: obstacle avoidance run, follow-the-leader, return to start,
   explore/map the room, point-to-point navigation (click a goal on the map), auto-park (with camera later).
 
 ## G. Camera (one camera, front or rear) - plan first

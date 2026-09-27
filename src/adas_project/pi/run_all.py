@@ -43,7 +43,14 @@ def save():
     tmp = STATE + ".tmp"
     with open(tmp, "w") as f:
         json.dump(state, f, indent=1)
-    os.replace(tmp, STATE)
+    for attempt in range(20):          # Windows refuses the rename while a reader has the file open
+        try:
+            os.replace(tmp, STATE)
+            return
+        except PermissionError:
+            if attempt == 19:
+                raise
+            time.sleep(0.01)
 
 
 def note(line):

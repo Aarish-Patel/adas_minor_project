@@ -110,6 +110,59 @@ class HybridAStar:
         """Path (N,4: x, y, heading, direction +1/-1) from start back onto the line y = 0 at x >= x_goal, or None."""
         x0 = min(start[0], 0.0) - 1.0
         grid = Grid(points, x0, max(x_goal, start[0]) + 3.0, -2.0, 2.0)
+        m = self.margin
+        gx0 = int((x_goal - grid.x0) / grid.res)
+        iy0 = int((0.0 - grid.y0) / grid.res)
+        seeds = [(ix, iy0 + dy) for ix in range(max(0, gx0), grid.nx) for dy in (-1, 0, 1) if 0 <= iy0 + dy < grid.ny]
+
+        def analytic(pose, d_prev):
+            if d_prev < 0 or pose[0] <= x_goal - 1.2:
+                return None
+            rj = self.rejoin(pose)
+            if rj is not None and rj[-1, 0] >= x_goal and self.clearance(grid, rj[::2]) >= m and \
+                    self._line_free(grid, rj[-1, 0], line_free_ahead):
+                return rj, 1
+            return None
+
+        return self._search(grid, start, seeds, analytic,
+                            lambda e: math.hypot(max(0.0, x_goal - e[0]), e[1]), allow_reverse, max_nodes, self.w_offset)
+
+    def plan_to_point(self, points, start, goal, allow_reverse=False, max_nodes=4000, pad=1.5):
+        """Path to a goal POSITION (any final heading), e.g. a point picked on the map. The analytic expansion is the
+        single circular arc from a node that passes through the goal (what pure pursuit would drive)."""
+        gx, gy = goal
+        grid = Grid(points, min(start[0], gx) - pad, max(start[0], gx) + pad, min(start[1], gy) - pad,
+                    max(start[1], gy) + pad)
+        m = self.margin
+        if float(grid.lookup(gx, gy)) < self.p.width / 2 + m:
+            self.grid = grid
+            return None                                   # the goal itself is too close to an obstacle
+        seeds = [(int((gx - grid.x0) / grid.res), int((gy - grid.y0) / grid.res))]
+
+        def analytic(pose, d_prev):
+            x, y, th = pose
+            if math.hypot(gx - x, gy - y) > 2.0:
+                return None
+            c, s = math.cos(th), math.sin(th)
+            lx, ly = c * (gx - x) + s * (gy - y), -s * (gx - x) + c * (gy - y)
+            if lx > 0.05:
+                d = 1
+            elif lx < -0.05 and allow_reverse:
+                d = -1                                    # goal behind: back into it (Reeds-Shepp style)
+            else:
+                return None
+            dd = lx * lx + ly * ly
+            k = 2.0 * ly / dd                             # the circle tangent to the heading through the goal
+            if abs(k) > self.kappa_max:
+                return None
+            length = math.sqrt(dd) if abs(k) < 1e-6 else 2.0 * math.atan2(abs(ly), abs(lx)) / abs(k)
+            arc = self.arc(pose, k, d * length, max(2, int(length / 0.04)))
+            return (arc, d) if self.clearance(grid, arc[::2]) >= m else None
+
+        return self._search(grid, start, seeds, analytic, lambda e: math.hypot(gx - e[0], gy - e[1]),
+                            allow_reverse, max_nodes, 0.0)
+
+    def _search(self, grid, start, seeds, analytic, h_euclid, allow_reverse, max_nodes, w_offset):
         self.grid = grid
         self.expanded = 0
         m = self.margin
@@ -117,7 +170,7 @@ class HybridAStar:
             return None                                   # already touching: nothing to plan
         # obstacle-aware 2D heuristic: Dijkstra from the goal region over free cells (inflated by half the width)
         free = grid.dist > (self.p.width / 2 + m)
-        h2d = self._dijkstra(grid, free, x_goal)
+        h2d = self._dijkstra(grid, free, seeds)
         kappas = np.linspace(-self.kappa_max, self.kappa_max, 7)
         dirs = (1, -1) if allow_reverse else (1,)
         start = tuple(float(v) for v in start)
@@ -133,12 +186,11 @@ class HybridAStar:
                 continue
             closed.add(key)
             self.expanded += 1
-            # analytic expansion toward the line
-            if pose[0] > x_goal - 1.2 and d_prev > 0:
-                rj = self.rejoin(pose)
-                if rj is not None and rj[-1, 0] >= x_goal and self.clearance(grid, rj[::2]) >= m and \
-                        self._line_free(grid, rj[-1, 0], line_free_ahead):
-                    return self._assemble(parents, nodes, i, np.column_stack([rj, np.ones(len(rj))]))
+            # analytic expansion to the goal
+            fin = analytic(pose, d_prev)
+            if fin is not None:
+                rj, d_fin = fin
+                return self._assemble(parents, nodes, i, np.column_stack([rj, np.full(len(rj), d_fin)]))
             for d in dirs:
                 for k in kappas:
                     seg = self.arc(pose, k, self.step, 4) if d > 0 else self._reverse_arc(pose, k)
@@ -147,11 +199,11 @@ class HybridAStar:
                         continue
                     end = tuple(seg[-1])
                     cost = self.step * (1.0 + self.w_steer * abs(k) + (self.w_reverse if d < 0 else 0.0)) \
-                        + self.w_change * abs(k - k_prev) * self.step + self.w_offset * abs(end[1]) * self.step \
+                        + self.w_change * abs(k - k_prev) * self.step + w_offset * abs(end[1]) * self.step \
                         + self.w_clear * max(0.0, self.clear_wish - clear) * self.step \
                         + (1.0 if d != d_prev else 0.0) * 0.5
                     g2 = g + cost
-                    h = max(math.hypot(max(0.0, x_goal - end[0]), end[1]), self._h(grid, h2d, end))
+                    h = max(h_euclid(end), self._h(grid, h2d, end))
                     nid += 1
                     nodes[nid] = end
                     parents[nid] = (i, np.column_stack([seg, np.full(len(seg), d)]))
@@ -170,18 +222,14 @@ class HybridAStar:
         xs = np.arange(x, x + ahead, 0.05)
         return bool((grid.lookup(xs, np.zeros_like(xs)) > self.p.width / 2 + self.margin).all())
 
-    def _dijkstra(self, grid, free, x_goal):
+    def _dijkstra(self, grid, free, seeds):
         INF = 1e9
         d = np.full(free.shape, INF)
-        gx0 = int((x_goal - grid.x0) / grid.res)
-        iy0 = int((0.0 - grid.y0) / grid.res)
         heap = []
-        for ix in range(max(0, gx0), grid.nx):
-            for dy in (-1, 0, 1):
-                iy = iy0 + dy
-                if 0 <= iy < grid.ny and free[ix, iy]:
-                    d[ix, iy] = 0.0
-                    heap.append((0.0, ix, iy))
+        for ix, iy in seeds:
+            if 0 <= ix < grid.nx and 0 <= iy < grid.ny and free[ix, iy]:
+                d[ix, iy] = 0.0
+                heap.append((0.0, ix, iy))
         heapq.heapify(heap)
         steps = [(1, 0, 1.0), (-1, 0, 1.0), (0, 1, 1.0), (0, -1, 1.0),
                  (1, 1, 1.414), (1, -1, 1.414), (-1, 1, 1.414), (-1, -1, 1.414)]

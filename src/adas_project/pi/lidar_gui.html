@@ -76,6 +76,9 @@
     <button class="aBtn" data-a="proximity">Side/rear alerts</button>
     <button class="aBtn" data-a="all" data-all="on">All on</button>
     <button class="aBtn" data-a="all" data-all="off">All off</button>
+    <span class="lbl" style="margin-left:14px">AUTONOMY</span>
+    <span id="navHint" style="font-size:12px;color:#94a3b8">click the map to drive there (hold the throttle)</span>
+    <button class="aBtn" id="navCancel" style="display:none">Cancel</button>
     <span id="simBar" style="display:none;margin-left:auto;font-size:12px;color:#94a3b8">SIMULATOR <b id="simWorld"></b>
       &nbsp;crashes <b id="simCrashes">0</b>&nbsp; <button class="aBtn" id="simReset">RESET CAR</button></span>
   </div>
@@ -105,6 +108,7 @@ function draw(data) {
   ctx.clearRect(0, 0, w, h);
   const cx = w / 2, cy = h / 2;
   const scale = Math.min(w, h) / (2 * MAX_RANGE_M) * 0.92;
+  view = { cx, cy, scale };
 
   // range rings
   ctx.strokeStyle = '#1e2b47';
@@ -183,7 +187,7 @@ function draw(data) {
   const plan = data.plan;
   if (plan) {
     if (plan.line) poly(plan.line, '#94a3b8', 1.5, [6, 6]);                 // the original line
-    if (plan.maneuver) poly(plan.maneuver, '#22d3ee', 3);                   // the planned manoeuvre
+    if (plan.maneuver) poly(plan.maneuver, data.nav && data.nav.state !== 'idle' ? '#a78bfa' : '#22d3ee', 3);  // planned path
     const col = plan.state === 'collision' ? '#f87171' : plan.state === 'limited' ? '#facc15' : '#34d399';
     if (plan.left) poly(plan.left, col, 1.5, [3, 4]);                       // the swept body edges
     if (plan.right) poly(plan.right, col, 1.5, [3, 4]);
@@ -197,6 +201,17 @@ function draw(data) {
         ctx.fillText(`${plan.hit_m.toFixed(2)} m  /  ${plan.ttc.toFixed(1)} s`, x + k + 4, y + 4);
       }
     }
+  }
+
+  // autonomy goal
+  if (data.nav && data.nav.goal) {
+    const [x, y] = P(data.nav.goal[0], data.nav.goal[1]), r = 10 * devicePixelRatio;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+      i ? ctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)) : ctx.moveTo(x + rr * Math.cos(a), y + rr * Math.sin(a));
+    }
+    ctx.closePath(); ctx.fillStyle = '#a78bfa'; ctx.fill();
   }
 
   // car outline: the measured body around the LiDAR (front 16 cm, rear 17 cm, 20 cm wide), front pointing up
@@ -285,6 +300,24 @@ document.querySelectorAll('.aBtn').forEach(b => b.addEventListener('click', asyn
   try { await fetch(`/api/assist/${name}/${on ? 'on' : 'off'}`, { method: 'POST' }); } catch (e) {}
 }));
 document.getElementById('simReset').addEventListener('click', () => fetch('/api/sim/reset', { method: 'POST' }));
+
+// click-to-go: a click on the map is a goal in the vehicle frame (x forward from the rear axle, y left)
+let view = null;
+const LIDAR_X = 0.12;
+canvas.addEventListener('click', ev => {
+  if (!view) return;
+  const r = canvas.getBoundingClientRect();
+  const px = (ev.clientX - r.left) * devicePixelRatio, py = (ev.clientY - r.top) * devicePixelRatio;
+  const fwd = (view.cy - py) / view.scale, left = (view.cx - px) / view.scale;
+  fetch(`/api/goto/${(LIDAR_X + fwd).toFixed(3)}/${left.toFixed(3)}`, { method: 'POST' }).catch(() => {});
+});
+document.getElementById('navCancel').addEventListener('click', () => fetch('/api/goto/cancel', { method: 'POST' }));
+function applyNav(data) {
+  const n = data.nav || { state: 'idle', msg: '' };
+  document.getElementById('navCancel').style.display = n.state !== 'idle' ? 'inline' : 'none';
+  document.getElementById('navHint').textContent = n.state !== 'idle' ? `${n.state}: ${n.msg}` :
+    (n.msg ? `${n.msg} - click the map for a new goal` : 'click the map to drive there (hold the throttle)');
+}
 function applySim(data) {
   const bar = document.getElementById('simBar');
   bar.style.display = data.sim ? 'inline' : 'none';
@@ -349,6 +382,7 @@ async function poll() {
     applyMode(data);
     applyAssists(data);
     applySim(data);
+    applyNav(data);
 
     draw(data);
   } catch (e) {
