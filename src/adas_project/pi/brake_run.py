@@ -23,7 +23,7 @@ REPORT = "/home/pi/rc_car/pi/brake_run_report.json"
 
 
 def run_level(rig, pwm, gui):
-    gui.set(activity='FINDING OPEN SPACE - backing up to get run-up room', servo=90.0, message=f'stopping test at PWM {pwm}')
+    gui.set(activity='FINDING OPEN SPACE - backing up to get run-up room', servo=float(D.CENTER0), message=f'stopping test at PWM {pwm}')
     back_up_to_rear_limit(rig)
     gui.set(activity=f'TESTING BRAKING - cruising at PWM {pwm}, then cutting throttle')
     f0 = rig.front()
@@ -81,7 +81,7 @@ def main():
             gui.set(progress=(i + 1) / len(LEVELS))
             time.sleep(0.5)
     finally:
-        rig.stop(); rig.steer(90); time.sleep(0.2)
+        rig.stop(); rig.steer(D.CENTER0); time.sleep(0.2)
         json.dump(out, open(REPORT, "w"), indent=2)
         try:
             good = [r for r in out["levels"] if r.get("v_cruise") and r.get("v_cruise") > 0.05 and r.get("stop_dist_m") is not None]

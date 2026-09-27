@@ -6,12 +6,13 @@ toward +y."""
 import numpy as np
 
 
-def polar_to_xy(points, max_n=190, dmin=0.25, dmax=4.0):
+def polar_to_xy(points, max_n=190, dmin=0.25, dmax=6.0):
+    """max_n=None keeps every point (use that for obstacle detection; thinning is only for ICP speed)."""
     arr = np.array([(a, d) for a, d in points if dmin <= d <= dmax], dtype=float)
     if len(arr) == 0:
         return np.zeros((0, 2))
     arr = arr[np.argsort(arr[:, 0])]
-    if len(arr) > max_n:
+    if max_n is not None and len(arr) > max_n:
         arr = arr[np.linspace(0, len(arr) - 1, max_n).astype(int)]
     r = np.radians(arr[:, 0])
     return np.stack([arr[:, 1] * np.cos(r), arr[:, 1] * np.sin(r)], axis=1)
@@ -59,6 +60,15 @@ def icp(A, B, init=(0.0, 0.0, 0.0), iters=18, gates=(0.35, 0.18, 0.10)):
     return R, t, float(np.arctan2(R[1, 0], R[0, 0])), float(dist[ok].mean()), int(ok.sum())
 
 
+def match_residual(A, B, dx, dy, th, gate=0.15):
+    """Mean nearest-neighbour distance of scan B placed at (dx, dy, th) in A's frame, over points within `gate`,
+    and how many points that was. Same measure icp() reports, but at a fixed pose (no iterations)."""
+    Bt = B @ rot(th).T + np.array([dx, dy])
+    d = np.sqrt(((Bt[:, None, :] - A[None, :, :]) ** 2).sum(-1).min(1))
+    ok = d < gate
+    return (float(d[ok].mean()) if ok.any() else 9.0), int(ok.sum())
+
+
 class Odometry:
     """Integrates scan-to-scan ICP into a pose (x, y, th) in the START frame. Falls back to a
     kinematic prediction when a registration is poor, so one bad scan doesn't lose the pose."""
@@ -71,6 +81,7 @@ class Odometry:
         self.n = 0
         self.ref = None              # the first scan: static reference that stops drift building up
         self.ref_fixes = 0
+        self.along_fallbacks = 0     # scans where the along-corridor distance came from the speed prediction
 
     def update(self, xy, t, v_pred, kappa_pred):
         if self.prev is None or self.prev_t is None:
@@ -83,8 +94,17 @@ class Odometry:
         res = icp(self.prev, xy, init)
         ok = res is not None and res[3] < 0.05 and res[4] >= 45 and abs(res[2] - dth) < np.radians(6)
         if ok:
-            R, tt, th, _, _ = res
+            R, tt, th, resid, n_in = res
             dx, dy, dth_used = float(tt[0]), float(tt[1]), th
+            # corridor ambiguity: parallel walls pin down sideways position and heading but not how far the car
+            # moved along them, and ICP then slides. If ICP disagrees with the speed prediction and the scans fit
+            # just as well at the predicted distance, the scan cannot tell - trust the prediction for dx.
+            step = v_pred * dt
+            if step > 0.01 and abs(dx - step) > 0.4 * step:
+                r_pred, n_pred = match_residual(self.prev, xy, step, dy, dth_used)
+                if r_pred <= resid * 1.15 and n_pred >= 0.9 * n_in:
+                    dx = step
+                    self.along_fallbacks += 1
         else:
             dx, dy, dth_used = init
             self.fallbacks += 1

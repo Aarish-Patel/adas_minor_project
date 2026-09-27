@@ -30,6 +30,8 @@ TH_DES_MAX_DEG = 28.0        # never aim more steeply than this
 REAR_EXTENT = 0.17           # LiDAR to rear bumper
 FRONT_EXTENT = 0.16          # LiDAR to front bumper
 BODY_HALF_W = 0.07
+MIN_PATH_POINTS = 2          # points inside the path corridor that count as an obstacle
+PATH_CONFIRM_SCANS = 2       # ...in this many consecutive scans
 STOP_MARGIN = 0.05           # footprint + this = emergency stop zone
 EXTRA_STRAIGHT_M = 0.35      # keep going straight this far after rejoining the line
 
@@ -60,6 +62,7 @@ class Bypass:
         self.msg = "cruising straight"
         self.rejoined_x = None
         self.gap_pos = self.gap_neg = None
+        self._hits = 0               # consecutive scans with something in the path
 
     # --- geometry helpers -------------------------------------------------------------
     @staticmethod
@@ -91,7 +94,10 @@ class Bypass:
         # ---- obstacle in the path? -------------------------------------------------
         if self.state == "CRUISE":
             path = pw[(pw[:, 0] > x + 0.05) & (pw[:, 0] < x + LOOK_M) & (np.abs(pw[:, 1]) < HALF_PATH)] if len(pw) else pw
-            if len(path) >= 4:
+            # a thin object (pole, chair leg) only returns 1-2 points per scan, so 2 points are enough -
+            # but they must be there in 2 consecutive scans, so a single noisy return never triggers it
+            self._hits = self._hits + 1 if len(path) >= MIN_PATH_POINTS else 0
+            if self._hits >= PATH_CONFIRM_SCANS:
                 near = pw[(pw[:, 0] > x - 0.4) & (pw[:, 0] < x + LOOK_M + 1.0) & (np.abs(pw[:, 1]) < 1.6)]
                 cmask = _cluster(near, path)
                 cl = near[cmask]

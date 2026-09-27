@@ -35,9 +35,9 @@ class BypassDriver:
             self.last_scan = sim.scan_id
             t, angles, ranges, valid = sim.last_scan
             pts = [(math.degrees(a), r) for a, r, ok in zip(angles, ranges, valid) if ok]
-            xy = polar_to_xy(pts)
+            xy = polar_to_xy(pts)                                        # thinned: odometry only
             est = self.odo.update(xy, t, max(sim.car.v, 0.05), self.kappa)
-            r = self.ctl.step(est, xy)
+            r = self.ctl.step(est, polar_to_xy(pts, max_n=None, dmin=0.2, dmax=6.0))   # every point: detection
             self.pose, self.state, self.msg, self.y_ref = tuple(est), r["state"], r["msg"], r["y_ref"]
             self.trace.append((sim.t, float(est[0]), float(est[1]), float(est[2]), r["state"]))
             if r["pwm"] == 0:

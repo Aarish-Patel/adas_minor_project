@@ -54,7 +54,7 @@ def main():
         else:
             b = float(np.median(bearings)); sd = float(np.std(bearings)); cur = D.MOUNT.yaw_offset_deg
             new = (cur + b) % 360
-            if abs(b) > 15 or sd > 3:
+            if abs(b) > 70 or sd > 6:
                 gui.log(f"REJECTED: nearest object is {b:+.1f} deg off centre (sd {sd:.1f}) - not the centred object? nothing saved")
                 gui.set("LiDAR front calibration - REJECTED", "check the object is centred and is the nearest thing in front", 1.0, activity="finished")
                 hold(40)

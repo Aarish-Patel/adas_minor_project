@@ -37,7 +37,7 @@ def back_up_to_rear_limit(rig):
     """Reverse (slowly, straight) until the rear cone reads REAR_STOP_M - deliberately does NOT
     use the 360 hard floor, which would refuse to back up at all with a wall this close
     behind; the rear cone is still watched every tick and the run is time-capped."""
-    rig.steer(90)
+    rig.steer(D.CENTER0)             # calibrated straight-ahead, not raw 90
     end = time.time() + 4.5
     while time.time() < end:
         rear = rig.rear()
@@ -91,7 +91,7 @@ def main():
             out["levels"].append(r)
             time.sleep(0.5)
     finally:
-        rig.stop(); rig.steer(90); time.sleep(0.2); rig.close()
+        rig.stop(); rig.steer(D.CENTER0); time.sleep(0.2); rig.close()
         json.dump(out, open(REPORT, "w"), indent=2)
 
 

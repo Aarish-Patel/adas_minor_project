@@ -115,9 +115,11 @@ def main():
             last_t2, s = SR.unique_scan_sample(rig, last_t)
             if s:
                 last_t = last_t2
-                xy = polar_to_xy(rig.points())
+                pts = rig.points()
+                xy = polar_to_xy(pts)                                     # thinned: odometry (ICP) only
+                xy_full = polar_to_xy(pts, max_n=None, dmin=0.2, dmax=6.0)   # every point: obstacle detection
                 est = odo.update(xy, s[0], V_PRED, BC.K_CURV_PER_DEG * (servo_cmd - SERVO_STRAIGHT))
-                r = ctl.step(est, xy)
+                r = ctl.step(est, xy_full)
                 servo_cmd = r["servo_deg"]
                 trace.append({"t": round(time.time() - start, 2), "x": float(est[0]), "y": float(est[1]),
                               "th_deg": float(np.degrees(est[2])), "servo": servo_cmd, "state": r["state"]})

@@ -38,9 +38,9 @@ def raycast(segs, pose, n=720, noise=0.01, rng=None):
     return out
 
 
-def run(obstacle, extra_segs, label, seed=0, verbose=False, k_true=1.0, servo_bias=0.0):
+def run(obstacle, extra_segs, label, seed=0, verbose=False, k_true=1.0, servo_bias=0.0, n_rays=720):
     rng = np.random.default_rng(seed)
-    room = box(-1.0, -1.6, 5.0, 1.6)
+    room = box(-1.0, -1.6, 7.0, 1.6)   # long enough to finish the manoeuvre before the end wall
     segs = room + box(*obstacle) + extra_segs
     true = np.array([0.0, 0.0, 0.0])       # LiDAR pose in the world (== start frame)
     v, dt_scan = 0.26, 0.125
@@ -51,11 +51,11 @@ def run(obstacle, extra_segs, label, seed=0, verbose=False, k_true=1.0, servo_bi
     traj, min_clear, states = [], 9.0, []
     obs_rect = obstacle
     for step in range(400):
-        scan = raycast(segs, true, rng=rng)
+        scan = raycast(segs, true, n=n_rays, rng=rng)
         xy = polar_to_xy(scan)
         kappa_cmd = K_CURV_PER_DEG * (servo_cmd - SERVO_STRAIGHT)
         est = odo.update(xy, t, v, kappa_cmd)
-        r = ctl.step(est, xy)
+        r = ctl.step(est, polar_to_xy(scan, max_n=None, dmin=0.2, dmax=6.0))
         states.append(r["state"])
         if r["pwm"] == 0:
             break
