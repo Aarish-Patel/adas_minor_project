@@ -343,4 +343,4 @@ Real-EV style software:
 - [x] J2. (done: STATUS.md rewritten for the current state - what is/isn't on the car, calibration in use, results;
   README.md leads with the digital twin and its checks, the older simulator kept below) Update `STATUS.md` and `README.md`.
 - [ ] J3. Results/slides from sim + car logs.
-- [ ] J4. Calibrations only when the user asks (LiDAR yaw 63.4 deg current).
+- [ ] J4. Calibrations only when the user asks (LiDAR yaw 45.7 deg since 28 Sep 21:21 - user-requested front calibration with the object centred: bearing -17.7 deg, sd 0.07, at 0.46 m, was 63.4; the mount probably turned during the ESP32 swap).
