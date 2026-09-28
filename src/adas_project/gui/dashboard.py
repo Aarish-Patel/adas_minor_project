@@ -447,7 +447,8 @@ class Dashboard(QtWidgets.QMainWindow):
 
     @staticmethod
     def _chip(color):
-        return (f"background: {color}33; border: 1px solid {color}; color: {color}; border-radius: 12px; "
+        r, g, b = (int(color[i:i + 2], 16) for i in (1, 3, 5))       # Qt reads #RRGGBBAA as #AARRGGBB
+        return (f"background: rgba({r},{g},{b},50); border: 1px solid {color}; color: {color}; border-radius: 12px; "
                 f"padding: 4px 14px; font-weight: 700; margin-left: 14px;")
 
     def _cluster(self):
@@ -802,16 +803,34 @@ def main():
                                                         "7 ML training lab")
     ap.add_argument("--snapshot", help="save the window as this PNG after --after seconds, then quit (tests, slides)")
     ap.add_argument("--after", type=float, default=6.0)
+    ap.add_argument("--classic", action="store_true", help="the older tabbed dashboard instead of the EV-style one")
+    ap.add_argument("--open", default="", help="EV window: open a drawer or lab at start - map, assists, setup, "
+                                               "diag, events, mc, train")
     a = ap.parse_args()
     pg.setConfigOptions(antialias=True)
+    # the 3D views of the main window and the lab windows share one OpenGL context: pyqtgraph compiles its shaders
+    # once, and a second window with its own context could not use them ("glUseProgram: invalid value")
+    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
     app = QtWidgets.QApplication(sys.argv)
-    app.setStyleSheet(STYLE)
-    win = Dashboard(Link(a.host))
-    win.tabs.setCurrentIndex(a.tab)
+    if a.classic:
+        app.setStyleSheet(STYLE)
+        win = Dashboard(Link(a.host))
+        win.tabs.setCurrentIndex(a.tab)
+    else:
+        from gui.ev import EV_STYLE, EVWindow
+        app.setStyleSheet(EV_STYLE)
+        win = EVWindow(Link(a.host))
     win.show()
+    target = win
+    if not a.classic and a.open:
+        if a.open in ("mc", "train"):
+            win.open_lab(a.open)
+            target = win.labs[a.open]
+        else:
+            win.toggle(a.open, True)
     if a.snapshot:
         def snap():
-            win.grab().save(a.snapshot)
+            target.grab().save(a.snapshot)
             app.quit()
         QtCore.QTimer.singleShot(int(a.after * 1000), snap)
     sys.exit(app.exec())

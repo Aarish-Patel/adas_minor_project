@@ -511,7 +511,9 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
     authoritative blocked/braking decision, since that's the only time it actually matters
     for control."""
     with GUI_STATE["lock"]:
-        GUI_STATE["data"] = {
+        # update in place: everything else in the state (assist, plan, world, health, esp32, ...) is set by other
+        # code and must survive (a rebuilt dict dropped 'world' and made the health / ESP32 chips flicker)
+        GUI_STATE["data"].update({
             "t": time.time(),
             "front_dist": front_track.dist, "front_speed": round(front_track.speed, 3),
             "front_blocked": bool(front_blocked),
@@ -523,14 +525,7 @@ def gui_snapshot(front_track, rear_track, body_min_front, body_min_rear, front_b
             "mode": mode, "braking": bool(braking),
             "tracks": tracks or [], "moving_blocked": bool(moving_blocked),
             "follow_enabled": bool(follow_enabled), "follow_lead": follow_lead,
-            "assist": GUI_STATE["data"].get("assist"),        # kept: set separately by the assist code
-            "gate": GUI_STATE["data"].get("gate"),
-            "sim": GUI_STATE["data"].get("sim"),              # ground truth, only when run in the laptop simulator
-            "plan": GUI_STATE["data"].get("plan"),
-            "drive": GUI_STATE["data"].get("drive"),
-            "intent": GUI_STATE["data"].get("intent"),
-            "nav": GUI_STATE["data"].get("nav"),
-        }
+        })
 
 
 def gui_set_mode(mode):

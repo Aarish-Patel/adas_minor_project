@@ -148,6 +148,12 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] P8. Monte Carlo + training labs look better and SHOW the process: at least 2-3 3D cars moving (simulation
   runs side by side; randomised twin cars generating training data), not just graphs.
 - [ ] P9. The rest of the TODO list.
+- [ ] P10. (user) Fix the spelling mistakes and visual problems in the GUI.
+- [ ] P11. (user) Evasive planning distance must scale with speed - it sometimes fails at high speed.
+- [ ] P12. (user) Moving obstacles: predict them and speed up to get past first, slow down to let them pass, or
+  move out of the way (with a stop if nothing else works).
+- [ ] P13. Check: a Monte Carlo started from the lab at ~22:24 (all 5 styles, interrupted at 101/255 runs) showed
+  ~250 needless BRAKES for ADAS (earlier runs: 2-5). Re-run on the current code and find the cause.
 
 ## O. User request (28 Sep, evening): "work on the simulator, the TODO list and everything for the project"
 (the ESP32 died, so no car until it is replaced). Order: M4 research -> M1 data + model -> M3 training tab ->

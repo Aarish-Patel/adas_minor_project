@@ -309,7 +309,7 @@ def run(args):
     prof, prof2 = DriverProfile(), DriverProfile()
     t, next_scan, pts = 0.0, 0.0, np.empty((0, 2))
     hist, pwm_hist = [], []
-    Z, V2, LAP, VT, CLR, MOV = [], [], [], [], [], []
+    Z, V2, LAP, VT, CLR, MOV, POSE = [], [], [], [], [], [], []
     still_for = 0.0
     while t < t_max:
         x, y, th, v, _, _, crashed = car.pose()
@@ -334,6 +334,7 @@ def run(args):
             V2.append(f if f is not None else np.full(23, np.nan))
         LAP.append(driver.lapsed(t))
         VT.append(v)
+        POSE.append((x, y, th))
         CLR.append(world.clearance(x, y, th, p))
         car.command(f"A {s:.1f} {s:.1f}", now=t)
         car.command(f"M {-int(u)}", now=t)
@@ -360,7 +361,8 @@ def run(args):
     out = {"Z": np.array(Z, np.float32).reshape(n, -1), "y": y, "tte": tte.astype(np.float32),
            "lapsed": np.array(LAP, bool), "v_true": VT.astype(np.float32), "clear": CLR.astype(np.float32),
            "family": family, "style": style, "crashed": bool(car.crash_count), "seed": seed,
-           "dr": np.array([dr[k] for k in sorted(dr)], np.float32)}
+           "dr": np.array([dr[k] for k in sorted(dr)], np.float32), "dr_dict": dr,
+           "pose": np.array(POSE, np.float32).reshape(n, 3), "segments": world.segments().tolist()}
     if with_v2:
         out["V2"] = np.array(V2, np.float32).reshape(n, -1)
     return out
@@ -417,6 +419,37 @@ def main(train_runs=3000, test_runs=600, level=1.0):
           f"{time.time() - t0:.0f} s", flush=True)
 
 
+def showcase(n=12, path=None, level=1.0):
+    """A few twin drives with everything the GUI's training lab animates (gui/lab_tabs.py): the car's pose, its
+    randomised parameters, the room, the label (contact within 2 s) and the v3 model's risk at every tick."""
+    import json
+    from adas.intent_net import IntentNet, window_of
+    net_path = os.path.join(ROOT, "models", "intent_v3.json")
+    net = IntentNet(net_path) if os.path.exists(net_path) else None
+    rng = np.random.default_rng(77)
+    fams = ["straight", "rooms", "curve", "parallel", "gap", "reverse"]
+    out = []
+    i = 0
+    while len(out) < n and i < n * 6:
+        fam = fams[i % len(fams)]
+        r = run((990_000 + i, fam, level, False))
+        i += 1
+        if len(r["y"]) < 40:
+            continue
+        risk = []
+        if net is not None:
+            Z = r["Z"].astype(np.float64)
+            risk = [round(net.risk(window_of(list(Z[max(0, k - 31):k + 1]))), 3) for k in range(len(Z))]
+        out.append({"family": fam, "style": r["style"], "crashed": r["crashed"],
+                    "pose": np.round(r["pose"], 3).tolist(), "y": r["y"].astype(int).tolist(), "risk": risk,
+                    "v": np.round(r["v_true"], 3).tolist(), "segments": np.round(r["segments"], 3).tolist(),
+                    "dr": {k: round(float(v), 3) for k, v in r["dr_dict"].items()}})
+    path = path or os.path.join(ROOT, "models", "intent_training", "showcase.json")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    json.dump(out, open(path, "w"))
+    return out
+
+
 def ablation(train_runs=1500, test_runs=400):
     """Data for the randomisation ablation (RESEARCH.md section 7, step 6): a training set from the NOMINAL twin
     only (level 0), and two test sets - the nominal twin, and cars/sensors drawn from 1.6x wider ranges than any
@@ -431,7 +464,9 @@ def ablation(train_runs=1500, test_runs=400):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "ablation":
+    if len(sys.argv) > 1 and sys.argv[1] == "showcase":
+        print(len(showcase()), "showcase drives")
+    elif len(sys.argv) > 1 and sys.argv[1] == "ablation":
         ablation(*(int(a) for a in sys.argv[2:4]))
     else:
         main(*(int(a) for a in sys.argv[1:3]), *(float(a) for a in sys.argv[3:4]))
