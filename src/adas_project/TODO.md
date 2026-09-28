@@ -152,6 +152,16 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] P11. (user) Evasive planning distance must scale with speed - it sometimes fails at high speed.
 - [ ] P12. (user) Moving obstacles: predict them and speed up to get past first, slow down to let them pass, or
   move out of the way (with a stop if nothing else works).
+- [ ] P14. (user, 29 Sep) Professional EV look for the GUI and the simulation views: automotive palette (graphite
+  neutrals + one restrained accent, not navy/cyan/violet), automotive typography (DIN-style numerals), smooth
+  animations (value tweening, fades, pulses), highly readable; applies to the drive window, drawers, both lab
+  windows, the 3D scenes and the report figures.
+- [ ] P15. Wire the crossing planner (adas/crossing.py, done + unit-tested) into the relay: moving-obstacle tracks ->
+  pass / yield / stop / back away; twin scenario with a moving obstacle; Monte Carlo counterfactual for it.
+- [ ] P16. Report (docs/REPORT.md): methods, problems faced and solved, research used, why it is unique in ADAS
+  for small vehicles; updated at every session end / major milestone.
+- [ ] P17. Repository clean-up (old files, backups, junk) and consistent pushes to GitHub (remote to be confirmed).
+- [ ] P18. The rest of the TODO list (open items in A, B, C, D, F, H, I, J).
 - [ ] P13. Check: a Monte Carlo started from the lab at ~22:24 (all 5 styles, interrupted at 101/255 runs) showed
   ~250 needless BRAKES for ADAS (earlier runs: 2-5). Re-run on the current code and find the cause.
 
