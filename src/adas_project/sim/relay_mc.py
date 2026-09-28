@@ -256,6 +256,8 @@ def run(args):
     assist.speed = vest
     if variant in ("adas", "adas+intent"):
         assist.set("evasive", True)
+        if os.environ.get("RC_NUDGE") == "1":        # opt-in: more (short) corrections, less time overridden
+            assist.set("nudge", True)
     t, next_scan, seq = 0.0, 0.0, 0
     pts = []
     trace, events = [], []
@@ -297,6 +299,7 @@ def run(args):
                 # stick history, LiDAR free distances); the stopping-distance brake below is never suppressed
                 rint.update(t, d_servo, d_pwm, vest.v, pts)
                 p_crash = rint.p_crash
+            lines, _nd = assist.nudge(gate, lines, vest.v_gate(1))  # steering correction first (as in the relay)
             out = assist.process(lines, pts, seq, now=t)
             for ln in out:
                 q = ln.split()

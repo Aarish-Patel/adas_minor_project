@@ -58,6 +58,13 @@ BRAKE_GAIN = 300.0         # PWM per m/s over
 BRAKE_PWM_MAX = 140
 BRAKE_MAX_S = 0.3          # s of active braking per event (never enough to drive the car backwards)
 LATCH_RELEASE_M = 0.08     # the hold after braking lets go once the free distance grows this much
+# steering correction instead of braking (steer_correction): the largest nudge of path curvature tried (0.7 1/m is
+# ~11 servo degrees at the fitted 0.0656 1/m per degree), tried smallest first, and only above walking pace
+NUDGE_MAX_KAPPA = 0.7
+NUDGE_STEPS = (0.1, 0.2, 0.3, 0.45, 0.6, 0.7)
+NUDGE_MIN_V = 0.2
+NUDGE_TTC_S = 1.0          # s: look this far ahead in time on the driver's path for a contact to correct
+NUDGE_GAIN_M = 0.5         # m: a correction must add at least this much free way (i.e. get past the obstacle)
 
 
 class PathGate:
@@ -203,6 +210,40 @@ class PathGate:
         d1 = self._body_dist(pts, x1, y1, th1)
         keep = ~close | (d1 < d0 - 1e-4)
         return pts[keep]
+
+    def steer_correction(self, delta, direction, v, max_shift=None):
+        """Minimal-intervention steering (TODO B8/L2; Hsu, Hu & Fisac 2024 safety filters; Talbot et al., ACC 2025
+        shared-control CBFs): if the brake would have to act on the driver's path at this speed, the smallest change
+        of path curvature (up to max_shift, 1/m) whose path IS safe at this speed - like the emergency steering
+        support in production cars. Returns the corrected steering angle, or None (no correction needed, or none
+        small enough: then the brake acts as before)."""
+        from adas.vehicle_params import steer_to_delta
+        max_shift = NUDGE_MAX_KAPPA if max_shift is None else max_shift
+        if direction == 0 or abs(v) < NUDGE_MIN_V:
+            return None
+        v = abs(v)
+        free0, _ = self.free_distance(delta, direction)
+        # act while a small correction can still get round (the brake's envelope is too late for steering: at
+        # 0.5 m/s it is ~0.2 m, a 6 cm sideways slide needs ~0.4 m) - a time-to-contact trigger as in production
+        # evasive steering support, or the brake envelope if that is larger
+        envelope = FOS * (BASE_M + v * REACTION_S + v * v / (2 * DECEL))
+        if not math.isfinite(free0) or free0 > max(v * NUDGE_TTC_S, envelope):
+            return None
+        need = max(free0 + NUDGE_GAIN_M, envelope)        # the corrected path must really get past it
+        wb = self.p.wheelbase
+        k0 = math.tan(delta) / wb
+        k_lo, k_hi = math.tan(steer_to_delta(-1.0, self.p)) / wb, math.tan(steer_to_delta(1.0, self.p)) / wb
+        for shift in NUDGE_STEPS:
+            if shift > max_shift:
+                break
+            for k in (k0 + shift, k0 - shift):
+                if not k_lo <= k <= k_hi:
+                    continue
+                free_k, _ = self.free_distance(math.atan(k * wb), direction)
+                if free_k >= need and self.allowed_speed(free_k) >= v:
+                    self.info["nudge"] = f"steering corrected {'left' if k > k0 else 'right'} by {shift:.2f} 1/m"
+                    return math.atan(k * wb)
+        return None
 
     @staticmethod
     def allowed_speed(free, fos=FOS):

@@ -128,6 +128,79 @@ class PlanServiceTests(unittest.TestCase):
         self.assertEqual(job.result(), 3)
 
 
+def box_pts(cx, cy, hx, hy, n=30):
+    xs, ys = np.linspace(cx - hx, cx + hx, n), np.linspace(cy - hy, cy + hy, n)
+    return np.vstack([np.column_stack([xs, np.full(n, cy - hy)]), np.column_stack([xs, np.full(n, cy + hy)]),
+                      np.column_stack([np.full(n, cx - hx), ys]), np.column_stack([np.full(n, cx + hx), ys])])
+
+
+class FallbackTests(unittest.TestCase):
+    def test_mppi_steers_round_a_box(self):
+        from adas.hybrid_astar import Grid
+        from adas.mppi import MPPI
+        grid = Grid(box_pts(1.6, 0.0, 0.13, 0.13), -1.0, 5.0, -2.0, 2.0)
+        m = MPPI(P)
+        x = y = th = 0.0
+        closest = 9.0
+        for _ in range(160):
+            k, ok = m.step(grid, (x, y, th), 0.4, x_goal=2.2)
+            self.assertTrue(ok)
+            th += k * 0.4 * 0.05
+            x += 0.4 * math.cos(th) * 0.05
+            y += 0.4 * math.sin(th) * 0.05
+            closest = min(closest, float((grid.lookup(x + np.cos(th) * m.circle_x, y + np.sin(th) * m.circle_x)
+                                          - m.circle_r).min()))
+            if x > 2.4:
+                break
+        self.assertGreater(x, 2.4)
+        self.assertGreater(closest, 0.04)
+
+    def test_evasive_falls_back_to_mppi_when_no_plan(self):
+        from adas.assists import DrivingAssists
+        from adas.plan_service import Job
+        a = DrivingAssists(P, TUN.speed_model)
+        a.enabled["evasive"] = True
+        a.cfg.evade_ttc, a.cfg.evade_min_look = 4.0, 1.6       # trigger early enough for a local swerve
+        a.plan_service.submit = lambda *args, **kw: Job(result=None)     # "Hybrid A* found nothing"
+        from adas.vehicle_params import steer_to_delta
+        world = box_pts(P.front_x + 1.3, 0.0, 0.13, 0.13)
+        x = y = th = 0.0
+        saw_mppi, closest = False, 9.0
+        for _ in range(120):                                   # a simple kinematic car at 0.4 m/s, 6 s
+            c, s_ = math.cos(th), math.sin(th)
+            dx, dy = world[:, 0] - x, world[:, 1] - y
+            pts = np.column_stack([c * dx + s_ * dy, -s_ * dx + c * dy])
+            steer, _pwm, _lvl = a.update(0.05, pts, 0.0, 200, 0.4)
+            saw_mppi = saw_mppi or "MPPI" in a.info.get("evasive", "")
+            k = math.tan(steer_to_delta(steer, P)) / P.wheelbase
+            th += k * 0.4 * 0.05
+            x += 0.4 * math.cos(th) * 0.05
+            y += 0.4 * math.sin(th) * 0.05
+            lx = c * dx + s_ * dy
+            ly = -s_ * dx + c * dy
+            closest = min(closest, float(np.hypot(np.maximum(np.maximum(P.rear_x - lx, 0), lx - P.front_x),
+                                                  np.maximum(np.abs(ly) - P.width / 2, 0)).min()))
+            if x > P.front_x + 1.3 + 0.4:
+                break
+        self.assertTrue(saw_mppi)                              # the fallback steered...
+        self.assertGreater(closest, 0.0)                       # ...without touching the box...
+        self.assertGreater(x, P.front_x + 1.3 + 0.4)           # ...and got past it
+
+
+class NudgeTests(unittest.TestCase):
+    def test_small_correction_instead_of_braking(self):
+        from pi.relay_assists import RelayAssists
+        a = RelayAssists(TUN)
+        a.set("nudge", True)
+        g = PathGate(P, TUN.speed_model)
+        g.on_scan(box_pts(P.front_x + 0.45, 0.22, 0.15, 0.15), 1)       # clips the left side by ~3 cm
+        c = f"{a.centre:.0f}"
+        out, d = a.nudge(g, [f"A {c} {c}", "M -150"], 0.47)
+        self.assertIsNotNone(d)
+        self.assertLess(d, 0.0)                                          # steered right, away from the box
+        self.assertNotEqual(out[0], f"A {c} {c}")
+
+
 class GateTests(unittest.TestCase):
     def gate(self, pts):
         g = PathGate(P, TUN.speed_model)

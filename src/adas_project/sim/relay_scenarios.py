@@ -72,6 +72,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
         if hook is not None:
             hook(t, assist, pts, seq)
         rint.update(t, servo, float(pwm), vest.v, pts)
+        lines, _nd = assist.nudge(gate, lines, vest.v_gate(1))      # steering correction first (as in the relay)
         out = assist.process(lines, pts, seq, now=t)
         servo_out, phys = servo, float(pwm)
         for ln in out:
@@ -270,7 +271,27 @@ def passing_beside_a_wall():
     return ok, f"parallel to a wall 15 cm off the side, all assists on: throttle reduced on {slowed} ticks"
 
 
+def nudge_clips_box():
+    """A box that would clip the car's left side by 3 cm: a small steering correction instead of braking."""
+    from sim.world import Box
+    make = lambda: (_world(), Box(2.5, 0.22, 0.30, 0.30))
+    w, b = make()
+    w.add(b)
+    on = run(w, steady(150), 9, ("nudge",), stop_when=lambda t, x, y, th, v: x > 3.3)
+    w, b = make()
+    w.add(b)
+    off = run(w, steady(150), 9, (), stop_when=lambda t, x, y, th, v: x > 3.3)
+    slowed_on = sum(1 for row in on["trace"] if row[0] > 0.5 and row[6] < row[5] - 1)
+    slowed_off = sum(1 for row in off["trace"] if row[0] > 0.5 and row[6] < row[5] - 1)
+    nudged = any(i.startswith("nudge") for i in on["infos"])
+    ok = (not on["collided"]) and on["x"] > 3.0 and nudged and slowed_on < slowed_off
+    return ok, (f"with the nudge: steering corrected, passed (x {on['x']:.1f} m), closest {on['min_clear'] * 100:.0f} cm, "
+                f"throttle reduced on {slowed_on} ticks; without: throttle reduced on {slowed_off} ticks"
+                f"{', stopped at x %.2f' % off['x'] if off['x'] < 3.0 else ''}")
+
+
 SCENARIOS = [("Evasive steer around a block", evasive_box),
+             ("Steering correction instead of braking (nudge)", nudge_clips_box),
              ("Doorway at full throttle: no throttle cut mid-manoeuvre (B4)", doorway_full_throttle),
              ("Evasive stays out when the driver is already avoiding", evasive_driver_already_avoiding),
              ("Full speed at a wall: stops close, not early (B11)", wall_full_speed),

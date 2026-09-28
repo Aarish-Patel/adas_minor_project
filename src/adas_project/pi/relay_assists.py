@@ -187,7 +187,7 @@ class RelayIntent:
 
 
 class RelayAssists:
-    NAMES = ("evasive", "centring", "limiter", "narrow", "proximity")
+    NAMES = ("evasive", "centring", "limiter", "narrow", "proximity", "nudge")
 
     def __init__(self, tuning, motor_reversed=True, plan_mode="inline", plan_latency=0.0):
         """plan_mode 'process': path searches run in a worker process (the relay); 'inline' computes them at once,
@@ -201,6 +201,8 @@ class RelayAssists:
         self.assists.plan_service = self.planner
         self.est = SpeedEstimator(self.model)
         self.speed = None              # a RelaySpeed shared with the brake gate; if set, the assists use its speed
+        self.nudge_on = False          # steering correction instead of braking (see nudge())
+        self._nudge_note = None        # this tick's correction, for the GUI (process() keeps it)
         self.reversed = motor_reversed
         self.last_t = None
         self.last_servo = self.centre
@@ -216,7 +218,51 @@ class RelayAssists:
         self._hold = False
 
     def enabled(self):
-        return {k: bool(v) for k, v in self.assists.enabled.items()}
+        out = {k: bool(v) for k, v in self.assists.enabled.items()}
+        out["nudge"] = self.nudge_on
+        return out
+
+    def nudge(self, gate, lines, v):
+        """Steering correction instead of braking (pi/path_gate.steer_correction), when the 'nudge' assist is on:
+        the driver's steering is changed by the smallest amount that makes their path safe at this speed. Forward
+        only, never during a manoeuvre, not for a driver the intent model trusts who is steering. Call it BEFORE
+        process(): the evasive steer then sees the corrected path, so a small correction pre-empts a full swerve.
+        The gate must have the latest scan. Returns (lines, corrected steering angle or None)."""
+        self._nudge_note = None
+        if not self.nudge_on or self.assists.phase is not None or self.nav.active:
+            return lines, None
+        a = self.assists
+        if a.intent_hold and a.intent_attentive:          # the learned intent model: this driver is handling it
+            return lines, None
+        servo, wire, i_a = None, None, None
+        for i, ln in enumerate(lines):
+            p = ln.split()
+            try:
+                if p[0] == "A" and len(p) == 3:
+                    servo, i_a = (float(p[1]) + float(p[2])) / 2.0, i
+                elif p[0] == "M" and len(p) == 2:
+                    wire = float(p[1])
+            except (ValueError, IndexError):
+                pass
+        self._nudge_note = None
+        if servo is None or wire is None:
+            return lines, None
+        physical = -wire if self.reversed else wire
+        if physical <= 0:
+            return lines, None
+        wb = self.p.wheelbase
+        delta = math.atan(-K_CURV_PER_SERVO_DEG * (servo - self.centre) * wb)
+        d2 = gate.steer_correction(delta, 1, v)
+        if d2 is None:
+            return lines, None
+        sv = self.centre - (math.tan(d2) / wb) / K_CURV_PER_SERVO_DEG
+        sv = int(round(max(35.0, min(145.0, sv))))
+        out = list(lines)
+        out[i_a] = f"A {sv} {sv}"
+        self._nudge_note = gate.info.get("nudge", "steering corrected")
+        self.info = dict(self.info, nudge=self._nudge_note)
+        self.changed = True
+        return out, d2
 
     @property
     def v(self):
@@ -226,7 +272,9 @@ class RelayAssists:
     def set(self, name, on):
         if name == "all":
             for k in self.NAMES:
-                self.assists.enabled[k] = on
+                self.set(k, on)
+        elif name == "nudge":
+            self.nudge_on = bool(on)
         elif name in self.NAMES:
             self.assists.enabled[name] = on
 
@@ -359,15 +407,17 @@ class RelayAssists:
             else:
                 self.info = {"autonomy": f"{self.nav.msg} - release the throttle to drive"}
                 return self._rewrite(lines, i_a, i_m, None, 0.0, dt)
+        nudged = {"nudge": self._nudge_note} if self._nudge_note else {}   # a correction made before process()
+        self.changed = bool(nudged)
         if not any(self.assists.enabled.values()):
             self.est.update(dt, physical)
-            self.info, self.level = {}, 0
+            self.info, self.level = dict(nudged), (1 if nudged else 0)
             return lines
         pts = self.points_vehicle_frame(points, self.p.lidar_x)
         self._odometry(points, seq, stick, now)
         s_out, p_out, self.level = self.assists.update(dt, pts, stick, physical, self.v)
         self._odometry(points, seq, stick, now)     # a manoeuvre that just began: this scan is its reference
-        self.info = dict(self.assists.info)
+        self.info = dict(self.assists.info, **nudged)
         out = list(lines)
         if abs(s_out - stick) > 1e-3:
             sv = int(round(max(35.0, min(145.0, self.stick_to_servo(s_out)))))

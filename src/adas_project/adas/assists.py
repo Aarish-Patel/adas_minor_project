@@ -68,6 +68,7 @@ class AssistConfig:
     plan_kappa_max: float = 1.5      # 1/m: planner steering limit (measured tightest reliable turn ~0.65 m)
     plan_max_nodes: int = 2500
     plan_timeout_s: float = 2.5      # s: no plan by then (both search budgets used) -> give up, the brake stays
+    mppi_fallback: bool = True       # no Hybrid A* path: MPPI steers locally while the search is retried
     track_look: float = 0.30         # m pure-pursuit look-ahead on the planned path
     evade_speed: float = 0.40        # m/s: fastest the manoeuvre is driven (the driver's throttle is capped)
     reverse_speed: float = 0.15      # m/s when backing off
@@ -138,6 +139,7 @@ class DrivingAssists:
         from .plan_service import PlanService
         self.plan_service = PlanService("inline")   # the relay switches it to a worker process
         self._job = None                # a search in progress
+        self._mppi = None               # the local fallback controller (created on first use)
         self._track_i = 0
         self._x_goal_v = 1.0
         self.evade_pwm = None           # throttle the manoeuvre needs (cap, or reverse creep)
@@ -223,6 +225,18 @@ class DrivingAssists:
         start = self._predicted_start(near, v, kappa)
         self._job = svc.submit(plan_line_job, self.p, kmax, near, start, self._x_goal_v,
                                self.cfg.plan_max_nodes, 4000, svc.budget(EVASIVE_BUDGET_S), svc.budget(BACKOFF_BUDGET_S))
+
+    def _mppi_step(self, pts_s, v):
+        """One MPPI control step toward the original line past the obstacle (adas/mppi.py)."""
+        from .hybrid_astar import Grid
+        from .mppi import MPPI
+        c = self.cfg
+        if self._mppi is None:
+            self._mppi = MPPI(self.p, kappa_max=min(self.kappa_max, c.plan_kappa_max))
+        near = pts_s[(np.abs(pts_s[:, 0] - self.ex) < 3.5) & (np.abs(pts_s[:, 1] - self.ey) < 2.0)]
+        grid = Grid(near, self.ex - 1.5, self.ex + 4.0, self.ey - 2.0, self.ey + 2.0)
+        return self._mppi.step(grid, (self.ex, self.ey, self.eth), max(0.2, min(abs(v), c.evade_speed)),
+                               self._x_goal_v)
 
     def _path_still_clear(self, pts_s):
         if self._plan_poses is None or self._planner is None:
@@ -329,11 +343,16 @@ class DrivingAssists:
         if self._job is not None and self._job.ready(dt_poll):
             path, self._job = self._job.result(), None
             if self.phase == "PLANNING":
-                if path is None:
+                if path is None and not c.mppi_fallback:
                     self._stop_evading("no safe way around - braking only")
                     return steer, 2
-                self._plan_poses, self._track_i = path, 0
-                self.phase, self.evading = "EXECUTE", True
+                if path is None:                    # MPPI steers locally (WAIT) while Hybrid A* keeps trying
+                    self.phase, self.evading = "WAIT", True
+                    if self._mppi is not None:
+                        self._mppi.reset()
+                else:
+                    self._plan_poses, self._track_i = path, 0
+                    self.phase, self.evading = "EXECUTE", True
                 self.phase_t = 0.0
             elif path is None:
                 self.phase = "WAIT"                 # keep the original line and keep trying; the brake holds the car
@@ -369,6 +388,21 @@ class DrivingAssists:
             if self.phase_t > c.evade_max_s:
                 self._stop_evading("no way around found - handed back")
                 return steer, 2
+            if c.mppi_fallback:
+                # local fallback while Hybrid A* keeps searching: MPPI (adas/mppi.py) steers past what it can
+                if self.ex > self._x_goal_v and abs(self.ey) < c.return_done_y + 0.03 and \
+                        abs(self.eth) < math.radians(c.return_done_deg + 3):
+                    self._stop_evading("back on the original line - handed back")
+                    return steer, None
+                kappa, ok = self._mppi_step(pts_s, v)
+                if not ok:                          # even the best sampled way touches something: brake only
+                    self._stop_evading("no safe way around - braking only")
+                    return steer, 2
+                self.evade_kappa = kappa
+                self.evade_pwm = min(pwm, self.model.pwm_for_speed(c.evade_speed))
+                self.info["evasive"] = (f"fallback steering (MPPI) while re-planning ({self.ey * 100:+.0f} cm off "
+                                        f"the line)")
+                return _steer(kappa, self.p), 2
             self.evade_pwm = min(pwm, self.model.pwm_for_speed(c.reverse_speed))
             self.info["evasive"] = "looking for a way around (holding the original line)"
             self.evade_kappa = 0.0

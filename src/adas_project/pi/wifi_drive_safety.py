@@ -561,6 +561,55 @@ def gui_update_distances(front_track, rear_track, body_min_front, body_min_rear)
 
 EXTRA_POST = {}     # path -> callable; filled by tools/sim_car.py (simulator reset), empty on the car
 
+# --- live stream for the native dashboard (gui/dashboard.py): a client sends "GUI_SUBSCRIBE <port>" to the control
+# UDP port and gets a frame pushed 20 times a second - "RC1" + uint32 header length + JSON state + the scan as int16
+# pairs (angle x10 deg, distance mm). Best-effort UDP like a sensor topic: an old frame is never worth waiting for.
+GUI_SUBSCRIBERS = {}      # (ip, port) -> time of the last subscribe (re-sent by the client every 2 s)
+GUI_STREAM_HZ = 20.0
+
+
+def gui_frame(points, seq):
+    import json as _json
+    import struct
+    with GUI_STATE["lock"]:
+        state = dict(GUI_STATE["data"])
+    state["seq"] = seq
+    state["t_pub"] = time.time()
+    head = _json.dumps(state, default=str, separators=(",", ":")).encode()
+    if points:
+        arr = np.asarray(points, float)
+        packed = np.column_stack([np.round(arr[:, 0] * 10), np.clip(np.round(arr[:, 1] * 1000), 0, 32767)])
+        body = packed.astype("<i2").tobytes()
+    else:
+        body = b""
+    return b"RC1" + struct.pack("<I", len(head)) + head + body
+
+
+def start_gui_stream(clr):
+    """Push frames to subscribed dashboards from its own thread (never from the control loop)."""
+    def run():
+        out = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        seq = 0
+        while True:
+            time.sleep(1.0 / GUI_STREAM_HZ)
+            now = time.time()
+            for k in [k for k, t in GUI_SUBSCRIBERS.items() if now - t > 6.0]:
+                GUI_SUBSCRIBERS.pop(k, None)
+            if not GUI_SUBSCRIBERS:
+                continue
+            seq += 1
+            try:
+                frame = gui_frame(clr.read_points(), seq)
+            except Exception as e:                  # a bad frame must never stop the stream (or the relay)
+                print("gui stream:", e)
+                continue
+            for addr in list(GUI_SUBSCRIBERS):
+                try:
+                    out.sendto(frame, addr)
+                except OSError:
+                    pass
+    threading.Thread(target=run, daemon=True).start()
+
 
 def start_gui_server(clr):
     import http.server
@@ -721,6 +770,7 @@ def main():
                                                           # opt-in via FOLLOW_ON/FOLLOW_OFF
     logger = DriveLogger(LOG_DIR)
     start_gui_server(clr)
+    start_gui_stream(clr)          # the native dashboard's live stream (only sends while someone subscribes)
 
     def _gui_idle_updater():
         while True:
@@ -794,6 +844,14 @@ def main():
                 sock.sendto(b"OK", addr)
                 continue
 
+            if len(parts) == 2 and parts[0] == "GUI_SUBSCRIBE":     # the native dashboard asks for the live stream
+                try:
+                    GUI_SUBSCRIBERS[(addr[0], int(parts[1]))] = time.time()
+                except ValueError:
+                    pass
+                sock.sendto(b"OK", addr)
+                continue
+
             if len(parts) >= 2 and parts[0] == "GOTO":      # click-to-go: "GOTO <x> <y>" (m, vehicle frame) / "GOTO CANCEL"
                 if parts[1] == "CANCEL":
                     assist.nav.cancel("cancelled from the GUI")
@@ -838,20 +896,7 @@ def main():
             body_alert_rear = gate.body_alert("rear", body_min_rear, now)
             stages.mark("read LiDAR state")
 
-            # driving assists rewrite the driver's steering/throttle first; the safety gate below still has
-            # the last word on the throttle
             driver_text = text
-            if not adas_override:
-                _apts, _aseq = clr.read_points_seq()
-                # (the learned intent model runs AFTER the motor command below: its verdict is for the next tick)
-                text = "\n".join(assist.process([ln.strip() for ln in text.splitlines() if ln.strip()], _apts, _aseq))
-                stages.mark("assists (+ scan matching)")
-                if assist.assists.evading or assist.nav.active:
-                    # the fixed straight-ahead cone would keep braking for an obstacle the car is steering
-                    # around; the evasive planner has checked its own path (full body sweep + margin), so the
-                    # cone stands down. The close-range body alert (body_alert_front) still stops the car.
-                    front_blocked = False
-
             pkt_now = time.time()
             dt_pkt, last_pkt_t = min(0.2, max(0.005, pkt_now - last_pkt_t)), pkt_now
             gpts, gseq = clr.read_points_seq()
@@ -860,6 +905,22 @@ def main():
                 last_seq, last_seq_t = gseq, pkt_now
                 pgate.on_scan(RelayAssists.points_vehicle_frame(gpts, assist.p.lidar_x), gseq)   # before braking
             stages.mark("new scan: obstacle memory")
+
+            # the assists rewrite the driver's steering/throttle first; the safety gate below still has the last
+            # word on the throttle. (The learned intent model runs AFTER the motor command: it is for the next tick.)
+            if not adas_override:
+                lines_in = [ln.strip() for ln in text.splitlines() if ln.strip()]
+                # steering correction instead of braking, if a small one makes the driver's path safe ('nudge') -
+                # before the evasive steer, so a small correction pre-empts a full swerve
+                lines_in, _nd = assist.nudge(pgate, lines_in, vest.v_gate(1))
+                stages.mark("steering correction")
+                text = "\n".join(assist.process(lines_in, gpts, gseq))
+                stages.mark("assists (+ scan matching)")
+                if assist.assists.evading or assist.nav.active:
+                    # the fixed straight-ahead cone would keep braking for an obstacle the car is steering
+                    # around; the evasive planner has checked its own path (full body sweep + margin), so the
+                    # cone stands down. The close-range body alert (body_alert_front) still stops the car.
+                    front_blocked = False
             servo_cmd = None
             for ln in text.splitlines():
                 q = ln.split()
@@ -1051,7 +1112,8 @@ def main():
             vest.command(pkt_now, dt_pkt, final_physical, last_servo_cmd)
             with GUI_STATE["lock"]:
                 GUI_STATE["data"]["assist"] = {"level": assist.level, "info": assist.info, "enabled": assist.enabled(),
-                                               "changed": assist.changed}
+                                               "changed": assist.changed, "evading": assist.assists.evading,
+                                               "phase": assist.assists.phase}
                 GUI_STATE["data"]["gate"] = gate_info
                 GUI_STATE["data"]["plan"] = plan
                 GUI_STATE["data"]["nav"] = nav_gui

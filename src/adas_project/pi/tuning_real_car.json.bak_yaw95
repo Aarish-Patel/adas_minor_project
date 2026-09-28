@@ -1,0 +1,60 @@
+{
+  "aeb": {
+    "decel": 1.5,
+    "latency": 0.15,
+    "margin": 0.05,
+    "footprint_margin": 0.02,
+    "horizon": 2.0,
+    "brake_pwm_max": 120,
+    "brake_gain": 220.0,
+    "max_pwm": 255,
+    "scan_timeout": 0.4,
+    "scan_stop": 1.0,
+    "crawl_speed": 0.15,
+    "aware_margin": 0.2,
+    "aware_decel": 0.7,
+    "v_floor": 0.3,
+    "warn_ttc": 2.0,
+    "alert_ttc": 1.0
+  },
+  "speed_model": {
+    "v_max": 0.68,
+    "deadband": 0.0
+  },
+  "vehicle": {
+    "wheelbase": 0.2,
+    "pivot_track": 0.07,
+    "width": 0.14,
+    "front_overhang": 0.06,
+    "rear_overhang": 0.05,
+    "lidar_x": 0.12,
+    "lidar_y": 0.0,
+    "max_inner_left_deg": 50.0,
+    "max_inner_right_deg": 40.0
+  },
+  "servo": {
+    "left_right": 30.0,
+    "left_center": 90.0,
+    "left_left": 140.0,
+    "right_right": 30.0,
+    "right_center": 90.0,
+    "right_left": 140.0,
+    "left_scale": 1.0,
+    "right_scale": 1.0,
+    "left_channel": 2,
+    "right_channel": 1,
+    "ackermann_factor": 1.0,
+    "steering_expo": 1.0,
+    "motor_reversed": true,
+    "servo_sign": -1
+  },
+  "mount": {
+    "yaw_offset_deg": 95.1,
+    "front_overhang_m": 0.16,
+    "rear_overhang_m": 0.17,
+    "left_overhang_m": 0.1,
+    "right_overhang_m": 0.1,
+    "min_valid_range_m": 0.2
+  },
+  "lidar_min_range": 0.2
+}
