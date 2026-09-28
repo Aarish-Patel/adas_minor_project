@@ -47,6 +47,11 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   - [ ] Evasive steer at the obstacle
   - [x] Hybrid A* click-to-go to a goal behind/across the obstacle (works on the car, 28 Sep)
   - [ ] Evasive steer at the obstacle (user testing now - do not restart / deploy to the Pi meanwhile)
+- [ ] A4. (user, 28 Sep) Evasive steer / Hybrid A* get stuck when the driver holds full throttle: the prediction
+  at full speed says crash, though a slower speed along the same path would be safe. (1) When the driver's speed
+  predicts contact, check whether a slower speed along the path is safe and go through at that speed instead of
+  stopping; (2) when the car is held still while the driver keeps the throttle on, look for alternatives
+  (other side, back off and re-plan) instead of waiting. Laptop + simulator; deploy with the user's OK.
 - [x] A3. (done on the laptop 28 Sep, NOT on the Pi yet: adas/dubins.py (Dubins 1957 / Shkel & Lumelsky 2001) as
   the analytic expansion for goal poses, forward or driven backwards; plan_point_job tries forward-only first
   for every goal - also behind the car (forward U-turn) - then a search that may reverse with reversing 7x the
