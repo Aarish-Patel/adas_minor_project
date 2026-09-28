@@ -47,6 +47,9 @@ class AssistConfig:
     evade_ttc: float = 1.2           # s: only step in when contact is this close in time...
     evade_min_v: float = 0.18        # m/s: ...and the car is moving at least this fast (creeping = the driver's call)
     evade_confirm_s: float = 0.15    # s the threat must persist (one noisy scan never swerves the car)
+    # the trigger also scales with speed by DISTANCE (user, 28 Sep: planning failed at high speed): step in no later
+    # than the last point to steer at this speed (below) plus this margin, even if the time to contact is longer
+    trigger_lps_margin: float = 0.25
     # last point to steer (Brannstrom, Coelingh & Sjoberg, IEEE T-ITS 2010): the intent model may hold a swerve back
     # for a driver who is NOT moving the stick only until the last point a swerve can still get round: the car needs
     # sqrt(2 * offset / kappa_max) of travel to move `lps_offset` sideways at its tightest turn, plus what it covers
@@ -192,6 +195,7 @@ class DrivingAssists:
         self._backoffs = 0              # back-offs tried for the current obstacle
         self._backoff_from = None       # x where the current back-off began (line frame)
         self._pause = 0.0               # no new trigger until this runs out (after handing back)
+        self._plan_wait = 0.0           # smoothed time from submitting a plan to its result (s)
         self._stall = 0.0               # s stopped on the planned path with the throttle held
         self._stalls = 0
         self._pwm_hist = []
@@ -278,7 +282,8 @@ class DrivingAssists:
     def _predicted_start(self, pts_s, v, kappa):
         """Where the car will be when the plan arrives: plan_lookahead_s along the arc it is on (latency
         compensation, as receding-horizon planners do). The current pose if that spot is not clear."""
-        s = max(0.0, v) * self.cfg.plan_lookahead_s
+        # how long plans really take here (measured, e.g. slower on the Pi), never less than the configured time
+        s = max(0.0, v) * min(0.6, max(self.cfg.plan_lookahead_s, self._plan_wait))
         th = self.eth + kappa * s
         if abs(kappa) < 1e-6:
             x, y = self.ex + s * math.cos(self.eth), self.ey + s * math.sin(self.eth)
@@ -414,7 +419,8 @@ class DrivingAssists:
             stuck = v < 0.05 and d_drv < 0.35             # held at an obstacle with the throttle on
             attentive = self.intent_k_rate is not None and self.intent_attentive
             ttc_limit = c.evade_ttc_attentive if attentive else c.evade_ttc
-            if not stuck and (v < c.evade_min_v or easing or d_drv >= look or ttc > ttc_limit):
+            too_far = ttc > ttc_limit and d_drv > self._last_point_to_steer(v) + c.trigger_lps_margin
+            if not stuck and (v < c.evade_min_v or easing or d_drv >= look or too_far):
                 self._trigger_for = 0.0
                 return steer, None
             self._trigger_for += dt
@@ -437,6 +443,7 @@ class DrivingAssists:
         if self._job is not None and self._job.ready(dt_poll):
             path, self._job = self._job.result(), None
             if self.phase == "PLANNING":
+                self._plan_wait = 0.7 * self._plan_wait + 0.3 * self.phase_t
                 if path is None and not c.mppi_fallback:
                     self._fail("no safe way around - braking only", v, pwm)
                     return steer, 2

@@ -293,6 +293,9 @@ def run(args):
             gate.on_scan(vpts, seq)
             vest.on_scan(pts, seq, t)
         d_servo, d_pwm = driver.command(t, (x, y, th), v)
+        # the realistic, speed-dependent steering limit is part of the CAR (as a real steering ratio is): every
+        # variant drives with it, and it is not counted as an intervention
+        d_servo = assist.limit_servo(d_servo, vest.v)
         lines = [f"A {d_servo:.1f} {d_servo:.1f}", f"M {-int(d_pwm)}"]
         servo_out, phys = d_servo, d_pwm
         intervening = False
@@ -316,11 +319,13 @@ def run(args):
             g_phys, g_brake = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0,
                                     intent_k_rate=None if rint is None else rint.gate_k_rate,
                                     trusted=rint is not None and rint.gate_trust, leg=assist.planned_leg())
-            act = str(gate.info.get("action") or "")
-            g_phys = smoother.step(g_phys, DT, emergency=bool(g_brake) or act.startswith(("holding", "stopped")), v=vest.v)  # as the relay
+            # classified on the gate's decision itself: the throttle smoother below is comfort filtering of whatever
+            # was decided, not an intervention (counting it made ~400 'needless brakes' appear, 28 Sep)
             kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
                                                                  ("steer" if abs(servo_out - d_servo) > 1.0 else None))
             intervening = kind is not None
+            act = str(gate.info.get("action") or "")
+            g_phys = smoother.step(g_phys, DT, emergency=bool(g_brake) or act.startswith(("holding", "stopped")), v=vest.v)  # as the relay
             phys = g_phys
         else:
             gate.memory.advance(DT, vest.v, 0.0)
