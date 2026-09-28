@@ -74,7 +74,13 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   throttle model 3.5 (moving), twin with the car 20 % off its model 3.1 vs 10.3; yaw rate 2.1 deg/s. Found: the
   throttle model thinks the car stops at once while braking. MC with it: 0 crashes, needless override 87 s ADAS /
   65 s ADAS+intent) RF2O range-flow odometry for speed and yaw rate; EKF fusing it with the car model.
-- [ ] C8. The assists' own speed (`RelayAssists.est`, throttle model) should also come from `RelaySpeed`.
+- [x] C8. (done: `RelayAssists.speed = RelaySpeed` in the relay, MC and scenarios) The assists' own speed should
+  also come from `RelaySpeed`.
+- [x] B17. (done) Intent hold limited by the last point to steer for a driver not moving the stick; attentive swerve
+  trigger only with an active stick. 11/11 scenarios; MC 96 drives: takeovers 14 -> 8 (p = 0.007), overridden
+  needlessly 101 -> 80 s (p = 0.030), 0 crashes.
+- [ ] E3 next session: native Qt (PySide6 + Qt Quick 3D, the usual automotive HMI toolkit) GUI fed by a UDP/ZeroMQ
+  push stream from the relay instead of HTTP polling.
 - [ ] C9. Measure the braking deceleration on the car (only when the user asks - calibration) so DECEL/FOS can be
   tightened: full speed currently stops ~35 cm short of a wall.
 - [ ] C7. (LOW PRIORITY - premise disproved: the -3.7 cm twin bias was NOT scan skew; it was the same with the car

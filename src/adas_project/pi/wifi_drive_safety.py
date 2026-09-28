@@ -663,6 +663,7 @@ def main():
     pgate = PathGate(assist.p, TUNING.speed_model)      # path-predicted emergency braking + obstacle memory
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(TUNING.speed_model, assist.p.lidar_x)   # throttle model + EKF with LiDAR range flow
+    assist.speed = vest                                        # the assists use the same speed as the brake
     last_pkt_t = time.time()
     last_seq, last_seq_t = None, time.time()
     from pi.relay_assists import K_CURV_PER_SERVO_DEG as assist_k

@@ -166,6 +166,7 @@ class RelayIntent:
         k_rate = driver_intent(self.hist, 0.05, a.centre)
         self.attentive = k_rate is not None            # the stick moved in the last second
         a.assists.intent_hold = self.trusted
+        a.assists.intent_attentive = self.attentive
         a.assists.intent_k_rate = (k_rate or 0.0) if self.trusted else None
 
     @property
@@ -187,6 +188,7 @@ class RelayAssists:
         self.model = tuning.speed_model
         self.assists = DrivingAssists(self.p, self.model)
         self.est = SpeedEstimator(self.model)
+        self.speed = None              # a RelaySpeed shared with the brake gate; if set, the assists use its speed
         self.reversed = motor_reversed
         self.last_t = None
         self.last_servo = self.centre
@@ -203,6 +205,11 @@ class RelayAssists:
 
     def enabled(self):
         return {k: bool(v) for k, v in self.assists.enabled.items()}
+
+    @property
+    def v(self):
+        """Speed for the assists: the shared LiDAR+model estimate when the relay provides one."""
+        return self.est.v if self.speed is None else self.speed.v
 
     def set(self, name, on):
         if name == "all":
@@ -243,7 +250,7 @@ class RelayAssists:
         kappa_right = -math.tan(steer_to_delta(stick, self.p)) / self.p.wheelbase
         if self.odo is None:
             self.odo = Odometry()
-        pose = self.odo.update(xy, time.time() if now is None else now, self.est.v, kappa_right)
+        pose = self.odo.update(xy, time.time() if now is None else now, self.v, kappa_right)
         xl, yl, thl = float(pose[0]), -float(pose[1]), -float(pose[2])       # LiDAR pose, y left
         lx = self.p.lidar_x
         fix = (xl - lx * math.cos(thl) + lx, yl - lx * math.sin(thl), thl)   # rear axle, start frame
@@ -273,10 +280,11 @@ class RelayAssists:
             self.nav.cancel("driver braked - handed back")
             return None
         x, y, th = self.nav_pose                  # dead reckoning between scans; the scan match below corrects it
-        th += math.tan(steer_to_delta(self._nav_stick, self.p)) / self.p.wheelbase * self.est.v * dt
-        self.nav_pose = (x + self.est.v * math.cos(th) * dt, y + self.est.v * math.sin(th) * dt, th)
+        v = self.v
+        th += math.tan(steer_to_delta(self._nav_stick, self.p)) / self.p.wheelbase * v * dt
+        self.nav_pose = (x + v * math.cos(th) * dt, y + v * math.sin(th) * dt, th)
         self._odometry(points, seq, self._nav_stick, now)
-        out = self.nav.step(dt, self.nav_pose, pts, self.est.v)
+        out = self.nav.step(dt, self.nav_pose, pts, v)
         if out is None:
             return None
         kappa, v_target = out
@@ -345,7 +353,7 @@ class RelayAssists:
             return lines
         pts = self.points_vehicle_frame(points, self.p.lidar_x)
         self._odometry(points, seq, stick, now)
-        s_out, p_out, self.level = self.assists.update(dt, pts, stick, physical, self.est.v)
+        s_out, p_out, self.level = self.assists.update(dt, pts, stick, physical, self.v)
         self._odometry(points, seq, stick, now)     # a manoeuvre that just began: this scan is its reference
         self.info = dict(self.assists.info)
         out = list(lines)

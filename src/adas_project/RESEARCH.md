@@ -123,15 +123,18 @@ driver alone would not have crashed within 2 s):
 | | crashes | reach goal | interventions | needless takeovers | needless brakes | needless limits | wheel taken needlessly | overridden needlessly |
 |---|---|---|---|---|---|---|---|---|
 | no ADAS | 26 | 70 | - | - | - | - | - | - |
-| brake only | 0 | 85 | 174 | 0 | 5 | 74 | 0 s | - |
-| ADAS (brake + evasive) | 0 | 94 | 87 | 13 | 1 | 21 | 75 s | 87 s |
-| **ADAS + learned intent** | **0** | **96** | 100 | **6** | 3 | 34 | **53 s** | **65 s** |
+| brake only | 0 | 85 | 174 | 0 | 5 | 74 | 0 s | 64 s |
+| ADAS (brake + evasive) | 0 | 93 | 98 | 14 | 1 | 17 | 83 s | 101 s |
+| **ADAS + learned intent** | **0** | **94** | 96 | **8** | 2 | 27 | **65 s** | **80 s** |
 
 Intent-aware vs the same ADAS without intent, paired one-sided Wilcoxon signed-rank:
-- needless steering takeovers 13 -> 6 (9 drives better, 2 worse, p = 0.017);
-- time the wheel was taken needlessly 75 -> 53 s (p = 0.039); time overridden needlessly 87 -> 65 s (p = 0.049);
-- every drive reaches its goal (96/96 vs 94/96), 0 crashes. The price: a swerve held back for an attentive driver
-  can become a brief speed trim by the physics brake (needless limits 21 -> 34, mostly mild).
+- needless steering takeovers 14 -> 8 (6 drives better, 0 worse, p = 0.007);
+- time the wheel was taken needlessly 83 -> 65 s (p = 0.037); time overridden needlessly 101 -> 80 s (p = 0.030);
+- 0 crashes. The price: a swerve held back for an attentive driver can become a brief speed trim by the physics
+  brake (needless limits 17 -> 27, mostly mild).
+- Safety limit on the hold (last point to steer, Brannstrom 2010): for a driver NOT moving the stick the hold ends
+  where the swerve must start before the brake would act; the shorter attentive trigger (0.7 s) needs an active
+  stick. Without it the retrained model let a frozen-stick driver reach the box at full speed before swerving.
 - Trust-threshold sweep with the previous model (0.5 / 0.7 / 0.9): takeovers 9 / 8 / 6, crashes 0 throughout.
 - If the ADAS is tuned to help early (swerve at 1.6 s), intent is significantly better on every severity measure:
   takeovers 34 -> 13 (p = 0.0001), wheel taken needlessly 171 -> 103 s (p = 0.0009), overridden needlessly

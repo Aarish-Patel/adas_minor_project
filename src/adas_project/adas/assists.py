@@ -47,6 +47,13 @@ class AssistConfig:
     evade_ttc: float = 1.2           # s: only step in when contact is this close in time...
     evade_min_v: float = 0.18        # m/s: ...and the car is moving at least this fast (creeping = the driver's call)
     evade_confirm_s: float = 0.15    # s the threat must persist (one noisy scan never swerves the car)
+    # last point to steer (Brannstrom, Coelingh & Sjoberg, IEEE T-ITS 2010): the intent model may hold a swerve back
+    # for a driver who is NOT moving the stick only while the swerve could still start before the brake gate has to
+    # act - FOS x stopping distance (the same constants as pi/path_gate.py) plus the trigger's confirm time
+    lps_fos: float = 1.3
+    lps_base: float = 0.05
+    lps_reaction: float = 0.20
+    lps_decel: float = 1.2
     evade_driver_override: float = 0.45   # stick: a driver steering harder than this takes over at once
     evade_max_s: float = 15.0        # s: a manoeuvre never lasts longer...
     evade_max_past: float = 2.5      # m: ...or goes further than this past the obstacle
@@ -120,6 +127,7 @@ class DrivingAssists:
         self.pose_fix = None            # (x, y, th) from scan matching, start frame, set from outside
         self.intent_k_rate = None       # driver's curvature rate (1/m/s) when attentive, else None; set from outside
         self.intent_hold = False        # learned intent: an attentive driver who will handle it - no swerve (outside)
+        self.intent_attentive = True    # the stick moved recently (outside); False limits the hold (last point to steer)
         self._planner = None
         self._track_i = 0
         self._x_goal_v = 1.0
@@ -217,6 +225,14 @@ class DrivingAssists:
         line = self._to_vehicle_frame(np.column_stack([xs, np.zeros_like(xs)]))
         return path, line
 
+    def _last_point_to_steer(self, v):
+        """Distance along the driver's path below which a held-back swerve must start: where the brake gate would
+        begin to limit (FOS x stopping distance), plus the travel during the trigger's confirm time."""
+        c = self.cfg
+        v = abs(v)
+        stop = c.lps_base + v * c.lps_reaction + v * v / (2 * c.lps_decel)
+        return c.lps_fos * stop + v * (c.evade_confirm_s + 0.05)
+
     def _evasive(self, dt, pts, steer, pwm, v):
         c = self.cfg
         k_drv = _kappa(steer, self.p)
@@ -252,14 +268,16 @@ class DrivingAssists:
                 d_drv = self._contact(pts, k_drv, look + 0.4, c.trigger_margin)   # a real contact course
             ttc = d_drv / max(v, 1e-3)
             stuck = v < 0.05 and d_drv < 0.35             # held at an obstacle with the throttle on
-            ttc_limit = c.evade_ttc if self.intent_k_rate is None else c.evade_ttc_attentive
+            attentive = self.intent_k_rate is not None and self.intent_attentive
+            ttc_limit = c.evade_ttc_attentive if attentive else c.evade_ttc
             if not stuck and (v < c.evade_min_v or easing or d_drv >= look or ttc > ttc_limit):
                 self._trigger_for = 0.0
                 return steer, None
             self._trigger_for += dt
             if self._trigger_for < c.evade_confirm_s:
                 return steer, None
-            if self.intent_hold:                   # the driver is on it (learned intent) - the brake still watches
+            if self.intent_hold and (self.intent_attentive or d_drv > self._last_point_to_steer(v)):
+                # the driver is on it (learned intent) - the brake still watches
                 self.info["evasive"] = "driver is avoiding it - not intervening"
                 return steer, None
             self.ex = self.ey = self.eth = 0.0      # the line frame: the car now, the driver's path straight ahead

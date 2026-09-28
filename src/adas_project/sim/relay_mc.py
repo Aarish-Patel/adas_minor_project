@@ -218,6 +218,7 @@ def run(args):
     gate = PathGate(p, tun.speed_model)
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(tun.speed_model, p.lidar_x)       # the relay's speed: throttle model + LiDAR EKF
+    assist.speed = vest
     if variant in ("adas", "adas+intent"):
         assist.set("evasive", True)
     t, next_scan, seq = 0.0, 0.0, 0
