@@ -70,7 +70,7 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
   starts without an ESP32 (LiDAR + GUI only) instead of exiting, and exits 1 (systemd retries) if the LiDAR is missing.
   Dashboard top bar shows an ESP32 chip (OK / CONNECTING / SILENT / LOST, reboots). Not yet on the Pi.
 - [x] O2. CUDA PyTorch: the user approved; `pip install torch --index-url .../cu128` running (was CPU-only 2.11).
-- [ ] O4. MISTAKE TO UNDO: the new twin data generator was first written over the existing sim/intent_data.py (the
+- [x] O4. (done: restored with git checkout after the data job) MISTAKE TO UNDO: the new twin data generator was first written over the existing sim/intent_data.py (the
   older laptop-simulator intent trainer; sim/assist_eval, bypass_eval, demo_tests, export_slides, faults, lane_eval
   import MODEL_DIR from it). It now lives in sim/twin_intent_data.py; restore the original with
   `git checkout -- sim/intent_data.py` as soon as the running data job (started under the old name) has finished.
@@ -99,7 +99,14 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
   runs v3 when pi/intent_v3.json exists. Found causes of the bad v2 predictions: trained only within 1.2 m of an
   obstacle and on drivers who slow down, while the relay asks it every tick; features saturate at 1.5 m although a
   full-speed car covers ~1.7 m in the 2 s label horizon; forward only; one fixed car and clean sensor.
-  Still to do: generate data (running), train, audit, Monte Carlo with v3, Pi benchmark, copy to pi/.
+  Data: 3000 training drives (543k ticks) + 600 test drives (109k ticks), 15.4 % positive ticks, ~25 min on battery.
+  Quick GPU check (few epochs), held-out test, v2 -> v3: AP 0.42 -> 0.85, AUC 0.73 -> 0.96, recall at 0.5
+  0.07 -> 0.74 (v2 almost never fired), false alarms 0.7 % -> 3.6 % of safe ticks; fast > 0.5 m/s AP 0.34 -> 0.76,
+  free way 1.2-2.5 m AP 0.21 -> 0.83, reversing 0.57 -> 0.89; the physics floor costs a little AP (0.85 -> 0.81)
+  but cuts missed crash drives 7 % -> 3 %; crash drives missed 54 % -> 3 %,
+  median warning 0 s -> 1.2 s before contact, but safe drives with a >= 0.25 s false alarm 4 % -> 16 % (watch in
+  the Monte Carlo). Bug found + fixed: trees fitted on float32 features must see float32 on the car (14/400 ticks
+  took the other branch). Full training running; then Monte Carlo with v3, Pi benchmark, copy to pi/.
 - [ ] M2. **Monte Carlo visualiser in the simulator GUI** (`gui/dashboard.py`, new tab): pick Driver only / ADAS /
   ADAS + intent (and driver style, world, number of runs), run `sim/relay_mc.py` in a background process, show
   live results: trajectories on the map, crashes, needless interventions, burden, paired stats (Wilcoxon), and a

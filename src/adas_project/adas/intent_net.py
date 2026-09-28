@@ -273,7 +273,9 @@ class IntentNet:
     def logit3(self, W):
         """Window (WINDOW x TICK_DIMS) -> calibrated logit."""
         if self.kind == "trees3":
-            return self._trees_raw(flat_features(W)) / self.temperature
+            # the trees were fitted on float32 features: a value on a split threshold must round the same way
+            x = flat_features(W).astype(np.float32).astype(np.float64)
+            return self._trees_raw(x) / self.temperature
         if self.kind == "mlp3":
             h = (flat_features(W) - self.mu) / self.sd
             for i, (Wm, b) in enumerate(zip(self.W, self.b)):
@@ -291,7 +293,7 @@ class IntentNet:
             u = 1.0 / (1.0 + np.exp(-(gi[H:2 * H] + gh[H:2 * H])))
             n = np.tanh(gi[2 * H:] + r * gh[2 * H:])
             h = (1.0 - u) * n + u * h
-        return float(self.Wo @ h + self.bo) / self.temperature
+        return float(np.ravel(self.Wo @ h + self.bo)[0]) / self.temperature
 
     def risk(self, W, floor=True):
         """v3: P(the driver, left alone, hits or nearly hits something within 2 s), never below the physics floor."""
