@@ -660,9 +660,9 @@ def main():
     from adas.assists import deadman_pwm
     assist = RelayAssists(TUNING, WIRE_MOTOR_REVERSED)   # driving assists, all off until toggled on
     from pi.path_gate import PathGate
-    from adas.aeb import SpeedEstimator
     pgate = PathGate(assist.p, TUNING.speed_model)      # path-predicted emergency braking + obstacle memory
-    vest = SpeedEstimator(TUNING.speed_model)           # speed from what was actually sent to the motor
+    from pi.relay_assists import RelaySpeed
+    vest = RelaySpeed(TUNING.speed_model, assist.p.lidar_x)   # throttle model + EKF with LiDAR range flow
     last_pkt_t = time.time()
     last_seq, last_seq_t = None, time.time()
     from pi.relay_assists import K_CURV_PER_SERVO_DEG as assist_k
@@ -716,11 +716,13 @@ def main():
                     if gseq != last_seq:
                         last_seq, last_seq_t = gseq, now
                         pgate.on_scan(RelayAssists.points_vehicle_frame(gpts, assist.p.lidar_x), gseq)
+                        vest.on_scan(gpts, gseq, now)
                     ramp = deadman_pwm(last_physical, age, dt)
-                    capped, _ = pgate.decide(dt, ramp, gate_delta, vest.v, ft.speed if ramp > 0 else rt.speed)
+                    capped, _ = pgate.decide(dt, ramp, gate_delta, vest.v_gate((ramp > 0) - (ramp < 0)),
+                                             ft.speed if ramp > 0 else rt.speed)
                     danger = abs(capped) < abs(ramp) - 0.5 or now - last_seq_t > SCAN_LOST_S
                     new = 0.0 if danger else capped
-                    vest.update(dt, new)
+                    vest.command(now, dt, new, last_servo_cmd)
                     if age > 0.5 and last_physical != 0 and new != last_physical:
                         dlog.event("driver link lost - dead-man ramp" if not danger else "driver link lost - obstacle, stopped",
                                    pwm=new)
@@ -823,6 +825,7 @@ def main():
             if gseq != last_seq:
                 last_seq, last_seq_t = gseq, pkt_now
                 pgate.on_scan(RelayAssists.points_vehicle_frame(gpts, assist.p.lidar_x), gseq)
+                vest.on_scan(gpts, gseq, pkt_now)
             servo_cmd = None
             for ln in text.splitlines():
                 q = ln.split()
@@ -858,7 +861,8 @@ def main():
                     braking = False
                     if GATE_MODE == "path":
                         closing = front_track.speed if physical > 0 else rear_track.speed
-                        g_phys, g_brake = pgate.decide(dt_pkt, physical, gate_delta, vest.v, closing,
+                        g_phys, g_brake = pgate.decide(dt_pkt, physical, gate_delta,
+                                                       vest.v_gate((physical > 0) - (physical < 0)), closing,
                                                        trusted=rintent.gate_trust and not adas_override)
                         gate_info = dict(pgate.info)
                         if pkt_now - last_seq_t > SCAN_LOST_S and physical != 0:
@@ -984,14 +988,15 @@ def main():
                 if npath is not None and len(npath):
                     plan = plan or {}
                     plan["maneuver"] = to_polar(npath[::2])
-            vest.update(dt_pkt, final_physical)
+            vest.command(pkt_now, dt_pkt, final_physical, last_servo_cmd)
             with GUI_STATE["lock"]:
                 GUI_STATE["data"]["assist"] = {"level": assist.level, "info": assist.info, "enabled": assist.enabled(),
                                                "changed": assist.changed}
                 GUI_STATE["data"]["gate"] = gate_info
                 GUI_STATE["data"]["plan"] = plan
                 GUI_STATE["data"]["nav"] = nav_gui
-                GUI_STATE["data"]["drive"] = {"v": round(vest.v, 3), "pwm_in": -pwm_commanded if WIRE_MOTOR_REVERSED else pwm_commanded,
+                GUI_STATE["data"]["drive"] = {"v": round(vest.v, 3), "w": round(vest.w, 3),
+                                              "v_model": round(vest.model_est.v, 3), "pwm_in": -pwm_commanded if WIRE_MOTOR_REVERSED else pwm_commanded,
                                               "pwm_out": -pwm_sent if WIRE_MOTOR_REVERSED else pwm_sent,
                                               "servo": last_servo_cmd, "centre": assist.centre, "t": time.time()}
             # what the driver asked for vs what the ADAS let through - the raw material for intent learning

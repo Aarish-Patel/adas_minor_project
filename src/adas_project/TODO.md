@@ -60,8 +60,8 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] B12. (done in J1) Unit tests for the Hybrid A* planner and the evasive state machine (doorway, boxed, reverse case).
 
 ## C. Localisation and car model
-- [ ] C1. **Research accurate 2D LiDAR odometry** (research done: RESEARCH.md section 3 - RF2O + KISS-ICP + EKF; implementation NOT done) (linear and angular velocity from the LiDAR is poor now):
-  range-flow / ICP variants, filter fusion with the commands (RESEARCH.md), then implement and measure on logs.
+- [x] C1. (done: research RESEARCH.md section 3; RF2O + EKF implemented and measured on the twin and the real log,
+  see C5) **Research accurate 2D LiDAR odometry** (linear and angular velocity from the LiDAR was poor).
 - [x] C2. (done: held-out 3 s error physics 5.5 cm vs plain fit 5.7 cm vs physics+ML 5.8 cm - ML correction not useful on one 2-min drive, so the selection keeps whichever wins; found a steering asymmetry: left 0.0151 vs right 0.0113 rad per servo degree. More varied logs needed for the ML part) Physics-informed ML car model (`adas/car_model.py`, `sim/car_model_eval.py`, uncommitted). First version lost
   to the plain fit (15-19 cm vs 5.7 cm). Rewritten, NOT re-run. Commit only if it beats the plain fit.
 - [ ] C3. (speed model done: `pi/car_model.json` from the logging drive, loaded by the relay and the Monte Carlo via `apply_car_model`; min clearance 4 -> 6 cm. Still to do: curvature/servo centre in the relay, the ML model when C2 passes) Use the model everywhere: relay speed estimate, gate speed caps, curvature for prediction/planning,
@@ -69,7 +69,14 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] C4. Start-of-drive calibration run (panel): drive the legs, fit on the Pi, save `pi/car_model.json`, show the
   fit. Runs only when the user asks.
 
-- [ ] C5. RF2O range-flow odometry for speed and yaw rate; EKF fusing it with the car model.
+- [x] C5. (done: `adas/rf2o.py` (Jaimez 2016), `adas/speed_ekf.py`, in the relay as `RelaySpeed` - braking uses
+  the more conservative of throttle model and EKF; `python -m sim.odometry_eval`: real drive EKF 3.4 cm/s RMSE vs
+  throttle model 3.5 (moving), twin with the car 20 % off its model 3.1 vs 10.3; yaw rate 2.1 deg/s. Found: the
+  throttle model thinks the car stops at once while braking. MC with it: 0 crashes, needless override 87 s ADAS /
+  65 s ADAS+intent) RF2O range-flow odometry for speed and yaw rate; EKF fusing it with the car model.
+- [ ] C8. The assists' own speed (`RelayAssists.est`, throttle model) should also come from `RelaySpeed`.
+- [ ] C9. Measure the braking deceleration on the car (only when the user asks - calibration) so DECEL/FOS can be
+  tightened: full speed currently stops ~35 cm short of a wall.
 - [ ] C7. (LOW PRIORITY - premise disproved: the -3.7 cm twin bias was NOT scan skew; it was the same with the car
   standing still (-3.7) and moving (-3.6), and worst on grazing beams. It was a map artefact, fixed in D3b.
   Skew is not measurable at the logged speeds; it only matters near full speed, ~8 cm per rotation at 0.8 m/s.)
@@ -82,7 +89,9 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 
 - [x] B14. (done: relay samples the stick on a 50 ms clock, features from live scans, P(crash) < 0.5 -> no evasive takeover; dashboard 'Driver intent' card with risk bar, trust state, learned reaction distance) Put the learned intent model + driver profile into the relay on the car (features from live scans,
   `pi/intent_net.json`), shown on the dashboard (risk gauge, "driver is avoiding it" message).
-- [ ] B15. Retrain the intent model on real drive logs as they accumulate (the relay records stick + scans).
+- [ ] B15. (sim retrain done: trained on the same noisy 720-beam sensing the relay sees, 150 rooms -> held-out AUC
+  0.91 (was 0.86-0.88); real logs still to come) Retrain the intent model on real drive logs as they accumulate
+  (the relay records stick + scans).
 
 ## D. Simulator / digital twin
 - [ ] D1. (v1 done: the /dash 3D view shows the live relay state for the car or the simulator, incl. true walls, predicted path ribbon, contact X, manoeuvre, line. Still to do: world-fixed map frame, 3D obstacle models instead of LiDAR strokes) **3D view of the car simulator next to the car GUI**: one drive shown in 3D (world, car with the measured

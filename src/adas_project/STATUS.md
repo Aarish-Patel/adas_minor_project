@@ -34,22 +34,23 @@ Calibrations are only run when the user asks.
 |---|---|---|
 | Path-predicted emergency braking | `pi/path_gate.py` | body swept along the steering the car can be on (last 0.25 s of commands, then the current one, + model error); speed-dependent margin; stopping distance x 1.3; obstacle memory for the LiDAR's blind 20 cm. 0 crashes in 96 random drives; full speed at a wall stops 23 cm short; a 32 cm gap for the 20 cm car passes untouched |
 | Evasive steering | `adas/assists.py` + `adas/hybrid_astar.py` | Hybrid A* round the obstacle and back to the driver's line, reverses first if too close, re-plans; doorway at full throttle passes (6 cm closest) |
-| Learned driver intent | `adas/intent_net.py`, `pi/relay_assists.RelayIntent` | AUC 0.86-0.88; halves needless steering takeovers (12 -> 6, p = 0.017); braking never suppressed |
+| Learned driver intent | `adas/intent_net.py`, `pi/relay_assists.RelayIntent` | held-out AUC 0.91; needless steering takeovers 13 -> 6 (p = 0.017), needless override time 87 -> 65 s (p = 0.049); braking never suppressed |
+| Speed + yaw rate | `adas/rf2o.py`, `adas/speed_ekf.py`, `pi/relay_assists.RelaySpeed` | EKF of the car model + LiDAR range flow: 3.1 cm/s RMSE even with the car 20 % off its model (throttle model: 10.3); braking uses the more conservative estimate |
 | Other assists | `adas/assists.py` | centring, speed-vs-steering limiter, narrow gap, side alerts, dead-man: 11/11 scenarios (`python -m sim.relay_scenarios`) |
 | Click-to-go autonomy | `adas/autonav.py` | click the 2D map: Hybrid A* to the point, dead-man throttle, hands back on steer/brake; 6/6 twin goals, 4-7 cm from the goal |
 | Digital twin accuracy | `sim/twin_report.py` | motion 4.5 cm median over 48 x 3 s replays of a real drive; LiDAR 1.1 cm median over 9928 beams |
 
 Monte Carlo (96 paired drives, `python -m sim.relay_mc 48` then `python -m sim.mc_stats`): no ADAS 26 crashes;
-brake-only 0 crashes / 85 goals; ADAS 0 / 95; ADAS + intent 0 / 95. Needless override time 185 s (old ADAS) ->
-81 s (ADAS) -> 73 s (ADAS + intent).
+brake-only 0 crashes / 85 goals; ADAS 0 / 94; ADAS + intent 0 / 96. Needless override time 185 s (old ADAS,
+before this session's gate work) -> 87 s (ADAS) -> 65 s (ADAS + intent).
 
 ## Not verified on the car yet
 Everything in the table above except the relay's basic LiDAR braking. Next car session: deploy (A1), then the user
 drives and tries to fool it (I2).
 
 ## Known limitations
-- Speed comes from the PWM model (no encoder, LiDAR velocity still noisy): the brake keeps a 1.3 safety factor. A
-  LiDAR/EKF speed estimate (TODO C5) is the next step before that can come down.
+- The brake keeps a 1.3 safety factor on stopping distance with an assumed 1.2 m/s^2 deceleration; at full speed
+  it stops ~35 cm short. Closer needs a measured braking deceleration (a calibration - only when asked).
 - The intent model is trained on simulated drivers; it should be retrained on real drives (B15).
 - One scan plane: obstacles above/below it are invisible; nothing closer than 20 cm to the LiDAR is measured (memory
   covers it for obstacles seen earlier).

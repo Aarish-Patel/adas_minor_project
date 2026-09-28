@@ -5,11 +5,11 @@ frame. Run:  python -m sim.autonav_eval   -> prints each case, writes reports/au
 """
 import math
 import os
+import time
 
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DT, SCAN_DT = 0.05, 0.1
 
 # (world, goal in the start vehicle frame, what it shows)
 CASES = [
@@ -23,85 +23,45 @@ CASES = [
 
 
 def drive(world_name, goal, t_max=40.0, seed=0):
-    from adas.aeb import SpeedEstimator
-    from adas.config import load_tuning
-    from pi.path_gate import PathGate
-    from pi.relay_assists import K_CURV_PER_SERVO_DEG as K, RelayAssists, apply_car_model
-    from sim.hw_sim import SimLidar, VirtualCar
+    """One click-to-go on the relay code (sim/relay_scenarios.run): the goal is sent once two scans are in, the
+    operator holds the throttle and lets go once the car reports it has finished."""
     from sim.hw_worlds import WORLDS
-
-    tun = load_tuning(os.path.join(HERE, "..", "pi", "tuning_real_car.json"))
-    apply_car_model(tun)
+    from sim.relay_scenarios import run
     world, start = WORLDS[world_name]()
-    assist = RelayAssists(tun)
-    assist.nav.threaded = False                  # deterministic here; on the car the planner runs in a thread
-    p = assist.p
-    car = VirtualCar(world, p, start, threaded=False)
-    car.last_cmd_t = 0.0
-    lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
-    gate = PathGate(p, tun.speed_model)
-    vest = SpeedEstimator(tun.speed_model)
     sx, sy, sth = start
     goal_w = (sx + goal[0] * math.cos(sth) - goal[1] * math.sin(sth), sy + goal[0] * math.sin(sth) + goal[1] * math.cos(sth))
-    t, next_scan, seq, pts = 0.0, 0.0, 0, []
-    trace, started, planned = [], False, None
-    brakes, min_clear = 0, 9.0
-    while t < t_max:
-        x, y, th, v, *_rest, crashed = car.pose()
-        if crashed:
-            break
-        if t >= next_scan:
-            next_scan += SCAN_DT
-            ox, oy = x + p.lidar_x * math.cos(th), y + p.lidar_x * math.sin(th)
-            best, _ = lidar._raycast(ox, oy, th)
-            r = best + lidar.rng.normal(0, 0.008, len(best))
-            ok = np.isfinite(best) & (r >= 0.2) & (r < 12) & (lidar.rng.random(len(best)) > 0.04)
-            cw = (-np.degrees(lidar.ccw)) % 360
-            cw = np.where(cw > 180, cw - 360, cw)
-            pts = [(round(float(a), 1), round(float(d), 3)) for a, d, o in zip(cw, r, ok) if o]
-            seq += 1
-            gate.on_scan(RelayAssists.points_vehicle_frame(pts, p.lidar_x), seq)
-        lines = [f"A {assist.centre:.1f} {assist.centre:.1f}", f"M {-150}"]     # operator: stick centred, throttle held
-        if not started and seq >= 2:
-            started = True
-            import time
-            t_plan = time.perf_counter()
-            ok_plan = assist.goto(*goal, points=pts)
-            plan_ms = (time.perf_counter() - t_plan) * 1000
-            if not ok_plan:
-                return {"ok": False, "why": assist.nav.msg, "trace": [], "goal": goal_w, "world": world}
-            planned = assist.nav.path.copy()
-        out = assist.process(lines, pts, seq, now=t) if started else [f"A {assist.centre:.1f} {assist.centre:.1f}", "M 0"]
-        servo_out, phys = assist.centre, 0.0
-        for ln in out:
-            q = ln.split()
-            if q[0] == "A":
-                servo_out = (float(q[1]) + float(q[2])) / 2
-            elif q[0] == "M":
-                phys = -float(q[1])
-        if started and not assist.nav.active:
-            phys = 0.0                             # finished: the operator lets go
-        delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
-        g_phys, g_brake = gate.decide(DT, phys, delta, vest.v, 0.0, None)
-        brakes += int(abs(g_phys - phys) > 1.0)
-        vest.update(DT, g_phys)
-        car.command(f"A {servo_out:.1f} {servo_out:.1f}", now=t)
-        car.command(f"M {-int(g_phys)}", now=t)
-        t += DT
-        car.step_to(t)
-        min_clear = min(min_clear, world.clearance(x, y, th, p))
-        trace.append((x, y))
-        if started and not assist.nav.active and abs(v) < 0.02:
-            break
-    x, y, th, *_ = car.pose()
-    err = math.hypot(x - goal_w[0], y - goal_w[1])
-    # the planned path in the world frame, for the figure
-    if planned is not None:
+    st = {"started": False, "finished": False, "ok_plan": None, "plan_ms": None, "planned": None}
+
+    def hook(t, assist, pts, seq):
+        if not st["started"] and seq >= 2:
+            st["started"] = True
+            assist.nav.threaded = False          # deterministic here; on the car the planner runs in a thread
+            t0 = time.perf_counter()
+            st["ok_plan"] = assist.goto(*goal, points=pts)
+            st["plan_ms"] = (time.perf_counter() - t0) * 1000
+            st["planned"] = None if assist.nav.path is None else assist.nav.path.copy()
+        elif st["started"] and not assist.nav.active:
+            st["finished"] = True
+
+    def operator(t, x, y, th, v):
+        holding = st["started"] and st["ok_plan"] and not st["finished"]
+        return 0.0, (150.0 if holding else 0.0)
+
+    r = run(world, operator, t_max, start=start, seed=seed, hook=hook,
+            stop_when=lambda t, x, y, th, v: (st["finished"] and abs(v) < 0.02) or st["ok_plan"] is False)
+    nav = r["assist"].nav
+    if st["ok_plan"] is False:
+        return {"ok": False, "why": nav.msg, "trace": [], "goal": goal_w, "world": world}
+    err = math.hypot(r["x"] - goal_w[0], r["y"] - goal_w[1])
+    planned = st["planned"]
+    if planned is not None:                      # the planned path in the world frame, for the figure
         c, s = math.cos(sth), math.sin(sth)
         planned = np.column_stack([sx + c * planned[:, 0] - s * planned[:, 1], sy + s * planned[:, 0] + c * planned[:, 1]])
-    return {"ok": assist.nav.msg == "arrived" and err < 0.2 and car.crash_count == 0, "why": assist.nav.msg,
-            "t": round(t, 1), "err": err, "plan_ms": plan_ms, "replans": assist.nav.replans, "crashed": car.crash_count > 0, "min_clear": min_clear,
-            "gate_ticks": brakes, "trace": trace, "planned": planned, "goal": goal_w, "world": world}
+    return {"ok": nav.msg == "arrived" and err < 0.2 and not r["collided"], "why": nav.msg,
+            "t": round(r["t_end"], 1), "err": err, "plan_ms": st["plan_ms"], "replans": nav.replans,
+            "crashed": r["collided"], "min_clear": r["min_clear"],
+            "gate_ticks": sum(1 for row in r["trace"] if row[9] is not None),
+            "trace": [(row[1], row[2]) for row in r["trace"]], "planned": planned, "goal": goal_w, "world": world}
 
 
 def main():

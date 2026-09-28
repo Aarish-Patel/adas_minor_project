@@ -34,7 +34,7 @@ def collect(args):
     p = ra.p
     car = VirtualCar(world, p, (0.0, 0.0, 0.0), threaded=False)
     car.last_cmd_t = 0.0
-    lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=360, seed=seed)
+    lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)   # the same sensing the relay and MC see
     driver = HumanDriver(world, goal, np.random.default_rng(seed + 1000), p, K, ra.centre, style)
     t, next_scan, hist, rows = 0.0, 0.0, [], []
     prof = DriverProfile()
@@ -47,10 +47,11 @@ def collect(args):
             next_scan += SCAN_DT
             ox, oy = x + p.lidar_x * math.cos(th), y + p.lidar_x * math.sin(th)
             best, _ = lidar._raycast(ox, oy, th)
-            ok = np.isfinite(best) & (best >= 0.2)
+            r = best + lidar.rng.normal(0, 0.008, len(best))             # range noise and dropouts, as in the MC
+            ok = np.isfinite(best) & (r >= 0.2) & (r < 12) & (lidar.rng.random(len(best)) > 0.04)
             cw = (-np.degrees(lidar.ccw)) % 360
             cw = np.where(cw > 180, cw - 360, cw)
-            pts = RelayAssists.points_vehicle_frame([(a, d) for a, d, o in zip(cw, best, ok) if o], p.lidar_x)
+            pts = RelayAssists.points_vehicle_frame([(a, d) for a, d, o in zip(cw, r, ok) if o], p.lidar_x)
         s, u = driver.command(t, (x, y, th), v)
         hist.append(s)
         hist = hist[-80:]

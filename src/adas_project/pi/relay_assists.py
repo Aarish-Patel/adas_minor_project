@@ -63,6 +63,73 @@ def driver_intent(servo_hist, dt, centre, activity_deg=3.0, attention_s=1.0, win
     return -K_CURV_PER_SERVO_DEG * ds / (window * dt)
 
 
+class RelaySpeed:
+    """The relay's speed and yaw rate (TODO C5; evaluation: `python -m sim.odometry_eval`):
+      model   the fitted throttle->speed model with a lag - what the relay used alone before; blind to a sagging
+              battery, a carpet or a blocked wheel
+      ekf     that model fused with LiDAR range flow (adas/rf2o.py + adas/speed_ekf.py): 3 cm/s RMSE even with the
+              car 20 % off its model (the throttle model: 10 cm/s)
+    `v` / `w` are the EKF's. For braking, `v_gate` takes the more conservative of the two in the direction of
+    travel, so adding the LiDAR estimate can only make the brake earlier, never later. Shared by the relay, the
+    Monte Carlo and the scenario checks."""
+
+    def __init__(self, speed_model, lidar_x=0.12, car_model_path=None):
+        import json
+        import os
+        from adas.aeb import SpeedEstimator
+        from adas.rf2o import RangeFlow
+        from adas.speed_ekf import SpeedEKF
+        self.model_est = SpeedEstimator(speed_model)
+        cm = {}
+        path = car_model_path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "car_model.json")
+        try:
+            cm = json.load(open(path))
+        except (OSError, ValueError):
+            pass
+        self.ekf = SpeedEKF(speed_model.v_max, speed_model.deadband, tau=max(cm.get("tau_motor", 0.1), 0.05),
+                            delay=cm.get("delay_s", 0.12), coast_decel=2.0,
+                            k_curv_per_deg=cm.get("k_curv_per_deg", K_CURV_PER_SERVO_DEG),
+                            servo_centre=cm.get("servo_centre", 87.0), lidar_x=lidar_x)
+        self.rf = RangeFlow()
+        self.seq = None
+        self.meas = None
+
+    def command(self, t, dt, physical, servo):
+        """What was actually sent: physical throttle (+ forward) and servo degrees, at time t."""
+        self.model_est.update(dt, physical)
+        self.ekf.command(t, physical, servo)
+        self.ekf.predict(t)
+
+    def on_scan(self, points, seq, t):
+        """A LiDAR scan in the relay's format (car angle deg clockwise-positive, distance from the LiDAR)."""
+        if seq is None or seq == self.seq or not points:
+            return
+        self.seq = seq
+        a = -np.radians(np.array([q[0] for q in points]))
+        d = np.array([q[1] for q in points])
+        xy = np.column_stack([d * np.cos(a), d * np.sin(a)])
+        e = self.ekf
+        self.meas = self.rf.update(xy, t, guess=(e.v, e.w * e.lx, e.w))
+        if self.meas is not None:
+            e.correct(t, self.meas)
+
+    @property
+    def v(self):
+        return self.ekf.v
+
+    @property
+    def w(self):
+        return self.ekf.w
+
+    def v_gate(self, direction):
+        m, e = self.model_est.v, self.ekf.v
+        if direction > 0:
+            return max(m, e)
+        if direction < 0:
+            return min(m, e)
+        return e
+
+
 class RelayIntent:
     """The learned driver-intent model (adas/intent_net.py, trained in sim/train_intent_net.py) as the relay runs it:
     the stick sampled on the 50 ms clock the model was trained on, features from the live scan, the driver's online

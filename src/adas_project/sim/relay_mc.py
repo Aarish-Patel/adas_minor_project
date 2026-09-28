@@ -187,7 +187,6 @@ def would_hit(world, params, pose, v, servo, k, c, horizon=2.0, direction=1):
 # ------------------------------------------------------------------ one run
 def run(args):
     seed, variant, style = args if len(args) == 3 else (*args, "lapsing")
-    from adas.aeb import SpeedEstimator
     from adas.config import load_tuning
     from pi.path_gate import PathGate
     from pi.relay_assists import K_CURV_PER_SERVO_DEG as K, RelayAssists
@@ -217,7 +216,8 @@ def run(args):
         rint = RelayIntent(assist, os.path.join(HERE, "..", "models", "intent_net.json"), trust=TRUST_THRESHOLD)
     vpts = np.empty((0, 2))
     gate = PathGate(p, tun.speed_model)
-    vest = SpeedEstimator(tun.speed_model)
+    from pi.relay_assists import RelaySpeed
+    vest = RelaySpeed(tun.speed_model, p.lidar_x)       # the relay's speed: throttle model + LiDAR EKF
     if variant in ("adas", "adas+intent"):
         assist.set("evasive", True)
     t, next_scan, seq = 0.0, 0.0, 0
@@ -249,6 +249,7 @@ def run(args):
             seq += 1
             vpts = RelayAssists.points_vehicle_frame(pts, p.lidar_x)
             gate.on_scan(vpts, seq)
+            vest.on_scan(pts, seq, t)
         d_servo, d_pwm = driver.command(t, (x, y, th), v)
         lines = [f"A {d_servo:.1f} {d_servo:.1f}", f"M {-int(d_pwm)}"]
         servo_out, phys = d_servo, d_pwm
@@ -269,7 +270,7 @@ def run(args):
                     phys = -float(q[1])
             delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
             # intent decides whether to take over the STEERING (evasive hold above); braking stays pure physics
-            g_phys, _ = gate.decide(DT, phys, delta, vest.v, 0.0, None,
+            g_phys, _ = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0, None,
                                     trusted=rint is not None and rint.gate_trust)
             kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
                                                                  ("steer" if abs(servo_out - d_servo) > 1.0 else None))
@@ -277,7 +278,7 @@ def run(args):
             phys = g_phys
         else:
             gate.memory.advance(DT, vest.v, 0.0)
-        vest.update(DT, phys)
+        vest.command(t, DT, phys, servo_out)
         if intervening and not was_intervening:
             interventions += 1
             # how deep inside its stopping envelope was the car on the DRIVER's own path: free distance / physical

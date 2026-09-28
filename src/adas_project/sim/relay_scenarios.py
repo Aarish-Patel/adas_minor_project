@@ -25,10 +25,10 @@ def _tuning():
     return tun
 
 
-def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_when=None):
-    """driver(t, x, y, th, v) -> (stick -1..1, + = left, physical PWM, + = forward). Returns a record with a per-tick
+def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_when=None, hook=None):
+    """driver(t, x, y, th, v) -> (stick -1..1, + = left, physical PWM, + = forward). hook(t, assist, pts, seq), if
+    given, runs each tick before the relay logic (e.g. to send a click-to-go goal). Returns a record with a per-tick
     trace: t, x, y, th, v, pwm_in, pwm_out, stick_in, stick_out, gate action, evading."""
-    from adas.aeb import SpeedEstimator
     from pi.path_gate import PathGate
     from pi.relay_assists import K_CURV_PER_SERVO_DEG as K, RelayAssists, RelayIntent
     from sim.hw_sim import SimLidar, VirtualCar
@@ -42,7 +42,8 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     car.last_cmd_t = 0.0
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
     gate = PathGate(p, tun.speed_model)
-    vest = SpeedEstimator(tun.speed_model)
+    from pi.relay_assists import RelaySpeed
+    vest = RelaySpeed(tun.speed_model, p.lidar_x)
     t, next_scan, seq, pts = 0.0, 0.0, 0, []
     rec = {"trace": [], "infos": set(), "max_level": 0, "min_clear": 9.0}
     while t < seconds:
@@ -62,9 +63,12 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
             pts = [(round(float(a), 1), round(float(d), 3)) for a, d, o in zip(cw, r, ok) if o]
             seq += 1
             gate.on_scan(RelayAssists.points_vehicle_frame(pts, p.lidar_x), seq)
+            vest.on_scan(pts, seq, t)
         stick, pwm = driver(t, x, y, th, v)
         servo = assist.stick_to_servo(stick)
         lines = [f"A {servo:.1f} {servo:.1f}", f"M {-int(pwm)}"]
+        if hook is not None:
+            hook(t, assist, pts, seq)
         rint.update(t, servo, float(pwm), vest.v, pts)
         out = assist.process(lines, pts, seq, now=t)
         servo_out, phys = servo, float(pwm)
@@ -75,8 +79,9 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
             elif q[0] == "M":
                 phys = -float(q[1])
         delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
-        g_phys, g_brake = gate.decide(DT, phys, delta, vest.v, 0.0, None, trusted=rint.gate_trust)
-        vest.update(DT, g_phys)
+        g_phys, g_brake = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0, None,
+                                      trusted=rint.gate_trust)
+        vest.command(t, DT, g_phys, servo_out)
         rec["infos"].update(f"{k}: {s}" for k, s in assist.info.items())
         rec["max_level"] = max(rec["max_level"], assist.level)
         rec["trace"].append((t, x, y, th, v, pwm, g_phys, stick, assist.servo_to_stick(servo_out),
@@ -87,7 +92,8 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
         car.step_to(t)
         rec["min_clear"] = min(rec["min_clear"], world.clearance(x, y, th, p))
     x, y, th, v, *_ = car.pose()
-    rec.update(collided=car.crash_count > 0, x=x, y=y, th=th, v=v, evading_end=assist.assists.evading, p=p)
+    rec.update(collided=car.crash_count > 0, x=x, y=y, th=th, v=v, evading_end=assist.assists.evading, p=p,
+               assist=assist, t_end=t)
     return rec
 
 
@@ -159,7 +165,9 @@ def wall_full_speed(pwm=255):
     w.add(Wall(4.0, -1.6, 4.0, 1.6))
     r = run(w, steady(pwm), 10, ())
     gap = 4.0 - (r["x"] + r["p"].front_x)
-    ok = (not r["collided"]) and 0.02 < gap < 0.35
+    # was 0.75 m (B11). With the LiDAR speed estimate the brake sees the true speed while braking (the throttle
+    # model thought the car stopped at once), so it stops ~0.35 m short; closer needs a measured braking decel
+    ok = (not r["collided"]) and 0.02 < gap < 0.40
     return ok, f"full throttle at a wall 4 m ahead: stopped with {gap * 100:.0f} cm to spare"
 
 

@@ -82,6 +82,23 @@ points thinned to 190.
 - **Fusion:** an EKF with the car model (fitted motor + steering) as the process model and RF2O/ICP as
   measurements -> smooth, lag-free speed and yaw rate for braking, prediction and the GUI.
 
+**Implemented** (`adas/rf2o.py`, `adas/speed_ekf.py`, in the relay as `pi/relay_assists.RelaySpeed`; evaluation
+`python -m sim.odometry_eval` -> `reports/odometry.png`). Speed error while moving (RMSE / median, cm/s):
+
+| | twin | twin, car 20 % slower than its model | real drive (vs smoothed scan matching) |
+|---|---|---|---|
+| throttle model (the relay until now) | 7.5 / 0.0 | 10.3 / 8.9 | 3.5 / 2.8 |
+| ICP differentiated (earlier speed measurements) | 4.1 / 1.1 | 3.4 / 1.1 | 6.5 / 4.4 |
+| RF2O range flow | 3.7 / 0.7 | 3.3 / 0.7 | 3.9 / 2.2 |
+| **EKF: car model + RF2O** | **3.6 / 0.6** | **3.1 / 0.5** | **3.4 / 2.1** |
+
+Yaw rate from the EKF: 2.1 deg/s RMSE on the real drive (the relay had none). RF2O costs 0.5 ms per scan.
+On a steady drive on a flat floor the fitted throttle model is about as good as the LiDAR; the EKF matters when
+the model is wrong - coasting and braking, a sagging battery, a carpet. Found on the way: while the gate brakes, the
+throttle model believes the car stops almost at once (0.83 -> 0.03 m/s in 0.2 s) while range flow shows it still
+at 0.6-0.8 m/s. The EKF clips acceleration to the fitted limits and re-initialises from the LiDAR after two gated
+outliers. For braking the relay uses the more conservative of the two estimates, so this can only brake earlier.
+
 ## 4. Driver intent
 
 Current: `adas/intent.py` (learned intent estimator) feeding the warnings. References for the upgrade:
@@ -98,20 +115,24 @@ five candidate arcs, and an online personal reaction-distance profile), trained 
 held-out rooms: AUC 0.86-0.88. Used only to decide whether to take over the STEERING; braking stays pure physics.
 The relay, the Monte Carlo and the scenario checks all run the same class (`pi/relay_assists.RelayIntent`).
 
-96 paired drives (48 random rooms x lapsing / late-but-competent drivers), the car's own relay code on the twin,
-counterfactual ground truth ("needless" = the driver alone would not have crashed within 2 s). Current settings
-(least-restrictive gate, swerve trigger 1.2 s / 0.7 s attentive):
+96 paired drives (48 random rooms x lapsing / late-but-competent drivers), the car's own relay code on the twin
+(least-restrictive gate, LiDAR+model speed EKF, swerve trigger 1.2 s / 0.7 s attentive, intent model retrained on
+the same noisy 720-beam sensing the relay sees: held-out AUC 0.91), counterfactual ground truth ("needless" = the
+driver alone would not have crashed within 2 s):
 
 | | crashes | reach goal | interventions | needless takeovers | needless brakes | needless limits | wheel taken needlessly | overridden needlessly |
 |---|---|---|---|---|---|---|---|---|
 | no ADAS | 26 | 70 | - | - | - | - | - | - |
-| brake only | 0 | 85 | 196 | 0 | 4 | 79 | 0 s | 67 s |
-| ADAS (brake + evasive) | 0 | 95 | 77 | 12 | 1 | 19 | 70 s | 81 s |
-| ADAS + learned intent | 0 | 95 | 95 | 6 | 1 | 35 | 59 s | 73 s |
+| brake only | 0 | 85 | 174 | 0 | 5 | 74 | 0 s | - |
+| ADAS (brake + evasive) | 0 | 94 | 87 | 13 | 1 | 21 | 75 s | 87 s |
+| **ADAS + learned intent** | **0** | **96** | 100 | **6** | 3 | 34 | **53 s** | **65 s** |
 
-- Intent halves needless steering takeovers (12 -> 6; 7 drives better, 1 worse; one-sided Wilcoxon p = 0.017). A
-  swerve it holds back for an attentive driver becomes at most a brief speed trim by the physics brake, so the
-  total time the driver was overridden is about equal (81 -> 73 s, n.s.).
+Intent-aware vs the same ADAS without intent, paired one-sided Wilcoxon signed-rank:
+- needless steering takeovers 13 -> 6 (9 drives better, 2 worse, p = 0.017);
+- time the wheel was taken needlessly 75 -> 53 s (p = 0.039); time overridden needlessly 87 -> 65 s (p = 0.049);
+- every drive reaches its goal (96/96 vs 94/96), 0 crashes. The price: a swerve held back for an attentive driver
+  can become a brief speed trim by the physics brake (needless limits 21 -> 34, mostly mild).
+- Trust-threshold sweep with the previous model (0.5 / 0.7 / 0.9): takeovers 9 / 8 / 6, crashes 0 throughout.
 - If the ADAS is tuned to help early (swerve at 1.6 s), intent is significantly better on every severity measure:
   takeovers 34 -> 13 (p = 0.0001), wheel taken needlessly 171 -> 103 s (p = 0.0009), overridden needlessly
   185 -> 117 s (p = 0.002), throttle removed 64 -> 39 throttle-s (p = 0.008).
