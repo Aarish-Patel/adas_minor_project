@@ -818,7 +818,7 @@ def main():
     try:
         while True:
             try:
-                data, addr = sock.recvfrom(256)
+                data, addr = sock.recvfrom(4096)       # zone lists are longer than a driving packet
             except ConnectionResetError:
                 continue      # Windows only (laptop simulator): a reply went to a sender that already closed
             except socket.timeout:
@@ -866,6 +866,21 @@ def main():
                 print(f"\nassist {parts[1]} {parts[2]}: now {assist.enabled()}")
                 dlog.event("assist toggled", name=parts[1], on=parts[2] == "ON")
                 gui_set_assists(assist.enabled())
+                sock.sendto(b"OK", addr)
+                continue
+
+            if text.startswith("ZONES "):                        # speed-limit zones (pi/zones.py) as JSON, world frame
+                try:
+                    n = assist.zones.set(text[6:])
+                    dlog.event("zones set", n=n)
+                    sock.sendto(f"OK {n}".encode(), addr)
+                except ValueError:
+                    sock.sendto(b"BAD ZONES", addr)
+                continue
+
+            if text.strip() == "ORIGIN":                         # the world frame (zones, map) starts at the car now
+                vest.reset_pose()
+                dlog.event("world origin reset")
                 sock.sendto(b"OK", addr)
                 continue
 
@@ -1173,7 +1188,10 @@ def main():
                 GUI_STATE["data"]["drive"] = {"v": round(vest.v, 3), "w": round(vest.w, 3),
                                               "v_model": round(vest.model_est.v, 3), "pwm_in": -pwm_commanded if WIRE_MOTOR_REVERSED else pwm_commanded,
                                               "pwm_out": -pwm_sent if WIRE_MOTOR_REVERSED else pwm_sent,
-                                              "servo": last_servo_cmd, "centre": assist.centre, "t": time.time()}
+                                              "servo": last_servo_cmd, "centre": assist.centre, "t": time.time(),
+                                              "steer_max_deg": round(assist.steer_limit_kappa(vest.v) / assist_k, 1)}
+                GUI_STATE["data"]["world"] = {"pose": [round(c, 3) for c in vest.pose], "zones": assist.zones.zones,
+                                              "zone_kph": assist.zone_kph}
             stages.mark("GUI path + state (after write)")
             # what the driver asked for vs what the ADAS let through - the raw material for intent learning
             dlog.driver(inp=driver_text.strip(), assisted=text.strip() if assist.changed else None,

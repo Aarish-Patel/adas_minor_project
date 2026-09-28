@@ -126,7 +126,12 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   Go through all the car logs: what the car did before the shaft broke (hard direction reversals, brake
   pulses at speed, the smoother bug, stalls against obstacles), what else looks wrong; fix what software can
   (drivetrain-friendly braking / reversing).
-- [ ] P2. Speed-limit zones: draw shapes (rectangle / polygon / circle) on the map, type a limit in km/h, scaled
+- [~] P2. (backend done 28 Sep night: pi/zones.py - rect / circle / polygon zones, km/h scaled 1:14 (50 km/h ->
+  0.99 m/s, 20 -> 0.40, 10 -> 0.20), lowest limit wins, also 0.5 s ahead so it slows before entering; the relay
+  caps the throttle (RelayAssists._zone_cap), UDP 'ZONES <json>' / 'ORIGIN', stream 'world' {pose, zones,
+  zone_kph}; world pose = keyframed scan matching (1 m / 30 deg keyframes) + dead reckoning: twin drift 1.6-1.8 %
+  and <= 2 deg over 2-3 m (EKF integration alone: 7-11 %, 13 deg); tests/test_zones.py; 97 tests + 12/12;
+  relay latency 3.8 ms median in the twin. GUI zone editor: with P7.) Speed-limit zones: draw shapes (rectangle / polygon / circle) on the map, type a limit in km/h, scaled
   down to the car; the throttle is scaled by the zone's limit, no zone = full speed. Needs a world frame on the car
   (continuous LiDAR odometry) so zones stay put while the car moves.
 - [x] P3. (done: RelayAssists.steer_limit_kappa - lock capped at 0.40 m radius / 2.5 1/m (~2 wheelbases, as

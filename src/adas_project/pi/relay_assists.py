@@ -99,12 +99,46 @@ class RelaySpeed:
         self.rf = RangeFlow()
         self.seq = None
         self.meas = None
+        # world pose (rear axle; x, y m, heading rad), the frame of the speed zones and the world map: scan matching
+        # (pi/scanmatch.Odometry, keyframed every KF_M / KF_DEG) on every scan, dead reckoning in between. Integrating
+        # the EKF alone drifted 7-11 % and 13 deg over 2-3 m in the twin.
+        self.lidar_x = lidar_x
+        self.pose = (0.0, 0.0, 0.0)
+        self._kf, self._odo = (0.0, 0.0, 0.0), None
+
+    KF_M, KF_DEG = 1.0, 30.0
+
+    def reset_pose(self):
+        self.pose, self._kf, self._odo = (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), None
+
+    def _scan_pose(self, points, t):
+        from pi.scanmatch import Odometry, polar_to_xy
+        xy = polar_to_xy(points)
+        if len(xy) < 40:
+            return
+        if self._odo is None:
+            self._odo, self._kf = Odometry(), self.pose
+        v = self.ekf.v
+        k_right = -(self.ekf.w / v) if abs(v) > 0.05 else 0.0
+        p = self._odo.update(xy, t, v, k_right)
+        xl, yl, thl = float(p[0]), -float(p[1]), -float(p[2])        # the LiDAR in the keyframe, y left
+        lx = self.lidar_x
+        dx, dy = xl - lx * math.cos(thl) + lx, yl - lx * math.sin(thl)   # the rear axle in the keyframe
+        kx, ky, kth = self._kf
+        c, sn = math.cos(kth), math.sin(kth)
+        self.pose = (kx + c * dx - sn * dy, ky + sn * dx + c * dy, kth + thl)
+        if math.hypot(dx, dy) > self.KF_M or abs(thl) > math.radians(self.KF_DEG):
+            self._odo = None                      # new keyframe from the next scan
 
     def command(self, t, dt, physical, servo):
         """What was actually sent: physical throttle (+ forward) and servo degrees, at time t."""
         self.model_est.update(dt, physical)
         self.ekf.command(t, physical, servo)
         self.ekf.predict(t)
+        x, y, th = self.pose
+        th2 = th + self.ekf.w * dt
+        mid = (th + th2) / 2
+        self.pose = (x + self.ekf.v * math.cos(mid) * dt, y + self.ekf.v * math.sin(mid) * dt, th2)
 
     def on_scan(self, points, seq, t):
         """A LiDAR scan in the relay's format (car angle deg clockwise-positive, distance from the LiDAR)."""
@@ -118,6 +152,7 @@ class RelaySpeed:
         self.meas = self.rf.update(xy, t, guess=(e.v, e.w * e.lx, e.w))
         if self.meas is not None:
             e.correct(t, self.meas)
+        self._scan_pose(points, t)
 
     @property
     def v(self):
@@ -265,6 +300,9 @@ class RelayAssists:
         self.est = SpeedEstimator(self.model)
         self.speed = None              # a RelaySpeed shared with the brake gate; if set, the assists use its speed
         self.memory = None             # the brake gate's obstacle memory (its blind-ring points join the planners)
+        from pi.zones import SpeedZones
+        self.zones = SpeedZones()      # speed-limit zones in the world frame (pi/zones.py)
+        self.zone_kph = None           # the limit applying right now (km/h full-size), for the GUI
         self.steer_envelope = True     # realistic, speed-dependent steering limit (steer_limit_kappa)
         self.steer_limited = None      # (asked, allowed) servo offsets when the envelope clipped the steering
         self.nudge_on = False          # steering correction instead of braking (see nudge())
@@ -474,6 +512,7 @@ class RelayAssists:
         """lines: the driver's packet lines. Returns the lines to hand on to the safety gate, with the steering
         inside the realistic, speed-dependent envelope (steer_limit_kappa)."""
         out = self._process(lines, points, seq, now)
+        out = self._zone_cap(out)
         if not self.steer_envelope:
             return out
         v = self.v
@@ -492,6 +531,32 @@ class RelayAssists:
                     ln = f"A {lim:.0f} {lim:.0f}"
                 else:
                     self.steer_limited = None
+            res.append(ln)
+        return res
+
+    def _zone_cap(self, out):
+        """Cap the throttle to the speed-limit zone the car is in or about to enter (pi/zones.py)."""
+        self.zone_kph = None
+        if not self.zones.zones or self.speed is None:
+            return out
+        from pi.zones import kph_to_car
+        kph = self.zones.limit_ahead(self.speed.pose, self.v)
+        self.zone_kph = kph
+        if kph is None:
+            return out
+        cap = self.model.pwm_for_speed(kph_to_car(kph))
+        res = []
+        for ln in out:
+            q = ln.split()
+            if len(q) == 2 and q[0] == "M":
+                try:
+                    w = float(q[1])
+                except ValueError:
+                    res.append(ln)
+                    continue
+                if abs(w) > cap:
+                    ln = f"M {int(math.copysign(cap, w))}"
+                    self.info["zone"] = f"speed limit {kph:.0f} km/h"
             res.append(ln)
         return res
 
