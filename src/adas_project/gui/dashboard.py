@@ -571,7 +571,8 @@ class Dashboard(QtWidgets.QMainWindow):
         lay = QtWidgets.QVBoxLayout(w)
         self.report_sel = QtWidgets.QComboBox()
         self.reports = [(f, os.path.join(ROOT, "reports", f)) for f in
-                        ("monte_carlo_relay.png", "twin_lidar.png", "twin_path.png", "odometry.png", "autonav.png")
+                        ("monte_carlo_relay.png", "intent_v3.png", "intent_ablation.png", "twin_lidar.png", "twin_path.png",
+                         "odometry.png", "autonav.png")
                         if os.path.exists(os.path.join(ROOT, "reports", f))]
         self.report_sel.addItems([f for f, _ in self.reports] or ["(no reports yet - run the evaluations)"])
         lay.addWidget(self.report_sel)
