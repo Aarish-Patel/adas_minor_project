@@ -41,7 +41,9 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
     BOOT+EN manual download mode: esptool still "No serial data received"; on the laptop's USB power the ESP32 is
     not on WiFi either (no PONG to a broadcast, no RC_CAR hotspot). -> ESP32 chip (or its 3.3 V regulator) dead.
     The user needs a replacement ESP32 (flash ESP32_RC/ESP32_RC.ino) and to fix what killed it first.
-  - [ ] Hybrid A* click-to-go into open space
+  - [x] Hybrid A* click-to-go into open space (28 Sep 21:3x, new ESP32, LiDAR 45.7 deg: a straight goal drove
+    correctly; a goal 0.44 m ahead / 2.09 m left with the object 0.5 m in front started with a reverse-right leg -
+    the planner's three-point turn, since a forward-left arc clips the object)
   - [ ] Evasive steer at the obstacle
   - [ ] Hybrid A* click-to-go to a goal behind/across the obstacle
 
