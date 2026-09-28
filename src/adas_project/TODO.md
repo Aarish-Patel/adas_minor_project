@@ -11,10 +11,15 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] L1. (done: tried "back up then re-plan" (ROS recovery style) - 7x slower, reverted; instead weighted-A*
   inflation 3.0, 0.25 m steps, 5 primitives for searches with reversing. On the Pi, 31 recorded back-off jobs:
   median 463 -> 205 ms, 95th 1352 -> 294 ms, max 1807 -> 347 ms, same 26 found) (= K6) Faster back-off searches.
-- [ ] L2. (= B8 + B9) Steering correction instead of braking where a nearby steering is safe (minimal-intervention
-  safety filter), plus a sampling-based fallback (MPPI) when Hybrid A* finds nothing.
-- [ ] L3. (= E3 + E1 + E2 + D7) Native Qt GUI replacing the web pages: modes, map, "what might happen", twin charts.
-- [ ] L4. Tell the user how to test everything on the GUI.
+- [x] L2. (done, commit 515af39: "nudge" assist (opt-in, it tripled needless interventions in the MC when on by
+  default) + MPPI fallback in the evasive WAIT phase; 12/12 scenarios, 64 tests pass) Steering correction instead of
+  braking where a nearby steering is safe, plus a sampling-based fallback (MPPI) when Hybrid A* finds nothing.
+- [x] L3. (done, commit 515af39: gui/dashboard.py, PySide6 + pyqtgraph, UDP stream ~20 Hz) Native Qt GUI replacing
+  the web pages: modes, map, "what might happen", twin charts.
+- [x] L4. Told the user how to run the 3D simulator and test everything on the GUI.
+- [ ] L5. Live relay, doorway world, PWM 200 + evasive: the evasive phase flickers PLANNING <-> None every tick while
+  the gate holds at pose ~[4.5, -0.18], then "no safe way around - braking only". Check whether the car had already
+  passed the door (far wall) or failed to swerve at the box.
 
 ## K. User requests (28 Sep, second round)
 - [x] K1. (done: the 28 Sep relay drive log confirms it - after the 0.12 s command delay a throttle cut rolls ~6 cm
