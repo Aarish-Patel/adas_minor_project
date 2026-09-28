@@ -374,7 +374,9 @@ class StuckRecoveryTests(unittest.TestCase):
         for _ in range(20):
             t.step(255, 0.05)
         seq = [t.step(-150, 0.05) for _ in range(12)]
-        self.assertTrue(all(b <= a for a, b in zip(seq, seq[1:])))  # forward -> reverse through zero, no jump
-        self.assertIn(0.0, seq)
+        self.assertTrue(all(b <= a for a, b in zip(seq, seq[1:])))  # forward -> reverse: from zero, ramped
+        self.assertLessEqual(abs(seq[0]), 30)
+        t.step(-140, 0.05, emergency=True)                        # a brake pulse (reverse throttle) ...
+        self.assertGreaterEqual(t.step(75, 0.05), 0)              # ... is not ramped out as reverse drive (car, 28 Sep)
         self.assertEqual(t.step(200, 0.05, emergency=True), 200)
         self.assertEqual(t.step(0, 0.05, emergency=True), 0)      # a brake / hold cut is immediate

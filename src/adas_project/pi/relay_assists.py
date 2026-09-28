@@ -146,8 +146,8 @@ class ThrottleSmoother:
             self.out = float(target)
             return self.out
         cur = self.out
-        if cur != 0 and target * cur < 0:            # changing direction: come down to zero first
-            target = 0.0
+        if cur != 0 and target * cur < 0:            # changing direction (or ending a brake pulse): drop to zero at
+            cur = 0.0                                # once - ramping a reverse pulse down would keep driving backwards
         if abs(target) > abs(cur):
             cur += math.copysign(min(abs(target) - abs(cur), self.RISE_PWM_S * dt), target)
         elif cur:

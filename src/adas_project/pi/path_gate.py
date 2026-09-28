@@ -303,7 +303,15 @@ class PathGate:
         self.k_hist.append((0.0, k_now))
         # a planned path counts only while the car is really on it (within 5 cm / 10 deg of its start), and the arc
         # the car is on right now still counts for the distance covered before the steering can change
-        on_leg = leg is not None and leg[1] == direction and len(leg[0]) >= 2 and             math.hypot(leg[0][0, 0], leg[0][0, 1]) < 0.05 and abs(math.remainder(leg[0][0, 2], 2 * math.pi)) < math.radians(10)
+        # (the path point nearest the car counts - a coarse search's first point is up to ~6 cm ahead of it - and
+        # the sweep starts at the car itself)
+        on_leg = False
+        if leg is not None and leg[1] == direction and len(leg[0]) >= 2:
+            L = leg[0]
+            j = int(np.argmin(np.hypot(L[:, 0], L[:, 1])))
+            if math.hypot(L[j, 0], L[j, 1]) < 0.08 and abs(math.remainder(L[j, 2], 2 * math.pi)) < math.radians(12):
+                leg = (np.vstack([[0.0, 0.0, 0.0], L[j:]]), leg[1])
+                on_leg = True
         d_pre = max(abs(v_est), 0.10) * K_WINDOW_S + 0.05
         if on_leg:
             f_leg = self.free_along_leg(leg[0])

@@ -76,6 +76,13 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   memory's blind points for both planners. Also: goal-pose approaches turning > 270 deg (a full loop on the car)
   are refused (user: loops are fine unless they cause issues). Twin: board 10-14 cm ahead-right, goal up-left at
   150 deg: arrives 9-10 deg off, no contact. 91 tests + 12/12.
+- [x] A10. (28 Sep 22:20) Car log: the gate never used the planned leg ('leg' absent) - pose goals plan on the
+  coarse lattice whose first path point is ~6 cm ahead of the car, and the on-path test wanted 5 cm from the
+  first point -> the gate judged the current arc (9 cm free) and crawled at 40 PWM. Now: nearest path point
+  within 8 cm / 12 deg, swept from the car. Also a smoother bug seen in the log: after a brake pulse (-140) it
+  ramped the reverse throttle out over ticks (car reversed at 0.27 m/s while the plan said forward) - direction
+  changes now drop to zero at once. Also seen: a brake at free 0.41 m / allowed 0.85 m/s, likely a noisy LiDAR
+  closing-speed track (v = max(v_est, closing)) - to look at. Twin: leg used 148/168 ticks, no limiting.
 - [ ] A8. Relay start is slow: every open of the LiDAR's CP2102 (ttyUSB1) waits ~13 s in the kernel
   ('cp210x ttyUSB1: failed set request 0x12 status: -110'), so find_ports takes a minute and the LiDAR stops
   meanwhile. Hardware/USB: try another port / cable / powered hub; software: skip probing once the by-id names
