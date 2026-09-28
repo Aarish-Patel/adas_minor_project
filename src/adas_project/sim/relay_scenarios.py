@@ -213,16 +213,20 @@ def centring_yields():
 
 
 def limiter():
-    on = run(_world(), steady(255, 1.0), 6, ("limiter",))
-    off = run(_world(), steady(255, 1.0), 6, ())
+    def bare(t, assist, pts, seq):             # a car without the realistic steering envelope either
+        assist.steer_envelope = False
+    on = run(_world(), steady(255, 1.0), 6, ("limiter",), hook=bare)
+    off = run(_world(), steady(255, 1.0), 6, (), hook=bare)
+    env = run(_world(), steady(255, 1.0), 6, ())  # the envelope alone (always on in the relay)
     from pi.relay_assists import K_CURV_PER_SERVO_DEG as K
 
     def lat(rec):
         return max((row[4] ** 2 * abs(math.tan(__import__("adas.vehicle_params", fromlist=["x"]).steer_to_delta(row[8], rec["p"])) / rec["p"].wheelbase)
                     for row in rec["trace"] if row[0] > 2.0), default=0.0)
-    a_on, a_off = lat(on), lat(off)
-    ok = a_on <= 1.2 * 1.15 and a_off > a_on * 1.2
-    return ok, f"full throttle at full lock: lateral acceleration {a_on:.2f} m/s^2 with the limiter, {a_off:.2f} without"
+    a_on, a_off, a_env = lat(on), lat(off), lat(env)
+    ok = a_on <= 1.2 * 1.15 and a_off > a_on * 1.2 and a_env < a_off
+    return ok, (f"full throttle at full lock: lateral acceleration {a_on:.2f} m/s^2 with the limiter, {a_off:.2f} "
+                f"without; {a_env:.2f} with the realistic steering envelope alone")
 
 
 def aim_at_centre(pwm, gain_y=3.0, gain_th=1.5):

@@ -129,9 +129,12 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] P2. Speed-limit zones: draw shapes (rectangle / polygon / circle) on the map, type a limit in km/h, scaled
   down to the car; the throttle is scaled by the zone's limit, no zone = full speed. Needs a world frame on the car
   (continuous LiDAR odometry) so zones stay put while the car moves.
-- [ ] P3. Ackermann realism: steering limited like a real car scaled down (no steeper than realistic); keep the
+- [x] P3. (done: RelayAssists.steer_limit_kappa - lock capped at 0.40 m radius / 2.5 1/m (~2 wheelbases, as
+  real cars; mechanically it could do 0.27 m), ~38 servo deg) Ackermann realism: steering limited like a real car scaled down (no steeper than realistic); keep the
   current limit if it is already right.
-- [ ] P4. Speed-dependent steering: the maximum steering angle shrinks with speed, as in real cars.
+- [x] P4. (done: the same envelope shrinks with speed so the full-size lateral acceleration stays < 0.6 g at a
+  1:14 scale: 38 deg up to 0.4 m/s, 26 at 0.5, 18 at 0.6, 9.5 at 0.83 m/s; applied to every steering command
+  (driver, assists, autonomy) in RelayAssists.process, not in ADAS override; 91 tests + 12/12) Speed-dependent steering: the maximum steering angle shrinks with speed, as in real cars.
 - [ ] P5. More work on the A* / evasive issues seen (e.g. a brake at 0.41 m free / 0.85 m/s allowed from a noisy
   closing-speed track), and any new ones.
 - [ ] P6. The control panel (web, port 8080) refined or brought into the Qt GUI.

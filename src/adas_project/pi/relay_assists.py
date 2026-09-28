@@ -19,6 +19,12 @@ from adas.vehicle_params import VehicleParams, delta_to_steer, steer_to_delta
 from pi.scanmatch import Odometry, polar_to_xy
 
 K_CURV_PER_SERVO_DEG = 0.0656      # fitted from the logging drive (sim/fitted_car.json)
+# realistic steering (user, 28 Sep): the car is ~1:14 of a 4.5 m car (body ~0.33 m); lock capped at ~2 wheelbases of
+# turning radius as on real cars (0.40 m -> 2.5 1/m, ~26 deg at the wheels), and at speed the full-size lateral
+# acceleration kept under ~0.6 g (a typical handling envelope; road cars feel steering limits at speed this way)
+CAR_SCALE = 14.0
+KAPPA_REAL = 2.5
+LAT_ACCEL_REAL = 6.0
 SERVO_TRAVEL = (57.0, 53.0)        # degrees right / left of centre the servo can move
 
 
@@ -259,6 +265,8 @@ class RelayAssists:
         self.est = SpeedEstimator(self.model)
         self.speed = None              # a RelaySpeed shared with the brake gate; if set, the assists use its speed
         self.memory = None             # the brake gate's obstacle memory (its blind-ring points join the planners)
+        self.steer_envelope = True     # realistic, speed-dependent steering limit (steer_limit_kappa)
+        self.steer_limited = None      # (asked, allowed) servo offsets when the envelope clipped the steering
         self.nudge_on = False          # steering correction instead of braking (see nudge())
         self._nudge_note = None        # this tick's correction, for the GUI (process() keeps it)
         self.reversed = motor_reversed
@@ -444,8 +452,50 @@ class RelayAssists:
         self.est.update(dt, physical)
         return out
 
+    def steer_limit_kappa(self, v):
+        """Realistic steering envelope (user, 28 Sep): the tightest path curvature allowed at speed v (m/s).
+        Mechanically the car could turn on 0.27 m (1.35 wheelbases); real cars need ~2 wheelbases (e.g. 2.7 m
+        wheelbase, 5.3 m radius), so the lock is capped at KAPPA_REAL. At speed, the curvature shrinks so the
+        full-size equivalent stays under LAT_ACCEL_REAL (the car is ~1:SCALE, speeds scaled the same way):
+        kappa_car = a_real / (SCALE * v_car^2)."""
+        v = abs(v)
+        k = KAPPA_REAL
+        if v > 0.05:
+            k = min(k, LAT_ACCEL_REAL / (CAR_SCALE * v * v))
+        return k
+
+    def limit_servo(self, servo, v):
+        """Clamp a servo command to the steering envelope at speed v."""
+        k = self.steer_limit_kappa(v)
+        lo, hi = self.centre - k / K_CURV_PER_SERVO_DEG, self.centre + k / K_CURV_PER_SERVO_DEG
+        return max(lo, min(hi, servo))
+
     def process(self, lines, points, seq=None, now=None):
-        """lines: the driver's packet lines. Returns the lines to hand on to the safety gate."""
+        """lines: the driver's packet lines. Returns the lines to hand on to the safety gate, with the steering
+        inside the realistic, speed-dependent envelope (steer_limit_kappa)."""
+        out = self._process(lines, points, seq, now)
+        if not self.steer_envelope:
+            return out
+        v = self.v
+        res = []
+        for ln in out:
+            q = ln.split()
+            if len(q) == 3 and q[0] == "A":
+                try:
+                    sv = (float(q[1]) + float(q[2])) / 2.0
+                except ValueError:
+                    res.append(ln)
+                    continue
+                lim = self.limit_servo(sv, v)
+                if abs(lim - sv) > 0.5:
+                    self.steer_limited = (round(sv - self.centre), round(lim - self.centre))
+                    ln = f"A {lim:.0f} {lim:.0f}"
+                else:
+                    self.steer_limited = None
+            res.append(ln)
+        return res
+
+    def _process(self, lines, points, seq=None, now=None):
         now = time.time() if now is None else now
         dt = 0.05 if self.last_t is None else min(0.2, max(0.005, now - self.last_t))
         self.last_t = now
