@@ -1,0 +1,155 @@
+{
+ "summary": {
+  "off": {
+   "runs": 96,
+   "crashes": 10,
+   "reached_goal": 78,
+   "interventions": 0,
+   "needless": 0,
+   "needless_takeovers": 0,
+   "needless_brakes": 0,
+   "needless_limits": 0,
+   "overridden_needlessly_s": 0.0,
+   "wheel_taken_needlessly_s": 0.0,
+   "median_time_s": 11.825000000000033,
+   "min_clearance_cm": 0.001830221422931214
+  },
+  "adas": {
+   "runs": 96,
+   "crashes": 0,
+   "reached_goal": 90,
+   "interventions": 95,
+   "needless": 79,
+   "needless_takeovers": 53,
+   "needless_brakes": 2,
+   "needless_limits": 24,
+   "overridden_needlessly_s": 128.4,
+   "wheel_taken_needlessly_s": 117.1,
+   "median_time_s": 12.075000000000037,
+   "min_clearance_cm": 2.7924178634019023
+  },
+  "adas+intent intent_net.json": {
+   "runs": 96,
+   "crashes": 0,
+   "reached_goal": 84,
+   "interventions": 79,
+   "needless": 58,
+   "needless_takeovers": 25,
+   "needless_brakes": 5,
+   "needless_limits": 28,
+   "overridden_needlessly_s": 65.5,
+   "wheel_taken_needlessly_s": 51.0,
+   "median_time_s": 12.050000000000036,
+   "min_clearance_cm": 2.3855501005141
+  },
+  "adas+intent intent_v3.json": {
+   "runs": 96,
+   "crashes": 0,
+   "reached_goal": 82,
+   "interventions": 94,
+   "needless": 63,
+   "needless_takeovers": 26,
+   "needless_brakes": 4,
+   "needless_limits": 33,
+   "overridden_needlessly_s": 86.0,
+   "wheel_taken_needlessly_s": 68.6,
+   "median_time_s": 12.050000000000036,
+   "min_clearance_cm": 2.6061648529918493
+  }
+ },
+ "tests": {
+  "intent_net.json": {
+   "pairs": 96,
+   "needless interventions": {
+    "adas": 79.0,
+    "adas+intent": 58.0,
+    "better": 15,
+    "worse": 7,
+    "p": 0.04765806055007151
+   },
+   "needless takeovers": {
+    "adas": 53.0,
+    "adas+intent": 25.0,
+    "better": 17,
+    "worse": 2,
+    "p": 0.0003512111145642886
+   },
+   "overridden needlessly (s)": {
+    "adas": 128.45,
+    "adas+intent": 65.45,
+    "better": 28,
+    "worse": 6,
+    "p": 6.634267550726518e-05
+   },
+   "wheel taken needlessly (s)": {
+    "adas": 117.1,
+    "adas+intent": 50.95,
+    "better": 27,
+    "worse": 3,
+    "p": 1.9425227912479536e-05
+   }
+  },
+  "intent_v3.json": {
+   "pairs": 96,
+   "needless interventions": {
+    "adas": 79.0,
+    "adas+intent": 63.0,
+    "better": 14,
+    "worse": 8,
+    "p": 0.09318955316725175
+   },
+   "needless takeovers": {
+    "adas": 53.0,
+    "adas+intent": 26.0,
+    "better": 16,
+    "worse": 1,
+    "p": 0.0002826361534092301
+   },
+   "overridden needlessly (s)": {
+    "adas": 128.45,
+    "adas+intent": 86.05000000000001,
+    "better": 24,
+    "worse": 9,
+    "p": 0.006496242304949996
+   },
+   "wheel taken needlessly (s)": {
+    "adas": 117.1,
+    "adas+intent": 68.6,
+    "better": 21,
+    "worse": 8,
+    "p": 0.0023856996067116044
+   }
+  },
+  "v3 vs v2": {
+   "pairs": 96,
+   "needless interventions": {
+    "adas": 58.0,
+    "adas+intent": 63.0,
+    "better": 2,
+    "worse": 6,
+    "p": 0.9341659919885928
+   },
+   "needless takeovers": {
+    "adas": 25.0,
+    "adas+intent": 26.0,
+    "better": 1,
+    "worse": 3,
+    "p": 0.6472715069443633
+   },
+   "overridden needlessly (s)": {
+    "adas": 65.45,
+    "adas+intent": 86.05000000000001,
+    "better": 3,
+    "worse": 13,
+    "p": 0.9913201847987814
+   },
+   "wheel taken needlessly (s)": {
+    "adas": 50.95,
+    "adas+intent": 68.6,
+    "better": 2,
+    "worse": 12,
+    "p": 0.9907166438601329
+   }
+  }
+ }
+}
