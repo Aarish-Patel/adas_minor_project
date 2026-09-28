@@ -131,11 +131,15 @@ Consistency on a vibrating car:
 - [ ] N5. Repeatability protocol like Euro NCAP AEB tests: every car test repeated N times, report mean +- std and
   pass rate, not single runs; twin noise randomised to the measured spread (ties into M4).
 Real-EV style software:
-- [ ] N6. Staged AEB as in Euro NCAP / UN R152: forward-collision warning -> partial brake -> full brake, with
+- [~] N6. (dashboard part done 28 Sep: COLLISION WARNING chip + beep below 1.6 s to contact, then "PARTIAL BRAKE -
+  SPEED LIMITED", then EMERGENCY BRAKE; still to do: buzzer/LED on the car) Staged AEB as in Euro NCAP / UN R152: forward-collision warning -> partial brake -> full brake, with
   warnings shown in the GUI (and a buzzer/LED if available).
 - [ ] N7. Responsibility-Sensitive Safety (Shalev-Shwartz et al. 2017) as a formal safe-distance rule to cite
   alongside the gate/CBF.
-- [ ] N8. Functional-safety style supervision (ISO 26262 ideas): health monitor for LiDAR rate, loop latency, link,
+- [x] N8. (done 28 Sep: pi/health.py + tests/test_health.py; the relay caps the throttle at 120 PWM in LIMP (LiDAR
+  < 6 Hz, loop 95th > 60 ms, driver link < 12 packets/s while driving, Pi >= 80 C) and holds the motor in FAULT (no
+  scans for 1 s, ESP32 silent/lost), 2 s hysteresis; dashboard chip HEALTH OK / LIMP MODE / FAULT. On the saturated
+  laptop it correctly went LIMP "control loop slow (95th 152 ms)". Not yet on the Pi.) Functional-safety style supervision (ISO 26262 ideas): health monitor for LiDAR rate, loop latency, link,
   CPU temperature; degraded modes (limp mode = speed capped, ADAS off -> warn) with a state machine shown in the GUI.
 - [ ] N9. Fault-injection tests in the twin (LiDAR dropout/freeze, latency spikes, packet loss, stuck throttle) as
   SOTIF (ISO 21448) scenario testing; ASAM OpenSCENARIO-like scenario files; CI running scenarios + tests.

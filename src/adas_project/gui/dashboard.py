@@ -30,6 +30,7 @@ import pyqtgraph.opengl as gl
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 sys.path.insert(0, ROOT)
 CTRL_PORT, HTTP_PORT = 4210, 8090
+FCW_TTC_S = 1.6        # forward-collision warning below this time to contact (before the brake acts, ~1.0 s)
 
 COL = {"bg": "#0b1020", "panel": "#121a2e", "edge": "#243150", "text": "#e5ecff", "dim": "#8b9ac0",
        "ok": "#34d399", "warn": "#facc15", "bad": "#f87171", "cyan": "#22d3ee", "violet": "#a78bfa", "blue": "#60a5fa"}
@@ -630,9 +631,17 @@ class Dashboard(QtWidgets.QMainWindow):
         elif "nudge" in info:
             mode, color = "STEERING CORRECTION", COL["cyan"]
         elif act == "limited":
-            mode, color = "SPEED LIMITED", COL["warn"]
+            mode, color = "PARTIAL BRAKE - SPEED LIMITED", COL["warn"]
+        elif plan.get("hit") and plan.get("ttc") is not None and float(plan["ttc"]) < FCW_TTC_S \
+                and abs(float(drive.get("v", 0.0))) > 0.1:
+            # staged AEB (Euro NCAP / UN R152): warn first, then partial brake, then full brake
+            mode, color = f"COLLISION WARNING  {float(plan['ttc']):.1f} s", COL["warn"]
         else:
             mode, color = "GUARDIAN", COL["ok"]
+        if mode.startswith("COLLISION WARNING") and not self.last_msgs.get("fcw"):
+            QtWidgets.QApplication.beep()
+            self._event(f"forward collision warning: contact in {float(plan['ttc']):.1f} s on the current path")
+        self.last_msgs["fcw"] = mode.startswith("COLLISION WARNING")
         self.mode.setText(mode)
         self.mode.setStyleSheet(self._chip(color))
         msgs = [str(v) for v in info.values()] + ([str(gate["action"])] if gate.get("action") else [])
