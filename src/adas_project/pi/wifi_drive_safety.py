@@ -82,6 +82,53 @@ def body_overhang(a_deg):
     elif sy < -1e-6:
         candidates.append(RIGHT_OVERHANG_M / -sy)
     return min(candidates) if candidates else FRONT_OVERHANG_M
+
+
+STAGE_TIMERS = []
+
+
+class StageTimer:
+    """RC_TIMING=1: how long each stage of the control loop takes per driver packet; a table when the relay stops.
+    Costs nothing when off."""
+
+    def __init__(self):
+        self.on = os.environ.get("RC_TIMING") == "1"
+        self.t = 0.0
+        self.acc = {}
+        STAGE_TIMERS.append(self)                # tools/relay_latency.py prints it before it exits
+
+    def start(self):
+        if self.on:
+            self.t = time.perf_counter()
+
+    def mark(self, name):
+        if self.on:
+            now = time.perf_counter()
+            self.acc.setdefault(name, []).append((now - self.t) * 1000)
+            self.t = now
+
+    def report(self):
+        if not self.on or not self.acc:
+            return
+        print("\ncontrol loop stages (ms per packet): median / 95th / max")
+        for name, v in self.acc.items():
+            a = np.array(v)
+            print(f"  {name:34s} {np.median(a):6.2f} {np.percentile(a, 95):7.2f} {a.max():7.1f}")
+
+
+def body_overhang_vec(a_deg):
+    """body_overhang for an array of bearings (the LiDAR thread's whole scan at once)."""
+    rad = np.radians(a_deg)
+    cx, sy = np.cos(rad), np.sin(rad)
+    with np.errstate(divide="ignore"):
+        fx = np.where(cx > 1e-6, FRONT_OVERHANG_M / np.maximum(cx, 1e-9),
+                      np.where(cx < -1e-6, REAR_OVERHANG_M / np.maximum(-cx, 1e-9), np.inf))
+        fy = np.where(sy > 1e-6, LEFT_OVERHANG_M / np.maximum(sy, 1e-9),
+                      np.where(sy < -1e-6, RIGHT_OVERHANG_M / np.maximum(-sy, 1e-9), np.inf))
+    out = np.minimum(fx, fy)
+    return np.where(np.isfinite(out), out, FRONT_OVERHANG_M)
+
+
 HOLD_AFTER_LOST_READING_S = 1.0   # a lost reading right after a block does NOT mean "clear"
 
 # Stop distance now SCALES with how fast the gap is closing (measured straight from
@@ -276,40 +323,32 @@ class Clearance:
                     self.log.scan(scan)
                 best_front = best_rear = None
                 best_body_front = best_body_rear = None
-                pts = []
-                for _, angle, dist in scan:
-                    if dist <= 0 or dist / 1000.0 < MIN_VALID_RANGE_M:
-                        continue
-                    a = (angle - FRONT_OFFSET_DEG) % 360
-                    a = a if a <= 180 else a - 360   # -180..180, 0 = car's straight ahead
-                    d_m = dist / 1000.0
-                    pts.append((round(a, 1), round(d_m, 3)))
-
-                    if abs(a) <= CONE_DEG:
-                        d = d_m - FRONT_OVERHANG_M
-                        if best_front is None or d < best_front:
-                            best_front = d
-
-                    ra = a - 180 if a > 0 else a + 180   # angle relative to straight behind
-                    if abs(ra) <= CONE_DEG:
-                        d = d_m - REAR_OVERHANG_M
-                        if best_rear is None or d < best_rear:
-                            best_rear = d
-
-                    # wide corner-strike backstop, using the ACTUAL body overhang for this
-                    # bearing (front/rear/side, via the car's real rectangular footprint - see
-                    # body_overhang()'s docstring), split front-half/rear-half so something
-                    # close on one side only ever blocks the direction that actually goes
-                    # toward it, same as the narrow cones above - a single global "anything
-                    # anywhere" flag used to block BOTH directions and fired 68% of a real
-                    # drive session on a wall the car was simply parked next to on one side.
-                    body_d = d_m - body_overhang(a)
-                    if abs(a) <= WIDE_CONE_DEG:
-                        if best_body_front is None or body_d < best_body_front:
-                            best_body_front = body_d
-                    else:
-                        if best_body_rear is None or body_d < best_body_rear:
-                            best_body_rear = body_d
+                # the whole scan at once with numpy: a per-point Python loop here held the interpreter lock long
+                # enough (~875k round() calls a minute) to delay the control loop on the Pi
+                sc = np.asarray(scan, float).reshape(-1, 3)
+                ang, dist = sc[:, 1], sc[:, 2]
+                ok = (dist > 0) & (dist / 1000.0 >= MIN_VALID_RANGE_M)
+                a = (ang[ok] - FRONT_OFFSET_DEG) % 360
+                a = np.where(a > 180, a - 360, a)         # -180..180, 0 = car's straight ahead
+                d_m = dist[ok] / 1000.0
+                pts = list(zip(np.round(a, 1).tolist(), np.round(d_m, 3).tolist()))
+                if len(a):
+                    fm = np.abs(a) <= CONE_DEG
+                    if fm.any():
+                        best_front = float((d_m[fm] - FRONT_OVERHANG_M).min())
+                    ra = np.where(a > 0, a - 180, a + 180)   # angle relative to straight behind
+                    rm = np.abs(ra) <= CONE_DEG
+                    if rm.any():
+                        best_rear = float((d_m[rm] - REAR_OVERHANG_M).min())
+                    # wide corner-strike backstop, using the ACTUAL body overhang for each bearing (front/rear/
+                    # side, via the car's real rectangular footprint - see body_overhang()), split front-half /
+                    # rear-half so something close on one side only ever blocks the direction toward it
+                    body_d = d_m - body_overhang_vec(a)
+                    wf = np.abs(a) <= WIDE_CONE_DEG
+                    if wf.any():
+                        best_body_front = float(body_d[wf].min())
+                    if (~wf).any():
+                        best_body_rear = float(body_d[~wf].min())
 
                 now = time.time()
                 with self.lock:
@@ -626,6 +665,9 @@ def main():
     # systemctl restart/stop sends SIGTERM; without this, cleanup only ran on Ctrl+C (SIGINT),
     # so the motor and LiDAR were never stopped cleanly on a service restart.
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+    # the control loop shares the interpreter with the LiDAR, GUI and logging threads: hand the interpreter over
+    # every 1 ms instead of 5 ms so a driver packet waits less for it (measured on the Pi: tools/relay_latency.py)
+    sys.setswitchinterval(0.001)
 
     print("looking for LiDAR and ESP32 on /dev/ttyUSB*...")
     lidar_port, esp_port = find_ports()
@@ -658,7 +700,9 @@ def main():
     adas_override = False
     from pi.relay_assists import RelayAssists
     from adas.assists import deadman_pwm
-    assist = RelayAssists(TUNING, WIRE_MOTOR_REVERSED)   # driving assists, all off until toggled on
+    # driving assists, all off until toggled on; path searches (evasive, click-to-go) run in a worker process so
+    # the control loop never waits for them (adas/plan_service.py)
+    assist = RelayAssists(TUNING, WIRE_MOTOR_REVERSED, plan_mode="process")
     from pi.path_gate import PathGate
     pgate = PathGate(assist.p, TUNING.speed_model)      # path-predicted emergency braking + obstacle memory
     from pi.relay_assists import RelaySpeed
@@ -692,6 +736,7 @@ def main():
     print("point rc_controller.py's ESP32_IP at this Pi's address to drive.\n")
 
     last_packet_time = time.time()
+    stages = StageTimer()
     last_status_print = 0.0
     last_steer_offset = 0.0   # persists across ticks that don't include an A line
     last_physical = 0.0       # what was last sent to the motor (physical convention, + = forward)
@@ -737,6 +782,7 @@ def main():
 
             last_packet_time = time.time()
             last_tick = last_packet_time
+            stages.start()
             text = data.decode(errors="ignore")
 
             parts = text.strip().split()
@@ -790,30 +836,16 @@ def main():
             rear_blocked = gate.blocked("rear", rear_track, now)
             body_alert_front = gate.body_alert("front", body_min_front, now)
             body_alert_rear = gate.body_alert("rear", body_min_rear, now)
+            stages.mark("read LiDAR state")
 
             # driving assists rewrite the driver's steering/throttle first; the safety gate below still has
             # the last word on the throttle
             driver_text = text
             if not adas_override:
                 _apts, _aseq = clr.read_points_seq()
-                # learned driver intent (adas/intent_net.py): will this driver handle the threat themselves?
-                # decides only whether the evasive steer may take over; braking stays pure physics
-                for _ln in driver_text.splitlines():
-                    _q = _ln.split()
-                    if len(_q) == 3 and _q[0] == "A":
-                        try:
-                            intent_servo_now = (float(_q[1]) + float(_q[2])) / 2.0
-                        except ValueError:
-                            pass
-                    elif len(_q) == 2 and _q[0] == "M":
-                        try:
-                            intent_pwm_now = -float(_q[1]) if WIRE_MOTOR_REVERSED else float(_q[1])
-                        except ValueError:
-                            pass
-                rintent.update(time.time(), intent_servo_now, intent_pwm_now, vest.v, _apts)   # 50 ms clock inside
-                with GUI_STATE["lock"]:
-                    GUI_STATE["data"]["intent"] = rintent.gui()
+                # (the learned intent model runs AFTER the motor command below: its verdict is for the next tick)
                 text = "\n".join(assist.process([ln.strip() for ln in text.splitlines() if ln.strip()], _apts, _aseq))
+                stages.mark("assists (+ scan matching)")
                 if assist.assists.evading or assist.nav.active:
                     # the fixed straight-ahead cone would keep braking for an obstacle the car is steering
                     # around; the evasive planner has checked its own path (full body sweep + margin), so the
@@ -823,10 +855,11 @@ def main():
             pkt_now = time.time()
             dt_pkt, last_pkt_t = min(0.2, max(0.005, pkt_now - last_pkt_t)), pkt_now
             gpts, gseq = clr.read_points_seq()
-            if gseq != last_seq:
+            new_scan = gseq != last_seq
+            if new_scan:
                 last_seq, last_seq_t = gseq, pkt_now
-                pgate.on_scan(RelayAssists.points_vehicle_frame(gpts, assist.p.lidar_x), gseq)
-                vest.on_scan(gpts, gseq, pkt_now)
+                pgate.on_scan(RelayAssists.points_vehicle_frame(gpts, assist.p.lidar_x), gseq)   # before braking
+            stages.mark("new scan: obstacle memory")
             servo_cmd = None
             for ln in text.splitlines():
                 q = ln.split()
@@ -970,7 +1003,32 @@ def main():
                     out_lines.append(line)
 
             clr.set_motion_state(final_physical, last_steer_offset)
+            stages.mark("brake gate + checks")
             esp.write(("\n".join(out_lines) + "\n").encode())
+            stages.mark("ESP32 write")
+            # --- after the motor command: work whose result is only needed from the next tick on (real-time
+            # practice: actuate first, then update the estimators)
+            if new_scan:
+                vest.on_scan(gpts, gseq, pkt_now)              # LiDAR range flow -> speed EKF
+            if not adas_override:
+                # learned driver intent (adas/intent_net.py): will this driver handle the threat themselves?
+                # decides only whether the evasive steer may take over; braking stays pure physics
+                for _ln in driver_text.splitlines():
+                    _q = _ln.split()
+                    if len(_q) == 3 and _q[0] == "A":
+                        try:
+                            intent_servo_now = (float(_q[1]) + float(_q[2])) / 2.0
+                        except ValueError:
+                            pass
+                    elif len(_q) == 2 and _q[0] == "M":
+                        try:
+                            intent_pwm_now = -float(_q[1]) if WIRE_MOTOR_REVERSED else float(_q[1])
+                        except ValueError:
+                            pass
+                rintent.update(time.time(), intent_servo_now, intent_pwm_now, vest.v, gpts)   # 50 ms clock inside
+                with GUI_STATE["lock"]:
+                    GUI_STATE["data"]["intent"] = rintent.gui()
+            stages.mark("speed EKF + intent (after write)")
             last_physical = float(final_physical)
             # GUI: where the body is heading at the driver's stick/throttle (X = first contact), plus any planned
             # manoeuvre and the original line it returns to
@@ -1001,6 +1059,7 @@ def main():
                                               "v_model": round(vest.model_est.v, 3), "pwm_in": -pwm_commanded if WIRE_MOTOR_REVERSED else pwm_commanded,
                                               "pwm_out": -pwm_sent if WIRE_MOTOR_REVERSED else pwm_sent,
                                               "servo": last_servo_cmd, "centre": assist.centre, "t": time.time()}
+            stages.mark("GUI path + state (after write)")
             # what the driver asked for vs what the ADAS let through - the raw material for intent learning
             dlog.driver(inp=driver_text.strip(), assisted=text.strip() if assist.changed else None,
                         assist_level=assist.level, assist_info=assist.info or None,
@@ -1027,6 +1086,7 @@ def main():
                          rear_blocked, body_alert_front, body_alert_rear, steer_a1, steer_a2,
                          pwm_sent, "override" if adas_override else "manual", braking,
                          tracks_info, moving_blocked, follow.enabled, follow.lead)
+            stages.mark("logs (after write)")
 
             if now - last_status_print > 0.5:
                 last_status_print = now
@@ -1048,6 +1108,8 @@ def main():
         sock.close()
         logger.close()
         dlog.close()
+        assist.planner.shutdown()          # the path planner's worker process goes with us
+        stages.report()
         print("motor stopped, LiDAR stopped, exiting.")
 
 

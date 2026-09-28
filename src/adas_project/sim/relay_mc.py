@@ -235,7 +235,8 @@ def run(args):
     from pi.relay_assists import apply_car_model
     apply_car_model(tun)                         # the same fitted model the relay uses
     world, goal, rng = scenario(seed)
-    assist = RelayAssists(tun)
+    from sim.hw_sim import PI_COMPUTE_FACTOR
+    assist = RelayAssists(tun, plan_latency=PI_COMPUTE_FACTOR)   # plans arrive as late as they would on the Pi
     if os.environ.get("RC_EVADE_TTC"):             # sweep the evasive trigger: "<normal>,<attentive>" seconds
         a_n, a_a = (float(s) for s in os.environ["RC_EVADE_TTC"].split(","))
         assist.assists.cfg.evade_ttc, assist.assists.cfg.evade_ttc_attentive = a_n, a_a

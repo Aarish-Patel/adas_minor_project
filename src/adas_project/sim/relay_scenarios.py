@@ -32,8 +32,9 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     from pi.path_gate import PathGate
     from pi.relay_assists import K_CURV_PER_SERVO_DEG as K, RelayAssists, RelayIntent
     from sim.hw_sim import SimLidar, VirtualCar
+    from sim.hw_sim import PI_COMPUTE_FACTOR
     tun = _tuning()
-    assist = RelayAssists(tun)
+    assist = RelayAssists(tun, plan_latency=PI_COMPUTE_FACTOR)   # plans arrive as late as they would on the Pi
     rint = RelayIntent(assist)                   # always running, as in the relay
     for a in assists:
         assist.set(a, True)

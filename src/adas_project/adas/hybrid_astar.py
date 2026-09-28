@@ -24,6 +24,12 @@ except ImportError:              # pragma: no cover
     distance_transform_edt = None
 
 RES = 0.05
+# closed-set resolution. Forward swerves need 7.5 deg heading bins (each step turns only 4-13 deg: coarser bins
+# merge the states a doorway swerve needs). Searches WITH reversing use 15 deg: on 31 back-off jobs captured from
+# Monte Carlo drives they then find 26 paths instead of 15 with a third of the nodes (0.2 s instead of 0.54 s).
+HEADING_BIN_DEG = 7.5
+REVERSE_HEADING_BIN_DEG = 15.0
+CELL_M = 0.10
 
 
 class Grid:
@@ -106,7 +112,7 @@ class HybridAStar:
 
     # ------------------------------------------------------------------ the search
     def plan(self, points, start=(0.0, 0.0, 0.0), x_goal=1.0, allow_reverse=False, max_nodes=2500,
-             line_free_ahead=0.4):
+             line_free_ahead=0.4, budget_s=None):
         """Path (N,4: x, y, heading, direction +1/-1) from start back onto the line y = 0 at x >= x_goal, or None."""
         x0 = min(start[0], 0.0) - 1.0
         grid = Grid(points, x0, max(x_goal, start[0]) + 3.0, -2.0, 2.0)
@@ -125,9 +131,10 @@ class HybridAStar:
             return None
 
         return self._search(grid, start, seeds, analytic,
-                            lambda e: math.hypot(max(0.0, x_goal - e[0]), e[1]), allow_reverse, max_nodes, self.w_offset)
+                            lambda e: math.hypot(max(0.0, x_goal - e[0]), e[1]), allow_reverse, max_nodes, self.w_offset,
+                            budget_s)
 
-    def plan_to_point(self, points, start, goal, allow_reverse=False, max_nodes=4000, pad=1.5):
+    def plan_to_point(self, points, start, goal, allow_reverse=False, max_nodes=4000, pad=1.5, budget_s=None):
         """Path to a goal POSITION (any final heading), e.g. a point picked on the map. The analytic expansion is the
         single circular arc from a node that passes through the goal (what pure pursuit would drive)."""
         gx, gy = goal
@@ -160,19 +167,33 @@ class HybridAStar:
             return (arc, d) if self.clearance(grid, arc[::2]) >= m else None
 
         return self._search(grid, start, seeds, analytic, lambda e: math.hypot(gx - e[0], gy - e[1]),
-                            allow_reverse, max_nodes, 0.0)
+                            allow_reverse, max_nodes, 0.0, budget_s)
 
-    def _search(self, grid, start, seeds, analytic, h_euclid, allow_reverse, max_nodes, w_offset):
+    def _search(self, grid, start, seeds, analytic, h_euclid, allow_reverse, max_nodes, w_offset, budget_s=None):
+        """budget_s: give up after this much computing time (the relay's planner must answer in time on the Pi)."""
+        import time
+        t_start = time.perf_counter()
         self.grid = grid
         self.expanded = 0
+        self.gave_up = None
         m = self.margin
         if self.clearance(grid, np.array(start)) < 0.0:
             return None                                   # already touching: nothing to plan
         # obstacle-aware 2D heuristic: Dijkstra from the goal region over free cells (inflated by half the width)
         free = grid.dist > (self.p.width / 2 + m)
         h2d = self._dijkstra(grid, free, seeds)
+        # the 2D heuristic says no free corridor reaches the goal from anywhere near the car: the kinematic search
+        # cannot succeed either - answer at once instead of exhausting max_nodes (seconds on the Pi)
+        r = int(0.45 / grid.res)
+        ix0 = int((start[0] - grid.x0) / grid.res)
+        iy0 = int((start[1] - grid.y0) / grid.res)
+        near = h2d[max(0, ix0 - r):ix0 + r + 1, max(0, iy0 - r):iy0 + r + 1]
+        if not near.size or near.min() >= 1e8:
+            self.gave_up = "goal unreachable"
+            return None
         kappas = np.linspace(-self.kappa_max, self.kappa_max, 7)
         dirs = (1, -1) if allow_reverse else (1,)
+        hbin = math.radians(REVERSE_HEADING_BIN_DEG if allow_reverse else HEADING_BIN_DEG)
         start = tuple(float(v) for v in start)
         open_heap = [(0.0, 0, start, 0.0, 0.0, 1)]
         parents = {0: (None, None)}
@@ -181,22 +202,27 @@ class HybridAStar:
         nid = 0
         while open_heap and self.expanded < max_nodes:
             f, i, pose, g, k_prev, d_prev = heapq.heappop(open_heap)
-            key = (int(pose[0] / 0.1), int(pose[1] / 0.1), int(round(pose[2] / math.radians(7.5))))
+            key = (int(pose[0] / CELL_M), int(pose[1] / CELL_M), int(round(pose[2] / hbin)))
             if key in closed:
                 continue
             closed.add(key)
             self.expanded += 1
-            # analytic expansion to the goal
-            fin = analytic(pose, d_prev)
-            if fin is not None:
-                rj, d_fin = fin
-                return self._assemble(parents, nodes, i, np.column_stack([rj, np.full(len(rj), d_fin)]))
+            if budget_s is not None and self.expanded % 32 == 0 and time.perf_counter() - t_start > budget_s:
+                self.gave_up = "time budget"
+                return None
+            # analytic expansion to the goal: every node close in, every 4th further out (Dolgov et al.: the
+            # analytic expansion is tried more often as the heuristic gets small)
+            h_node = (f - g) / 1.2
+            if h_node < 0.8 or self.expanded % 4 == 0:
+                fin = analytic(pose, d_prev)
+                if fin is not None:
+                    rj, d_fin = fin
+                    return self._assemble(parents, nodes, i, np.column_stack([rj, np.full(len(rj), d_fin)]))
             for d in dirs:
-                for k in kappas:
-                    seg = self.arc(pose, k, self.step, 4) if d > 0 else self._reverse_arc(pose, k)
-                    clear = self.clearance(grid, seg)
-                    if clear < m:
-                        continue
+                segs = self._arcs(pose, kappas, d)                        # all primitives at once
+                clears = self._clearances(grid, segs)
+                for j in np.flatnonzero(clears >= m):
+                    k, seg, clear = kappas[j], segs[j], clears[j]
                     end = tuple(seg[-1])
                     cost = self.step * (1.0 + self.w_steer * abs(k) + (self.w_reverse if d < 0 else 0.0)) \
                         + self.w_change * abs(k - k_prev) * self.step + w_offset * abs(end[1]) * self.step \
@@ -208,7 +234,27 @@ class HybridAStar:
                     nodes[nid] = end
                     parents[nid] = (i, np.column_stack([seg, np.full(len(seg), d)]))
                     heapq.heappush(open_heap, (g2 + 1.2 * h, nid, end, g2, k, d))
+        self.gave_up = "node limit" if open_heap else "no way through"
         return None
+
+    def _arcs(self, pose, kappas, d, n=4):
+        """Poses along every motion primitive from pose: (len(kappas), n, 3), forward (d=1) or backward (d=-1)."""
+        x, y, th = pose
+        s = d * np.linspace(self.step / n, self.step, n)[None, :]
+        k = np.asarray(kappas, float)[:, None]
+        ths = th + k * s
+        straight = np.abs(k) < 1e-6
+        ks = np.where(straight, 1.0, k)
+        px = np.where(straight, x + s * math.cos(th), x + (np.sin(ths) - math.sin(th)) / ks)
+        py = np.where(straight, y + s * math.sin(th), y - (np.cos(ths) - math.cos(th)) / ks)
+        return np.stack([px, py, np.broadcast_to(ths, px.shape)], axis=-1)
+
+    def _clearances(self, grid, segs):
+        """Smallest body clearance along each primitive: (P,)."""
+        th = segs[..., 2][..., None]
+        cx = segs[..., 0][..., None] + np.cos(th) * self.circle_x
+        cy = segs[..., 1][..., None] + np.sin(th) * self.circle_x
+        return (grid.lookup(cx, cy) - self.circle_r).reshape(len(segs), -1).min(axis=1)
 
     def _reverse_arc(self, pose, k):
         x, y, th = pose
@@ -223,6 +269,34 @@ class HybridAStar:
         return bool((grid.lookup(xs, np.zeros_like(xs)) > self.p.width / 2 + self.margin).all())
 
     def _dijkstra(self, grid, free, seeds):
+        """Grid distance (8-connected) from the goal cells over free cells; 1e9 where unreachable. Uses scipy's
+        compiled Dijkstra (~10 ms for the whole grid; the pure-Python version below took 0.1-0.2 s)."""
+        INF = 1e9
+        try:
+            from scipy.sparse import coo_matrix
+            from scipy.sparse.csgraph import dijkstra
+        except ImportError:                              # pragma: no cover
+            return self._dijkstra_py(grid, free, seeds)
+        nx, ny = free.shape
+        idx = np.arange(nx * ny).reshape(nx, ny)
+        rows, cols, wts = [], [], []
+        for dx, dy, w in ((1, 0, 1.0), (0, 1, 1.0), (1, 1, 1.414), (1, -1, 1.414)):
+            a = (slice(0, nx - dx), slice(max(0, -dy), ny - max(0, dy)))
+            b = (slice(dx, nx), slice(max(0, dy), ny - max(0, -dy)))
+            both = free[a] & free[b]
+            rows.append(idx[a][both])
+            cols.append(idx[b][both])
+            wts.append(np.full(int(both.sum()), w * grid.res))
+        src = [int(idx[ix, iy]) for ix, iy in seeds if 0 <= ix < nx and 0 <= iy < ny and free[ix, iy]]
+        if not src:
+            return np.full(free.shape, INF)
+        G = coo_matrix((np.concatenate(wts), (np.concatenate(rows), np.concatenate(cols))), shape=(nx * ny, nx * ny))
+        dist = dijkstra(G.tocsr(), directed=False, indices=src, min_only=True)
+        dist = dist.reshape(nx, ny)
+        dist[~np.isfinite(dist)] = INF
+        return dist
+
+    def _dijkstra_py(self, grid, free, seeds):
         INF = 1e9
         d = np.full(free.shape, INF)
         heap = []

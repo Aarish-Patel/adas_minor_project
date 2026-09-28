@@ -48,12 +48,17 @@ class AssistConfig:
     evade_min_v: float = 0.18        # m/s: ...and the car is moving at least this fast (creeping = the driver's call)
     evade_confirm_s: float = 0.15    # s the threat must persist (one noisy scan never swerves the car)
     # last point to steer (Brannstrom, Coelingh & Sjoberg, IEEE T-ITS 2010): the intent model may hold a swerve back
-    # for a driver who is NOT moving the stick only while the swerve could still start before the brake gate has to
-    # act - FOS x stopping distance (the same constants as pi/path_gate.py) plus the trigger's confirm time
+    # for a driver who is NOT moving the stick only until the last point a swerve can still get round: the car needs
+    # sqrt(2 * offset / kappa_max) of travel to move `lps_offset` sideways at its tightest turn, plus what it covers
+    # during the trigger's confirmation, the plan and the command delay (lps_latency_s) - or, if later, the
+    # brake gate's envelope (the same constants as pi/path_gate.py)
+    lps_offset: float = 0.30         # m sideways to clear a typical obstacle (half the car + margin + half a box)
+    lps_latency_s: float = 0.45      # s: confirm 0.15 + planning ~0.2 on the Pi + command delay 0.12
     lps_fos: float = 1.3
     lps_base: float = 0.05
     lps_reaction: float = 0.20
     lps_decel: float = 4.0
+    plan_lookahead_s: float = 0.15   # s: plans start from where the car will be when they arrive (latency compensation)
     evade_driver_override: float = 0.45   # stick: a driver steering harder than this takes over at once
     evade_max_s: float = 15.0        # s: a manoeuvre never lasts longer...
     evade_max_past: float = 2.5      # m: ...or goes further than this past the obstacle
@@ -62,6 +67,7 @@ class AssistConfig:
     goal_past: float = 0.30          # m past the obstacle + a body length before rejoining the line
     plan_kappa_max: float = 1.5      # 1/m: planner steering limit (measured tightest reliable turn ~0.65 m)
     plan_max_nodes: int = 2500
+    plan_timeout_s: float = 2.5      # s: no plan by then (both search budgets used) -> give up, the brake stays
     track_look: float = 0.30         # m pure-pursuit look-ahead on the planned path
     evade_speed: float = 0.40        # m/s: fastest the manoeuvre is driven (the driver's throttle is capped)
     reverse_speed: float = 0.15      # m/s when backing off
@@ -129,6 +135,9 @@ class DrivingAssists:
         self.intent_hold = False        # learned intent: an attentive driver who will handle it - no swerve (outside)
         self.intent_attentive = True    # the stick moved recently (outside); False limits the hold (last point to steer)
         self._planner = None
+        from .plan_service import PlanService
+        self.plan_service = PlanService("inline")   # the relay switches it to a worker process
+        self._job = None                # a search in progress
         self._track_i = 0
         self._x_goal_v = 1.0
         self.evade_pwm = None           # throttle the manoeuvre needs (cap, or reverse creep)
@@ -156,6 +165,7 @@ class DrivingAssists:
     def _stop_evading(self, why=None):
         self.evading = False
         self.phase = None
+        self._job = None                # a search still running is abandoned
         self.evade_side = 0
         self._trigger_for = 0.0
         if why:
@@ -180,13 +190,39 @@ class DrivingAssists:
         xb = float(on[:, 0].min()) if len(on) else self.ex + 1.0
         return xb + (self.p.front_x - self.p.rear_x) + self.cfg.goal_past
 
-    def _hastar_plan(self, pts_s, allow_reverse):
+    def _predicted_start(self, pts_s, v, kappa):
+        """Where the car will be when the plan arrives: plan_lookahead_s along the arc it is on (latency
+        compensation, as receding-horizon planners do). The current pose if that spot is not clear."""
+        s = max(0.0, v) * self.cfg.plan_lookahead_s
+        th = self.eth + kappa * s
+        if abs(kappa) < 1e-6:
+            x, y = self.ex + s * math.cos(self.eth), self.ey + s * math.sin(self.eth)
+        else:
+            x = self.ex + (math.sin(th) - math.sin(self.eth)) / kappa
+            y = self.ey - (math.cos(th) - math.cos(self.eth)) / kappa
+        if s > 0.005 and len(pts_s):
+            c, sn = math.cos(th), math.sin(th)
+            dx, dy = pts_s[:, 0] - x, pts_s[:, 1] - y
+            lx, ly = c * dx + sn * dy, -sn * dx + c * dy
+            ex = np.maximum(np.maximum(self.p.rear_x - lx, 0.0), lx - self.p.front_x)
+            ey = np.maximum(np.abs(ly) - self.p.width / 2, 0.0)
+            if np.hypot(ex, ey).min() > self.cfg.evade_margin:
+                return (x, y, th)
+        return (self.ex, self.ey, self.eth)
+
+    def _submit_plan(self, pts_s, v=0.0, kappa=0.0):
+        """Start a Hybrid A* search (forward, then with reversing) off the control loop, from where the car will be
+        when the result arrives."""
         from .hybrid_astar import HybridAStar
-        if self._planner is None:
-            self._planner = HybridAStar(self.p, kappa_max=min(self.kappa_max, self.cfg.plan_kappa_max))
+        from .plan_service import BACKOFF_BUDGET_S, EVASIVE_BUDGET_S, plan_line_job
+        kmax = min(self.kappa_max, self.cfg.plan_kappa_max)
+        if self._planner is None:                   # kept here only for the cheap "is the plan still clear" check
+            self._planner = HybridAStar(self.p, kappa_max=kmax)
         near = pts_s[(pts_s[:, 0] > self.ex - 1.0) & (pts_s[:, 0] < self.ex + 5.0) & (np.abs(pts_s[:, 1]) < 2.0)]
-        return self._planner.plan(near, (self.ex, self.ey, self.eth), x_goal=self._x_goal_v,
-                                  allow_reverse=allow_reverse, max_nodes=self.cfg.plan_max_nodes)
+        svc = self.plan_service
+        start = self._predicted_start(near, v, kappa)
+        self._job = svc.submit(plan_line_job, self.p, kmax, near, start, self._x_goal_v,
+                               self.cfg.plan_max_nodes, 4000, svc.budget(EVASIVE_BUDGET_S), svc.budget(BACKOFF_BUDGET_S))
 
     def _path_still_clear(self, pts_s):
         if self._plan_poses is None or self._planner is None:
@@ -226,12 +262,12 @@ class DrivingAssists:
         return path, line
 
     def _last_point_to_steer(self, v):
-        """Distance along the driver's path below which a held-back swerve must start: where the brake gate would
-        begin to limit (FOS x stopping distance), plus the travel during the trigger's confirm time."""
+        """Distance along the driver's path below which a held-back swerve must start (see AssistConfig)."""
         c = self.cfg
         v = abs(v)
-        stop = c.lps_base + v * c.lps_reaction + v * v / (2 * c.lps_decel)
-        return c.lps_fos * stop + v * (c.evade_confirm_s + 0.05)
+        steer = v * c.lps_latency_s + math.sqrt(2.0 * c.lps_offset / max(c.plan_kappa_max, 0.1))
+        stop = c.lps_fos * (c.lps_base + v * c.lps_reaction + v * v / (2 * c.lps_decel)) + v * (c.evade_confirm_s + 0.05)
+        return max(steer, stop)
 
     def _evasive(self, dt, pts, steer, pwm, v):
         c = self.cfg
@@ -282,36 +318,53 @@ class DrivingAssists:
                 return steer, None
             self.ex = self.ey = self.eth = 0.0      # the line frame: the car now, the driver's path straight ahead
             self._x_goal_v = self._x_goal(pts)
-            path = self._hastar_plan(pts, allow_reverse=False)
-            if path is None:
-                path = self._hastar_plan(pts, allow_reverse=True)      # back off first, then go round
-            if path is None:
-                self.info["evasive"] = "no safe way around - braking only"
-                self._trigger_for = 0.0
-                return steer, 2
-            self._plan_poses, self._track_i = path, 0
-            self.phase, self.evading = "EXECUTE", True
+            self._submit_plan(pts, v, k_drv)        # off the control loop (adas/plan_service.py)
+            self.phase, self.evading = "PLANNING", False
             self.phase_t = 0.0
             self._since_plan = 0.0
+            dt_poll = 0.0
+        else:
+            dt_poll = dt
+        # a search running in the planner: take its result when it is ready
+        if self._job is not None and self._job.ready(dt_poll):
+            path, self._job = self._job.result(), None
+            if self.phase == "PLANNING":
+                if path is None:
+                    self._stop_evading("no safe way around - braking only")
+                    return steer, 2
+                self._plan_poses, self._track_i = path, 0
+                self.phase, self.evading = "EXECUTE", True
+                self.phase_t = 0.0
+            elif path is None:
+                self.phase = "WAIT"                 # keep the original line and keep trying; the brake holds the car
+            else:
+                self._plan_poses, self._track_i = path, 0
+                self.phase = "EXECUTE"
+                self.replans += 1
         self.phase_t += dt
         self._since_plan += dt
+        if self.phase == "PLANNING":
+            if self.phase_t > c.plan_timeout_s:
+                self._stop_evading("planning took too long - braking only")
+                return steer, 2
+            self.info["evasive"] = "planning a way around"
+            return steer, 1                         # the driver keeps control meanwhile; the brake gate watches
 
         pts_s = self._to_start_frame(pts)
-        if self._since_plan >= c.replan_period:
+        if self._since_plan >= c.replan_period and self._job is None:
             self._since_plan = 0.0              # new scans: keep the plan if it is still clear, otherwise re-plan
             if self.phase == "WAIT":
                 self._since_plan = -0.3             # searching again: every 0.6 s, not every 0.3 s
             if self.phase == "WAIT" or not self._path_still_clear(pts_s):
-                path = self._hastar_plan(pts_s, allow_reverse=False)
-                if path is None:
-                    path = self._hastar_plan(pts_s, allow_reverse=True)
-                if path is None:
-                    # keep the original line and keep trying; the path brake holds the car meanwhile
-                    self.phase = "WAIT"
-                else:
-                    self._plan_poses, self._track_i = path, 0
-                    self.phase = "EXECUTE"
-                    self.replans += 1
+                self._submit_plan(pts_s, v if self.phase == "EXECUTE" else 0.0, self.evade_kappa)
+                if self._job.ready(0.0):            # inline without latency: take it at once
+                    path, self._job = self._job.result(), None
+                    if path is None:
+                        self.phase = "WAIT"
+                    else:
+                        self._plan_poses, self._track_i = path, 0
+                        self.phase = "EXECUTE"
+                        self.replans += 1
         if self.phase == "WAIT":
             if self.phase_t > c.evade_max_s:
                 self._stop_evading("no way around found - handed back")

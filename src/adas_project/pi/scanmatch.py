@@ -23,12 +23,31 @@ def rot(th):
     return np.array([[c, -s], [s, c]])
 
 
-def icp(A, B, init=(0.0, 0.0, 0.0), iters=18, gates=(0.35, 0.18, 0.10)):
+try:
+    from scipy.spatial import cKDTree
+except ImportError:                    # pragma: no cover
+    cKDTree = None
+
+
+def _nearest(A, tree, P):
+    """Nearest point of A for each row of P: (distance, index). k-d tree (as KISS-ICP / libpointmatcher) - the
+    brute-force distance matrix it replaces cost ~10 ms per match on the Pi and stalled the control loop."""
+    if tree is not None:
+        return tree.query(P)
+    d2 = ((P[:, None, :] - A[None, :, :]) ** 2).sum(-1)
+    j = d2.argmin(1)
+    return np.sqrt(d2[np.arange(len(P)), j]), j
+
+
+def icp(A, B, init=(0.0, 0.0, 0.0), iters=18, gates=(0.35, 0.18, 0.10), tree=None):
     """Find (R, t) with A ~= B @ R.T + t  (maps the NEWER scan B onto the OLDER scan A).
     Returns (R, t, rot_rad, mean_resid, n_inliers) or None. `init` = (dx, dy, dth) guess of the
-    car's motion between the scans (the pose of the new scan's origin in the old frame)."""
+    car's motion between the scans (the pose of the new scan's origin in the old frame). `tree`: a cKDTree of A,
+    if the caller keeps one (A is matched against repeatedly)."""
     if len(A) < 50 or len(B) < 50:
         return None
+    if tree is None and cKDTree is not None:
+        tree = cKDTree(A)
     th = init[2]
     R = rot(th)
     t = np.array([init[0], init[1]], float)
@@ -36,9 +55,7 @@ def icp(A, B, init=(0.0, 0.0, 0.0), iters=18, gates=(0.35, 0.18, 0.10)):
     for k in range(iters):
         gate = gates[min(k * n_g // iters, n_g - 1)]
         Bt = B @ R.T + t
-        d2 = ((Bt[:, None, :] - A[None, :, :]) ** 2).sum(-1)
-        j = d2.argmin(1)
-        dist = np.sqrt(d2[np.arange(len(B)), j])
+        dist, j = _nearest(A, tree, Bt)
         keep = dist < gate
         if keep.sum() < 30:
             return None
@@ -52,19 +69,20 @@ def icp(A, B, init=(0.0, 0.0, 0.0), iters=18, gates=(0.35, 0.18, 0.10)):
         ti = qc - Ri @ pc
         R, t = Ri @ R, Ri @ t + ti
     Bt = B @ R.T + t
-    d2 = ((Bt[:, None, :] - A[None, :, :]) ** 2).sum(-1)
-    dist = np.sqrt(d2.min(1))
+    dist, _ = _nearest(A, tree, Bt)
     ok = dist < gates[-1] * 1.5
     if ok.sum() < 30:
         return None
     return R, t, float(np.arctan2(R[1, 0], R[0, 0])), float(dist[ok].mean()), int(ok.sum())
 
 
-def match_residual(A, B, dx, dy, th, gate=0.15):
+def match_residual(A, B, dx, dy, th, gate=0.15, tree=None):
     """Mean nearest-neighbour distance of scan B placed at (dx, dy, th) in A's frame, over points within `gate`,
     and how many points that was. Same measure icp() reports, but at a fixed pose (no iterations)."""
     Bt = B @ rot(th).T + np.array([dx, dy])
-    d = np.sqrt(((Bt[:, None, :] - A[None, :, :]) ** 2).sum(-1).min(1))
+    if tree is None and cKDTree is not None:
+        tree = cKDTree(A)
+    d, _ = _nearest(A, tree, Bt)
     ok = d < gate
     return (float(d[ok].mean()) if ok.any() else 9.0), int(ok.sum())
 
@@ -84,15 +102,20 @@ class Odometry:
         self.along_fallbacks = 0     # scans where the along-corridor distance came from the speed prediction
         self.last_source = None      # 'icp', 'along_pred' (dx predicted) or 'pred' (whole step predicted)
 
+    def _tree(self, pts):
+        return cKDTree(pts) if cKDTree is not None and len(pts) else None
+
     def update(self, xy, t, v_pred, kappa_pred):
         if self.prev is None or self.prev_t is None:
             self.prev, self.prev_t = xy, t
+            self.prev_tree = self._tree(xy)
             self.ref = xy
+            self.ref_tree = self.prev_tree              # the start scan's tree is built once for the manoeuvre
             return self.pose
         dt = max(t - self.prev_t, 1e-3)
         dth = kappa_pred * v_pred * dt
         init = (v_pred * dt, 0.0, dth)
-        res = icp(self.prev, xy, init)
+        res = icp(self.prev, xy, init, tree=self.prev_tree)
         ok = res is not None and res[3] < 0.05 and res[4] >= 45 and abs(res[2] - dth) < np.radians(6)
         if ok:
             R, tt, th, resid, n_in = res
@@ -103,7 +126,7 @@ class Odometry:
             # just as well at the predicted distance, the scan cannot tell - trust the prediction for dx.
             step = v_pred * dt
             if step > 0.01 and abs(dx - step) > 0.4 * step:
-                r_pred, n_pred = match_residual(self.prev, xy, step, dy, dth_used)
+                r_pred, n_pred = match_residual(self.prev, xy, step, dy, dth_used, tree=self.prev_tree)
                 if r_pred <= resid * 1.15 and n_pred >= 0.9 * n_in:
                     dx = step
                     self.along_fallbacks += 1
@@ -116,12 +139,13 @@ class Odometry:
         c, s = np.cos(thw), np.sin(thw)
         self.pose = np.array([x + c * dx - s * dy, y + s * dx + c * dy, thw + dth_used])
         self.prev, self.prev_t = xy, t
+        self.prev_tree = self._tree(xy)
         self.n += 1
         # scan-to-reference correction: the start scan (walls + the obstacle) is static, so
         # registering against it gives the pose directly with no accumulated drift
         if self.n % 2 == 0 and self.ref is not None:
             x, y, thw = self.pose
-            res = icp(self.ref, xy, (x, y, thw), iters=16, gates=(0.25, 0.12, 0.08))
+            res = icp(self.ref, xy, (x, y, thw), iters=16, gates=(0.25, 0.12, 0.08), tree=self.ref_tree)
             # strict gate while the scene still looks like the start scan; a looser one (still needing a
             # decent inlier count and a modest correction) once the overlap has shrunk - that is exactly
             # when the scan-to-scan drift needs correcting most

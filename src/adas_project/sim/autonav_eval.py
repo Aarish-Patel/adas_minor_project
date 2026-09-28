@@ -35,7 +35,6 @@ def drive(world_name, goal, t_max=40.0, seed=0):
     def hook(t, assist, pts, seq):
         if not st["started"] and seq >= 2:
             st["started"] = True
-            assist.nav.threaded = False          # deterministic here; on the car the planner runs in a thread
             t0 = time.perf_counter()
             st["ok_plan"] = assist.goto(*goal, points=pts)
             st["plan_ms"] = (time.perf_counter() - t0) * 1000

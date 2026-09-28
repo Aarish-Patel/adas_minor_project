@@ -19,7 +19,16 @@ from .geometry import travel_distance_to_contact
 
 LAGS = (0, 2, 4, 8, 16)            # ticks of 0.05 s
 ARCS = (-20, -10, 0, 10, 20)       # servo degrees relative to now
+PWM_LAGS = (4, 8, 16)              # throttle 0.2, 0.4, 0.8 s ago (ticks)
 HORIZON_S = 0.5
+FREE_NOW = len(LAGS) + 3 + 2 + ARCS.index(0)   # index of the free distance on the current arc (/1.5 m)
+# the stopping distance used for the physics feature (pi/path_gate.py: BASE + v*REACTION + v^2/2*DECEL)
+STOP_BASE, STOP_REACTION, STOP_DECEL = 0.05, 0.20, 4.0
+
+
+def free_now(f):
+    """Free distance (m) along the current arc from a feature vector."""
+    return float(f[FREE_NOW]) * 1.5
 
 
 class DriverProfile:
@@ -45,8 +54,10 @@ class DriverProfile:
         return float(np.median(self.onsets))
 
 
-def features(servo_hist, pwm, v, pts, params, centre, k_per_deg, dt=0.05, profile=None):
-    """Feature vector (or None if the history is too short). servo_hist oldest first, one entry per tick."""
+def features(servo_hist, pwm, v, pts, params, centre, k_per_deg, dt=0.05, profile=None, pwm_hist=None):
+    """Feature vector (or None if the history is too short). servo_hist / pwm_hist oldest first, one entry per tick.
+    v2 adds what shows a driver's awareness besides the stick: the throttle history (easing off before an obstacle)
+    and two physics features - time to contact and free distance in stopping distances on the current arc."""
     if len(servo_hist) < LAGS[-1] + 1:
         return None
     s_now = servo_hist[-1]
@@ -67,22 +78,57 @@ def features(servo_hist, pwm, v, pts, params, centre, k_per_deg, dt=0.05, profil
             if len(pts) else math.inf
         f.append(min(d, 1.5) / 1.5)
     react = profile.reaction_distance if profile is not None else 1.0
-    free_now = f[-3] * 1.5
-    f += [react, max(0.0, react - free_now)]                       # this driver's usual reaction distance, overdue
+    fn = f[FREE_NOW] * 1.5
+    f += [react, max(0.0, react - fn)]                             # this driver's usual reaction distance, overdue
+    ph = list(pwm_hist) if pwm_hist is not None and len(pwm_hist) > PWM_LAGS[-1] else [pwm] * (PWM_LAGS[-1] + 1)
+    f += [ph[-1 - l] / 255.0 for l in PWM_LAGS]
+    f.append((pwm - max(ph[-21:])) / 255.0)                        # easing off over the last second (<= 0)
+    av = abs(v)
+    f.append(min(fn / max(av, 0.05), 3.0) / 3.0)                   # time to contact on the current arc
+    stop = STOP_BASE + av * STOP_REACTION + av * av / (2 * STOP_DECEL)
+    f.append(min(fn / stop, 5.0) / 5.0)                            # free distance in stopping distances
     return np.array(f, float)
 
 
 class IntentNet:
+    """Loads either model the trainer writes: "classifier" / "regressor" (MLP weights) or "trees" (gradient-boosted
+    trees exported from scikit-learn's HistGradientBoostingClassifier, evaluated here in numpy - no sklearn on the
+    car). All trees are walked at once, one depth level per step: ~0.05 ms for 100 trees of depth 3."""
+
     def __init__(self, path):
         d = json.load(open(path))
+        self.kind = d.get("kind", "regressor")
+        self.report = d.get("report", {})
+        if self.kind == "trees":
+            self.feat = np.array(d["feature"], int)
+            self.thr = np.array(d["threshold"], float)
+            self.left = np.array(d["left"], int)
+            self.right = np.array(d["right"], int)
+            self.leaf = np.array(d["leaf"], bool)
+            self.value = np.array(d["value"], float)
+            self.baseline = float(d["baseline"])
+            self.depth = int(d["max_depth"])
+            self._rows = np.arange(len(self.feat))
+            return
         self.W = [np.array(w) for w in d["W"]]
         self.b = [np.array(b) for b in d["b"]]
         self.mu, self.sd = np.array(d["mu"]), np.array(d["sd"])
         self.act = d.get("activation", "tanh")
-        self.kind = d.get("kind", "regressor")
-        self.report = d.get("report", {})
+
+    def _trees_raw(self, x):
+        x = np.asarray(x, float)
+        node = np.zeros(len(self.feat), int)
+        r = self._rows
+        for _ in range(self.depth + 1):
+            f = self.feat[r, node]
+            go_left = x[f] <= self.thr[r, node]
+            nxt = np.where(go_left, self.left[r, node], self.right[r, node])
+            node = np.where(self.leaf[r, node], node, nxt)
+        return self.baseline + float(self.value[r, node].sum())
 
     def predict_servo_change(self, x):
+        if self.kind == "trees":
+            return self._trees_raw(x)
         h = (np.asarray(x) - self.mu) / self.sd
         for i, (W, b) in enumerate(zip(self.W, self.b)):
             h = h @ W + b

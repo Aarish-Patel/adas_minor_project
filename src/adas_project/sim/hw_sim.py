@@ -29,6 +29,9 @@ ROOT = os.path.join(HERE, "..")
 # instantly, 1-2 cm drift"). The old 2 m/s^2 coast was an unfitted default.
 MEASURED_COAST_DECEL = 4.0
 MEASURED_BRAKE_DECEL = 8.0
+# The Pi 5 (Cortex-A76, 2.4 GHz) runs this Python ~3.5x slower than the laptop: simulations release path plans
+# after the time the Pi would have needed (adas/plan_service.py inline mode); sim/profile_relay.py budgets with it
+PI_COMPUTE_FACTOR = 3.5
 
 
 def load_car_model():

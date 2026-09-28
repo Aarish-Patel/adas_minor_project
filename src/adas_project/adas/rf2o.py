@@ -17,7 +17,9 @@ import numpy as np
 
 
 class RangeFlow:
-    def __init__(self, n_bins=720, r_min=0.2, r_max=8.0, iters=5, jump_m=0.06):
+    def __init__(self, n_bins=720, r_min=0.2, r_max=8.0, iters=3, jump_m=0.06):
+        # iters: warp-and-solve rounds; from the EKF's guess it has converged after 2-3 on the real drive log
+        # (0.04 cm/s from the 8-round answer), and each round costs ~0.2 ms on a laptop
         self.n = n_bins
         self.da = 2 * math.pi / n_bins
         self.alpha = (np.arange(n_bins) + 0.5) * self.da - math.pi

@@ -81,8 +81,7 @@ class ClickToGoTests(unittest.TestCase):
         self.assertFalse(r["crashed"])
 
     def test_holds_after_arrival_until_the_throttle_is_released(self):
-        a = RelayAssists(TUN)
-        a.nav.threaded = False
+        a = RelayAssists(TUN)                                   # inline planning: the plan is there at once
         self.assertTrue(a.goto(1.0, 0.0, points=[(0.0, 3.0)]))
         c = f"{a.centre:.0f}"
         held = [f"A {c} {c}", "M -150"]
@@ -94,11 +93,39 @@ class ClickToGoTests(unittest.TestCase):
 
     def test_steering_hands_back_at_once(self):
         a = RelayAssists(TUN)
-        a.nav.threaded = False
         a.goto(1.5, 0.0, points=[(0.0, 3.0)])
         out = a.process([f"A {a.centre + 30:.0f} {a.centre + 30:.0f}", "M -150"], [(0.0, 3.0)], 1, now=0.0)
         self.assertFalse(a.nav.active)
         self.assertIn("M -150", out)
+
+
+class PlanServiceTests(unittest.TestCase):
+    def test_worker_process_plans_without_blocking(self):
+        """The relay's mode: the search runs in another process; submitting returns at once."""
+        import time
+        from adas.plan_service import PlanService, plan_line_job
+        from sim.hw_worlds import doorway
+        svc = PlanService("process").start()
+        try:
+            pts = world_points(doorway()[0])
+            t0 = time.perf_counter()
+            job = svc.submit(plan_line_job, P, 1.5, pts, (0.0, 0.0, 0.0), 2.3, 2500, 4000)
+            self.assertLess(time.perf_counter() - t0, 0.05)
+            while not job.ready():
+                time.sleep(0.01)
+            path = job.result()
+            self.assertIsNotNone(path)
+            self.assertGreater(path[-1, 0], 2.8)
+        finally:
+            svc.shutdown()
+
+    def test_inline_mode_releases_after_the_pi_delay(self):
+        from adas.plan_service import PlanService
+        svc = PlanService("inline", latency_factor=1e6)
+        job = svc.submit(sum, [1, 2])
+        self.assertFalse(job.ready(0.05))
+        self.assertTrue(job.ready(1e6))
+        self.assertEqual(job.result(), 3)
 
 
 class GateTests(unittest.TestCase):
@@ -146,12 +173,33 @@ class IntentTests(unittest.TestCase):
     def test_model_loads_and_scores(self):
         from adas.intent_net import DriverProfile, IntentNet, features
         net = IntentNet(os.path.join(ROOT, "pi", "intent_net.json"))
-        self.assertGreater(net.report.get("test_auc", 0), 0.75)
+        self.assertGreater(net.report.get("test_auc", 0), 0.8)
         hist = [87.0] * 80
-        pts = wall(P.front_x + 0.4, -1, P.front_x + 0.4, 1)              # wall 40 cm ahead, stick frozen
-        f = features(hist, 150, 0.45, pts, P, 87.0, 0.0656, profile=DriverProfile())
-        self.assertIsNotNone(f)
-        self.assertGreater(net.crash_probability(f), 0.3)                 # frozen stick at a wall: risky
+        p = []
+        for d in (1.2, 0.25):                                              # stick frozen, throttle held
+            pts = wall(P.front_x + d, -1, P.front_x + d, 1)
+            f = features(hist, 150, 0.45, pts, P, 87.0, 0.0656, profile=DriverProfile())
+            self.assertIsNotNone(f)
+            p.append(net.crash_probability(f))
+        self.assertGreater(p[1], p[0])                                      # closer = riskier
+
+    def test_frozen_stick_hold_ends_at_the_last_point_to_steer(self):
+        """However much the model trusts a driver who is NOT moving the stick, the swerve still starts in time."""
+        from adas.assists import DrivingAssists
+        a = DrivingAssists(P, TUN.speed_model)
+        a.enabled["evasive"] = True
+        a.intent_hold, a.intent_attentive, a.intent_k_rate = True, False, 0.0
+        v = 0.8
+        lps = a._last_point_to_steer(v)
+        for gap, expect in ((lps + 0.25, False), (lps - 0.1, True)):
+            a._stop_evading()
+            a._trigger_for = 0.0
+            box = wall(P.front_x + gap + 0.03, -0.15, P.front_x + gap + 0.03, 0.15, 40)
+            started = False
+            for _ in range(6):                                              # > the 0.15 s confirm time
+                a.update(0.05, box, 0.0, 200, v)
+                started = started or a.phase is not None
+            self.assertEqual(started, expect, f"gap {gap:.2f} m, last point to steer {lps:.2f} m")
 
 
 class RelayScenarioTests(unittest.TestCase):

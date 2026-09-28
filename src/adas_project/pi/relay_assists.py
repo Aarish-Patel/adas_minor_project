@@ -144,7 +144,7 @@ class RelayIntent:
         self.net = IntentNet(path) if os.path.exists(path) else None
         self.profile = DriverProfile()
         self.assist, self.trust_threshold = assist, trust
-        self.hist, self.last_t = [], None
+        self.hist, self.pwm_hist, self.last_t = [], [], None
         self.p_crash, self.trusted, self.attentive = None, False, False
 
     def update(self, now, servo, physical, v, points):
@@ -153,14 +153,16 @@ class RelayIntent:
         if self.last_t is not None and now - self.last_t < 0.05 - 1e-6:
             return
         self.last_t = now
+        from adas.intent_net import free_now
         a = self.assist
         self.hist = (self.hist + [servo])[-80:]
+        self.pwm_hist = (self.pwm_hist + [physical])[-40:]
         self.p_crash, self.trusted = None, False
         if self.net is not None:
             f = features(self.hist, physical, v, a.points_vehicle_frame(points, a.p.lidar_x), a.p, a.centre,
-                         K_CURV_PER_SERVO_DEG, profile=self.profile)
+                         K_CURV_PER_SERVO_DEG, profile=self.profile, pwm_hist=self.pwm_hist)
             if f is not None:
-                self.profile.update(self.hist, f[len(f) - 5] * 1.5)
+                self.profile.update(self.hist, free_now(f))
                 self.p_crash = self.net.crash_probability(f)
                 self.trusted = self.p_crash < self.trust_threshold
         k_rate = driver_intent(self.hist, 0.05, a.centre)
@@ -187,11 +189,16 @@ class RelayIntent:
 class RelayAssists:
     NAMES = ("evasive", "centring", "limiter", "narrow", "proximity")
 
-    def __init__(self, tuning, motor_reversed=True):
+    def __init__(self, tuning, motor_reversed=True, plan_mode="inline", plan_latency=0.0):
+        """plan_mode 'process': path searches run in a worker process (the relay); 'inline' computes them at once,
+        released after compute time x plan_latency (simulations: the Pi's delay)."""
+        from adas.plan_service import PlanService
         self.p = car_params(tuning.mount)
         self.centre = float(tuning.servo.left_center)
         self.model = tuning.speed_model
         self.assists = DrivingAssists(self.p, self.model)
+        self.planner = PlanService(plan_mode, plan_latency).start()
+        self.assists.plan_service = self.planner
         self.est = SpeedEstimator(self.model)
         self.speed = None              # a RelaySpeed shared with the brake gate; if set, the assists use its speed
         self.reversed = motor_reversed
@@ -201,7 +208,7 @@ class RelayAssists:
         self.odo = None                # scan-matching odometry, only while a manoeuvre runs
         self._odo_seq = None
         from adas.autonav import AutoNav
-        self.nav = AutoNav(self.p, self.model)   # click-to-go autonomy (Hybrid A* + pure pursuit)
+        self.nav = AutoNav(self.p, self.model, service=self.planner)   # click-to-go (Hybrid A* + pure pursuit)
         self.nav_pose = (0.0, 0.0, 0.0)
         self._nav_stick = 0.0
         self._last_raw = []
@@ -245,7 +252,7 @@ class RelayAssists:
         """While a manoeuvre runs, track the car by matching each LiDAR scan against the one taken when it began
         (pi/scanmatch.py - ~1 cm on the car in the obstacle-avoidance demo) and hand the pose to the assist."""
         a = self.assists
-        if not (a.evading or self.nav.active):
+        if not (a.phase is not None or self.nav.active):     # a manoeuvre being planned or driven
             self.odo = None
             return
         if seq is None or seq == self._odo_seq or not points:
@@ -268,7 +275,7 @@ class RelayAssists:
     def goto(self, x, y, points=None):
         """Start driving to (x, y) m in the vehicle frame now (x forward from the rear axle, y left).
         points: the latest scan (relay format); defaults to the last one seen by process()."""
-        if self.assists.evading:
+        if self.assists.phase is not None:
             self.assists._stop_evading("autonomy started")
         self.odo, self.nav_pose = None, (0.0, 0.0, 0.0)
         raw = points if points else self._last_raw

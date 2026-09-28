@@ -3,25 +3,25 @@ picked on the GUI, tracked with pure pursuit and a curvature/distance speed prof
 the rest of the path. The path-predicted brake gate still has the last word; the relay hands control back as soon as
 the operator steers or brakes (pi/relay_assists.py).
 
-Planning runs in a worker thread (as a planner node would in ROS) so the relay's control loop never waits for it;
-the car holds still while a plan is being made.
+Planning runs off the control loop (adas/plan_service.py: a worker process on the car, as a planner node would in
+ROS) so the relay's control loop never waits for it; the car holds still while a plan is being made.
 
 Frame: the "start frame" is the vehicle frame when the goal was picked (x forward from the rear axle, y left); the
 relay feeds the car's pose in it from scan matching.
 """
 import math
-import threading
 
 import numpy as np
 
 from .hybrid_astar import Grid, HybridAStar
+from .plan_service import GOTO_BUDGET_S, PlanService, plan_point_job
 
 
 class AutoNav:
-    def __init__(self, params, speed_model, kappa_max=1.5, cruise=0.30, look=0.30, arrive=0.08, threaded=True):
+    def __init__(self, params, speed_model, kappa_max=1.5, cruise=0.30, look=0.30, arrive=0.08, service=None):
         self.p, self.model = params, speed_model
         self.kappa_max, self.cruise, self.look, self.arrive = kappa_max, cruise, look, arrive
-        self.threaded = threaded
+        self.service = service or PlanService("inline")
         self.state = "idle"               # idle | planning | driving
         self.path = None
         self.goal = None
@@ -31,50 +31,30 @@ class AutoNav:
         self.replan_t = 0.0
         self.replans = 0
         self.plan_ms = None
-        self._lock = threading.Lock()
-        self._result = None               # (path or None, ms) handed over by the worker
-        self._gen = 0                     # plans from a cancelled goal are dropped
+        self._job = None                  # the search in progress (plans from a cancelled goal are dropped)
+        self._job_t = 0.0
 
     @property
     def active(self):
         return self.state != "idle"
 
     # ------------------------------------------------------------------ planning
-    def _plan(self, pts_start, start):
-        ha = HybridAStar(self.p, kappa_max=self.kappa_max)
-        gx, gy = self.goal
-        x, y, th = start
-        behind = math.cos(th) * (gx - x) + math.sin(th) * (gy - y) < 0
-        if not behind:                     # forward-only search first: cheaper (half the primitives)
-            path = ha.plan_to_point(pts_start, start, self.goal, max_nodes=2500)
-            if path is not None:
-                return path
-        return ha.plan_to_point(pts_start, start, self.goal, allow_reverse=True, max_nodes=6000)
-
     def _launch(self, pts_start, start):
+        import time
         self.state = "planning"
-        self._gen += 1
-        gen = self._gen
-
-        def work():
-            import time
-            t0 = time.perf_counter()
-            path = self._plan(pts_start, start)
-            with self._lock:
-                if gen == self._gen:
-                    self._result = (path, (time.perf_counter() - t0) * 1000)
-        if self.threaded:
-            threading.Thread(target=work, daemon=True).start()
-        else:
-            work()
+        self._job_t = time.perf_counter()
+        self._job = self.service.submit(plan_point_job, self.p, self.kappa_max, pts_start, start, self.goal,
+                                        self.service.budget(GOTO_BUDGET_S))
+        if self._job.ready(0.0):
             self._collect()
 
     def _collect(self):
-        with self._lock:
-            res, self._result = self._result, None
-        if res is None:
+        import time
+        job, self._job = self._job, None
+        if job is None:
             return
-        path, self.plan_ms = res
+        path = job.result()
+        self.plan_ms = self.service.last_ms if self.service.mode == "inline" else (time.perf_counter() - self._job_t) * 1000
         if path is None:
             self.state = "idle"
             self.msg = "no safe path to that point" if self.path is None else "path blocked - stopped"
@@ -93,7 +73,7 @@ class AutoNav:
         return self.state != "idle"
 
     def cancel(self, why="cancelled"):
-        self._gen += 1
+        self._job = None
         self.state = "idle"
         self.msg = why
 
@@ -112,7 +92,7 @@ class AutoNav:
     def step(self, dt, pose, pts_vehicle, v):
         """pose: the car in the start frame. Returns (curvature, target speed m/s, + forward), or None when
         finished or stopped. While a plan is being made it returns (0, 0): hold still."""
-        if self.state == "planning":
+        if self.state == "planning" and self._job is not None and self._job.ready(dt):
             self._collect()
         if self.state == "idle":
             return None

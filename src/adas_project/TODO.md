@@ -12,10 +12,29 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   from 0.7 m/s (~4 m/s^2), an active brake pulse 1-3 cm (~8 m/s^2); the twin's 2 m/s^2 was an unfitted default.
   Twin, speed EKF, gate DECEL 1.2 -> 4.0 and the swerve timing updated; full speed at a wall stops 25 cm short)
   **Braking model = the real car**: the car stops almost instantly (user: 1-2 cm drift).
-- [ ] K2. **Everything must run on the Pi 5 without processing delays**: profile every per-tick piece (gate
+- [x] K2. (done, measured ON the Pi 5 in ~/rc_bench with `tools/relay_latency.py` (the unchanged relay against the
+  virtual car, 20 Hz driver, evasive swerve at full throttle): input-to-motor 13 ms median / 20 ms 95th / 22 ms max
+  (was 28 / 70 / 83), motor command every ~50 ms (worst gap 67 ms, was 125). Fixes: path searches in a worker
+  process (`adas/plan_service.py`, started at launch, shut down on exit); k-d tree ICP in `pi/scanmatch.py` (the
+  70 ms spikes); speed EKF + intent after the motor write; vectorised LiDAR thread; memory prune vectorised;
+  RF2O 3 rounds; switch interval 1 ms; Hybrid A* compiled Dijkstra + early exit + vectorised primitives + 15 deg
+  bins for back-off searches + time budgets; latency-compensated plan start; last point to steer from the turning
+  geometry. Stage timing in the relay with RC_TIMING=1. Pi numbers: `python3 -m sim.profile_relay 2 --on-pi`,
+  `tools/plan_bench.py`) **Everything must run on the Pi 5 without processing delays**.
+- [ ] K6. Back-off (reversing) searches still take 0.46 s median / 1.8 s max on the Pi (the brake holds the car
+  meanwhile): a Reeds-Shepp heuristic (Dolgov 2010) would cut the nodes. Forward swerves are fast.
+- [ ] K7. The Pi reached 74 C under sustained load (throttles at 80-85 C): fit the official active cooler.
+  **Everything must run on the Pi 5 without processing delays**: profile every per-tick piece (gate
   sweeps, RF2O/EKF, intent MLP, evasive Hybrid A*, click-to-go), set a budget, move anything slow off the control
   loop (worker thread) or make it cheaper; benchmark on the Pi itself when it is reachable.
-- [ ] K3. **Much smarter, more accurate intent-aware ADAS**: interventions down to a very small number, 0 crashes.
+- [ ] K3. (in progress: gradient-boosted trees in numpy (AUC 0.86, avg precision 0.48 vs MLP 0.38), throttle
+  history + time-to-contact + stopping-distance features, near-miss labels, 5 driver styles; trusted active
+  drivers get a predicted-path soft cap; frozen-stick hold limited by the last point to steer. Latest 120 paired
+  drives with the Pi's planning delay, 0 crashes: needless takeovers ADAS 66 -> ADAS+intent 31, overridden
+  needlessly 168 -> 94 s (p = 0.0002). Open: the correct (earlier) last point to steer cost intent some of its
+  takeover reduction (was 35 -> 5 with swerves that were too late to work on the Pi); aggressive drivers still
+  ~3 margin interventions per drive (K5); retrain on real drives (B15))
+  **Much smarter, more accurate intent-aware ADAS**: interventions down to a very small number, 0 crashes.
 - [ ] K4. (in progress: 5 driver styles - lapsing, late, good, distracted, aggressive; drivers now slow down and
   stop like people (before, they only steered at constant throttle and crashed head-on even without lapses);
   ground truth counts near misses (< 2 cm) as needed. 120 paired drives: 0 crashes with any ADAS; ADAS+intent vs

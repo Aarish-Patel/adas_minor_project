@@ -14,6 +14,13 @@ import math
 
 import numpy as np
 
+try:                                   # imported once at start-up: importing inside the scan callback cost ~0.1 s
+    from scipy.spatial import cKDTree
+except ImportError:                    # pragma: no cover
+    cKDTree = None
+
+VOXEL = 0.02                           # m: remembered points are de-duplicated on this grid
+
 
 class ObstacleMemory:
     def __init__(self, p, blind_radius=0.24, keep_radius=1.2, max_age=3.0, max_points=400, max_travel=None):
@@ -53,13 +60,14 @@ class ObstacleMemory:
     def add_scan(self, points, exclude=None):
         """points: the new scan (vehicle frame). exclude: (x, y, radius) of moving objects, not remembered."""
         # 1) forget remembered points that this scan can see are no longer there
-        if len(self.pts) and len(points):
-            from scipy.spatial import cKDTree
+        if len(self.pts) and len(points) and cKDTree is not None:
             v = self._to_vehicle(self.pts)
             d_lidar = np.hypot(v[:, 0] - self.p.lidar_x, v[:, 1] - self.p.lidar_y)
-            dist, _ = cKDTree(points).query(v)
             visible = d_lidar > self.blind_radius + 0.03
-            keep = ~visible | (dist < 0.10)
+            keep = ~visible
+            if visible.any():
+                dist, _ = cKDTree(points).query(v[visible], distance_upper_bound=0.10)
+                keep[visible] = np.isfinite(dist)
             self.pts, self.age, self.seen_at = self.pts[keep], self.age[keep], self.seen_at[keep]
 
         # 2) remember the near part of the new scan, except moving objects
@@ -75,6 +83,12 @@ class ObstacleMemory:
                 self.pts = np.vstack([self.pts, self._to_local(near)])
                 self.age = np.concatenate([self.age, np.zeros(len(near))])
                 self.seen_at = np.concatenate([self.seen_at, np.full(len(near), self.travel)])
+                # one point per 2 cm cell, the newest (the scan repeats the same wall ten times a second)
+                cells = np.floor(self.pts / VOXEL).astype(np.int64)
+                key = cells[:, 0] * 1_000_003 + cells[:, 1]
+                _, last = np.unique(key[::-1], return_index=True)
+                idx = len(key) - 1 - last
+                self.pts, self.age, self.seen_at = self.pts[idx], self.age[idx], self.seen_at[idx]
 
         if self.max_travel is None:
             keep = self.age < self.max_age
@@ -101,14 +115,15 @@ class ObstacleMemory:
         md = np.hypot(v[:, 0] - lx, v[:, 1] - ly)
         sb = np.degrees(np.arctan2(scan_pts[:, 1] - ly, scan_pts[:, 0] - lx))
         sd = np.hypot(scan_pts[:, 0] - lx, scan_pts[:, 1] - ly)
-        order = np.argsort(sb)
-        sb, sd = sb[order], sd[order]
-        keep = np.ones(len(v), dtype=bool)
-        for i in range(len(v)):
-            lo = np.searchsorted(sb, mb[i] - beam_deg)
-            hi = np.searchsorted(sb, mb[i] + beam_deg)
-            if hi > lo and sd[lo:hi].max() > md[i] + slack:
-                keep[i] = False
+        # farthest return per 1-degree bearing bin, then the max over +-beam_deg (wrapping round): vectorised, no
+        # Python loop over the remembered points
+        far = np.full(360, -1.0)
+        np.maximum.at(far, np.floor(sb).astype(int) % 360, sd)
+        w = int(math.ceil(beam_deg))
+        win = far.copy()
+        for k in range(1, w + 1):
+            win = np.maximum(win, np.maximum(np.roll(far, k), np.roll(far, -k)))
+        keep = win[np.floor(mb).astype(int) % 360] <= md + slack
         self.pts, self.age, self.seen_at = self.pts[keep], self.age[keep], self.seen_at[keep]
 
     def blind_points(self):
