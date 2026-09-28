@@ -6,6 +6,22 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 ## A. Blocking the next car session
 - [ ] A1. **Deploy to the Pi.** The Pi still runs the version whose obstacle memory made a phantom wall and blocked
   forward driving. Deploy `adas/` and `pi/`, restart `rc-relay`, check a forward drive first.
+  (28 Sep: user OK'd the upload, motors off for now. Steps: back up ~/rc_car, keep the car's tuning_real_car.json /
+  cal_results.json / panel_params.json / car_model.json, upload, import + unit checks on the Pi, restart the
+  relay, check LiDAR/ESP32 link/GUI stream with no motor commands; then the user turns the motors on.)
+  Done: backup ~/rc_car_backup_20260928_1927.tgz, new adas/ + pi/ + car_model.json + intent_net.json copied in,
+  the car's json files kept, imports OK; offline probe on the Pi (virtual car/LiDAR, ~/rc_bench): 12.7 ms median,
+  20.3 ms 95th, 0 crashes, evasive went round the doorway box. Starting the relay from here was refused by the
+  permission check - the user starts Drive from the panel.
+- [ ] A2. Real-car tests requested by the user (28 Sep, motors on, obstacle in front):
+  - [x] LiDAR centring test: the panel script failed (USB ports missing before the Pi restarts); measured from
+    the live stream instead: object 0.48 m from the LiDAR spans -9.8..+11.6 deg, centre ~+1 deg -> the 63.4 deg
+    offset is still right within ~1 deg (if the object was dead centre). Nothing changed.
+  - Pi WiFi flaky (20% ping loss, 1 s spikes, SSH timeouts); USB LiDAR/ESP32 vanished once until a reboot
+    (brown-out when the motors were switched on?). ESP32 did not answer a relay PING within 200 ms.
+  - [ ] Hybrid A* click-to-go into open space
+  - [ ] Evasive steer at the obstacle
+  - [ ] Hybrid A* click-to-go to a goal behind/across the obstacle
 
 ## L. User requests (28 Sep, third round) - ADAS parked at "acceptable" (11/11 scenarios, 0 crashes), tune later
 - [x] L1. (done: tried "back up then re-plan" (ROS recovery style) - 7x slower, reverted; instead weighted-A*
