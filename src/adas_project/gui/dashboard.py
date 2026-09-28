@@ -383,7 +383,9 @@ ASSISTS = [("evasive", "Evasive steer", "Hybrid A* round an obstacle and back to
            ("centring", "Corridor centring", "keeps the car centred between walls; yields to a deliberate turn"),
            ("limiter", "Speed / steer limiter", "caps lateral acceleration in turns"),
            ("narrow", "Narrow gap", "slows for tight gaps, warns when the car will not fit"),
-           ("proximity", "Side / rear alerts", "warns about things beside or behind the car")]
+           ("proximity", "Side / rear alerts", "warns about things beside or behind the car"),
+           ("moving", "Moving obstacles", "predicts people / cars crossing: speeds up to get past, slows to let them by, "
+                                          "backs away if it must")]
 
 
 class Dashboard(QtWidgets.QMainWindow):

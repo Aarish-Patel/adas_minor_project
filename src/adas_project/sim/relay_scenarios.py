@@ -50,6 +50,8 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     vest = RelaySpeed(tun.speed_model, p.lidar_x)
     assist.speed = vest                          # as in the relay: the assists use the brake's speed
     t, next_scan, seq, pts = 0.0, 0.0, 0, []
+    from adas.tracking import Tracker
+    tracker = Tracker()                          # the relay's moving-object tracker, fed as in the relay
     rec = {"trace": [], "infos": set(), "max_level": 0, "min_clear": 9.0}
     while t < seconds:
         x, y, th, v, *_r, crashed = car.pose()
@@ -67,8 +69,10 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
             cw = np.where(cw > 180, cw - 360, cw)
             pts = [(round(float(a), 1), round(float(d), 3)) for a, d, o in zip(cw, r, ok) if o]
             seq += 1
-            gate.on_scan(RelayAssists.points_vehicle_frame(pts, p.lidar_x), seq)
+            vxy = RelayAssists.points_vehicle_frame(pts, p.lidar_x)
+            gate.on_scan(vxy, seq)
             vest.on_scan(pts, seq, t)
+            assist.set_tracks(tracker.update(vxy, t, vest.v, vest.w))
         stick, pwm = driver(t, x, y, th, v)
         servo = assist.stick_to_servo(stick)
         lines = [f"A {servo:.1f} {servo:.1f}", f"M {-int(pwm)}"]
@@ -99,6 +103,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
         car.command(f"M {-int(g_phys)}", now=t)
         t += DT
         car.step_to(t)
+        world.update(DT)                         # moving obstacles walk on
         rec["min_clear"] = min(rec["min_clear"], world.clearance(x, y, th, p))
     x, y, th, v, *_ = car.pose()
     rec.update(collided=car.crash_count > 0, x=x, y=y, th=th, v=v, evading_end=assist.assists.evading, p=p,
@@ -301,6 +306,45 @@ def nudge_clips_box():
                 f"{', stopped at x %.2f' % off['x'] if off['x'] < 3.0 else ''}")
 
 
+def _crossing_world(person_x, person_y, vy):
+    from sim.world import MovingCircle
+    w = _world()
+    w.add(MovingCircle(person_x, person_y, 0.0, vy, 0.06))
+    return w
+
+
+def moving_yield():
+    """A person walks across the car's path: with the moving-obstacle assist the car slows, lets them pass and goes
+    on; without it the car runs into them (the brake gate only reacts to what is in the way right now)."""
+    def person():
+        return _crossing_world(1.5, 0.9, -0.35)
+    on = run(person(), steady(150), 9, ("moving",), stop_when=lambda t, x, y, th, v: x > 2.6)
+    off = run(person(), steady(150), 9, (), stop_when=lambda t, x, y, th, v: x > 2.6)
+    ok = (not on["collided"]) and on["x"] > 2.4 and on["min_clear"] > 0.03
+    return ok, (f"person crossing at 0.35 m/s: with the assist no contact (closest {on['min_clear'] * 100:.0f} cm), "
+                f"went on to x {on['x']:.1f} m; without: {'contact' if off['collided'] else 'closest %.0f cm' % (off['min_clear'] * 100)}")
+
+
+def moving_pass():
+    """Someone who will only reach the path after the car has gone by: the car does not slow for them (or speeds up a
+    little to be through first) - it must not stop and wait for nothing."""
+    w = _crossing_world(1.6, 3.2, -0.5)
+    r = run(w, steady(140), 8, ("moving",), stop_when=lambda t, x, y, th, v: x > 2.6)
+    ok = (not r["collided"]) and r["x"] > 2.5 and r["t_end"] < 7.2
+    return ok, f"person 3.2 m to the side, walking in at 0.5 m/s: through in {r['t_end']:.1f} s, closest {r['min_clear'] * 100:.0f} cm"
+
+
+def moving_head_on():
+    """Something walks straight down the car's path towards it: the car does not drive into it - it stops or backs
+    away."""
+    from sim.world import MovingCircle
+    w = _world()
+    w.add(MovingCircle(2.6, 0.0, -0.45, 0.0, 0.06))
+    r = run(w, steady(150), 8, ("moving",))
+    ok = (not r["collided"]) and r["min_clear"] > 0.02
+    return ok, f"person walking straight at the car: no contact (closest {r['min_clear'] * 100:.0f} cm), car ended at x {r['x']:.2f} m"
+
+
 SCENARIOS = [("Evasive steer around a block", evasive_box),
              ("Steering correction instead of braking (nudge)", nudge_clips_box),
              ("Doorway at full throttle: no throttle cut mid-manoeuvre (B4)", doorway_full_throttle),
@@ -312,7 +356,10 @@ SCENARIOS = [("Evasive steer around a block", evasive_box),
              ("Narrow gap: won't fit", narrow_wont_fit),
              ("Narrow gap: tight but fits", narrow_tight_fits),
              ("Side proximity alert", proximity),
-             ("No needless slowing beside a wall", passing_beside_a_wall)]
+             ("No needless slowing beside a wall", passing_beside_a_wall),
+             ("Moving obstacle: yield to a crossing person", moving_yield),
+             ("Moving obstacle: no needless waiting for a late crosser", moving_pass),
+             ("Moving obstacle: head-on, stop or back away", moving_head_on)]
 
 
 def main(names=None):

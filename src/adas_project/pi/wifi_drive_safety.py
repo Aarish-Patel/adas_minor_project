@@ -950,6 +950,7 @@ def main():
                 # before the evasive steer, so a small correction pre-empts a full swerve
                 lines_in, _nd = assist.nudge(pgate, lines_in, vest.v_gate(1))
                 stages.mark("steering correction")
+                assist.set_tracks(clr.read_raw_tracks())      # moving objects for the crossing planner
                 text = "\n".join(assist.process(lines_in, gpts, gseq))
                 stages.mark("assists (+ scan matching)")
                 if assist.assists.evading or assist.nav.active:

@@ -171,6 +171,11 @@ class RelaySpeed:
         return e
 
 
+def _stick_of(kappa, p):
+    """Stick position (-1..1) for a path curvature (1/m, + = left)."""
+    return delta_to_steer(math.atan(kappa * p.wheelbase), p)
+
+
 class ThrottleSmoother:
     """Rate limit on the throttle actually sent (user, 28 Sep: the car jumped forward / backward when a manoeuvre
     re-planned or switched direction). Up gently, down quickly, and through zero when changing direction; a cut
@@ -285,7 +290,7 @@ class RelayIntent:
 
 
 class RelayAssists:
-    NAMES = ("evasive", "centring", "limiter", "narrow", "proximity", "nudge")
+    NAMES = ("evasive", "centring", "limiter", "narrow", "proximity", "nudge", "moving")
 
     def __init__(self, tuning, motor_reversed=True, plan_mode="inline", plan_latency=0.0):
         """plan_mode 'process': path searches run in a worker process (the relay); 'inline' computes them at once,
@@ -306,6 +311,10 @@ class RelayAssists:
         self.steer_envelope = True     # realistic, speed-dependent steering limit (steer_limit_kappa)
         self.steer_limited = None      # (asked, allowed) servo offsets when the envelope clipped the steering
         self.nudge_on = False          # steering correction instead of braking (see nudge())
+        self.moving_on = False         # predictive speed choice for moving obstacles (adas/crossing.py)
+        self._tracks = []              # the relay's moving-object tracks (adas/tracking.py), set every packet
+        self.crossing = None           # (action, target m/s, info) of the last decision, for the GUI
+        self._xhold, self._xv = None, {}    # a swerve being held (s), smoothed velocities of moving tracks
         self._nudge_note = None        # this tick's correction, for the GUI (process() keeps it)
         self.reversed = motor_reversed
         self.last_t = None
@@ -379,6 +388,8 @@ class RelayAssists:
                 self.set(k, on)
         elif name == "nudge":
             self.nudge_on = bool(on)
+        elif name == "moving":
+            self.moving_on = bool(on)
         elif name in self.NAMES:
             self.assists.enabled[name] = on
 
@@ -512,6 +523,7 @@ class RelayAssists:
         """lines: the driver's packet lines. Returns the lines to hand on to the safety gate, with the steering
         inside the realistic, speed-dependent envelope (steer_limit_kappa)."""
         out = self._process(lines, points, seq, now)
+        out = self._crossing(out, time.time() if now is None else now)
         out = self._zone_cap(out)
         if not self.steer_envelope:
             return out
@@ -533,6 +545,110 @@ class RelayAssists:
                     self.steer_limited = None
             res.append(ln)
         return res
+
+    def set_tracks(self, tracks):
+        self._tracks = list(tracks or [])
+
+    def _crossing(self, out, now=0.0):
+        """Predictive speed choice for MOVING obstacles (user, 28 Sep): the car keeps its path (the driver's steering
+        arc, or the planned leg in autonomy) and only its speed changes - speed up to get past first, slow down to
+        let it pass, stop, or back away if it is coming at the car (adas/crossing.py). The brake gate still has the
+        last word on the throttle."""
+        self.crossing = None
+        if not self.moving_on or not self._tracks:
+            self._xhold, self._xv = None, {}
+            return out
+        from adas.crossing import CrossingConfig, arc_path, decide
+        from adas.geometry import travel_distance_to_contact
+        # the tracked velocity is noisy (a straight-line fit over ~0.5 s of a few points): smooth it per track, or
+        # the decision flips between yield / pass every tick
+        moving, seen = [], {}
+        for t in self._tracks:
+            if not t.moving:
+                continue
+            ov = self._xv.get(t.id, t.vel_obj)
+            sv = (0.6 * ov[0] + 0.4 * t.vel_obj[0], 0.6 * ov[1] + 0.4 * t.vel_obj[1])
+            seen[t.id] = sv
+            moving.append((t.pos[0], t.pos[1], sv[0], sv[1], t.radius))
+        self._xv = seen
+        if not moving:
+            return out
+        i_m, wire, servo = None, None, self.centre
+        for i, ln in enumerate(out):
+            q = ln.split()
+            try:
+                if q[0] == "M" and len(q) == 2:
+                    i_m, wire = i, float(q[1])
+                elif q[0] == "A" and len(q) == 3:
+                    servo = (float(q[1]) + float(q[2])) / 2.0
+            except (ValueError, IndexError):
+                pass
+        if wire is None:
+            return out
+        physical = -wire if self.reversed else wire
+        if abs(physical) < 20:                     # the driver is not asking the car to move: nothing to time
+            return out
+        direction = 1 if physical > 0 else -1
+        leg = self.nav.leg() if self.nav.active else None
+        if leg is not None and leg[1] == direction:
+            path = leg[0]
+        else:
+            path = arc_path(-K_CURV_PER_SERVO_DEG * (servo - self.centre), direction)
+        v_along = max(0.0, self.v * direction)
+        v_want = self.model.speed(abs(physical))
+        pts = self.points_vehicle_frame(self._last_raw, self.p.lidar_x) if self._last_raw else np.empty((0, 2))
+        rear = travel_distance_to_contact(pts, 0.0, -1, self.p, horizon=1.0, margin=0.03) if len(pts) else math.inf
+        action, v_t, info = decide(moving, path, v_along, v_want, self.p, CrossingConfig(), rear_free=rear)
+        self.crossing = (action, v_t, info)
+        if action == "clear":
+            return out
+        swerve = None
+        if action in ("away", "stop") and not self.nav.active and len(pts):
+            # nothing works along the current path (it is coming AT the car): move out of the way - the first
+            # steering arc (smallest turn first, either side) that is clear of the static scene and safe at some speed
+            near = min(moving, key=lambda m: math.hypot(m[0], m[1]))
+            side = -1.0 if near[1] > 0.02 else 1.0            # turn away from the side it is on (ties: left)
+            for k in (1.5 * side, 1.0 * side, 1.5 * -side, 1.0 * -side, 0.5 * side, 0.5 * -side):
+                a2, v2, i2 = decide(moving, arc_path(k, direction), v_along, v_want, self.p, CrossingConfig(),
+                                    rear_free=rear)
+                free = travel_distance_to_contact(pts, math.atan(k * self.p.wheelbase), direction, self.p,
+                                                  horizon=1.2, margin=0.05)
+                if a2 in ("clear", "pass", "yield") and v2 > 0.05 and free > 0.9:
+                    swerve = (k, a2, v2, i2)
+                    break
+        if swerve is None and self._xhold is not None and now < self._xhold["until"]:
+            swerve = self._xhold["swerve"]
+        if swerve is not None:
+            if self._xhold is None or now >= self._xhold["until"]:
+                self._xhold = {"until": now + 1.4, "swerve": swerve}
+            k, action, v_t, info = swerve
+            info = dict(info, why="moving out of its way")
+            servo_new = int(round(max(35.0, min(145.0, self.stick_to_servo(_stick_of(k, self.p))))))
+            out = list(out)
+            i_a = next((i for i, ln in enumerate(out) if ln.split()[0] == "A"), None)
+            line = f"A {servo_new} {servo_new}"
+            if i_a is None:
+                out.append(line)
+            else:
+                out[i_a] = line
+            new_phys = direction * self.model.pwm_for_speed(max(0.0, v_t))
+            w = -int(round(new_phys)) if self.reversed else int(round(new_phys))
+            out[i_m] = f"M {w}"
+            self.info["moving"] = "swerve: moving out of its way"
+            self.level, self.changed = max(self.level, 2), True
+            return out
+        if action == "away":
+            new_phys = -direction * self.model.pwm_for_speed(0.15) if direction > 0 else 0.0
+        else:
+            new_phys = direction * self.model.pwm_for_speed(max(0.0, v_t)) if v_t > 0 else 0.0
+            if action in ("yield", "wait", "stop"):
+                new_phys = math.copysign(min(abs(new_phys), abs(physical)), direction) if new_phys else 0.0
+        w = -int(round(new_phys)) if self.reversed else int(round(new_phys))
+        out = list(out)
+        out[i_m] = f"M {w}"
+        self.info["moving"] = f"{action}: {info.get('why', '')}".strip(": ")
+        self.level, self.changed = max(self.level, 2), True
+        return out
 
     def _zone_cap(self, out):
         """Cap the throttle to the speed-limit zone the car is in or about to enter (pi/zones.py)."""

@@ -148,15 +148,20 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] P8. Monte Carlo + training labs look better and SHOW the process: at least 2-3 3D cars moving (simulation
   runs side by side; randomised twin cars generating training data), not just graphs.
 - [ ] P9. The rest of the TODO list.
-- [ ] P10. (user) Fix the spelling mistakes and visual problems in the GUI.
-- [ ] P11. (user) Evasive planning distance must scale with speed - it sometimes fails at high speed.
-- [ ] P12. (user) Moving obstacles: predict them and speed up to get past first, slow down to let them pass, or
+- [x] P10. (done 29 Sep with P14: labels/tab names/copy reviewed, '&' mnemonic bug fixed) (user) Fix the spelling mistakes and visual problems in the GUI.
+- [x] P11. (done: trigger also by DISTANCE = last point to steer + 0.25 m, and the planner's start uses the measured plan
+  delay; 9/9 swerves round boxes at full speed with 3.5x and 6x Pi latency) (user) Evasive planning distance must scale with speed - it sometimes fails at high speed.
+- [x] P12. (done 29 Sep, see P15) (user) Moving obstacles: predict them and speed up to get past first, slow down to let them pass, or
   move out of the way (with a stop if nothing else works).
-- [ ] P14. (user, 29 Sep) Professional EV look for the GUI and the simulation views: automotive palette (graphite
+- [x] P14. (done 29 Sep: gui/theme.py design system - graphite + brass, Bahnschrift numerals, tweened cluster, fading
+  overlays, pulsing ring, tabbed drawers; gui/widgets.py KPI tiles + pipeline stepper; both labs redesigned with
+  3 animated twin cars + overlay cards; report figures still to restyle) (user, 29 Sep) Professional EV look for the GUI and the simulation views: automotive palette (graphite
   neutrals + one restrained accent, not navy/cyan/violet), automotive typography (DIN-style numerals), smooth
   animations (value tweening, fades, pulses), highly readable; applies to the drive window, drawers, both lab
   windows, the 3D scenes and the report figures.
-- [ ] P15. Wire the crossing planner (adas/crossing.py, done + unit-tested) into the relay: moving-obstacle tracks ->
+- [x] P15. (done: 'moving' assist in RelayAssists: smoothed track velocities, adas/crossing.py decision, swerve arcs held 1.4 s
+  when the object is coming AT the car; 3 twin scenarios pass (yield / no needless wait / head-on swerve); the
+  relay feeds clr.read_raw_tracks(); Assists toggle added; not yet in the Monte Carlo counterfactual or on the Pi) Wire the crossing planner (adas/crossing.py, done + unit-tested) into the relay: moving-obstacle tracks ->
   pass / yield / stop / back away; twin scenario with a moving obstacle; Monte Carlo counterfactual for it.
 - [ ] P16. Report (docs/REPORT.md): methods, problems faced and solved, research used, why it is unique in ADAS
   for small vehicles; updated at every session end / major milestone.
