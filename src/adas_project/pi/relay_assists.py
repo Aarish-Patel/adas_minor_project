@@ -140,11 +140,15 @@ class RelayIntent:
     def __init__(self, assist, path=None, trust=0.5):
         import os
         from adas.intent_net import DriverProfile, IntentNet
-        path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "intent_net.json")
+        here = os.path.dirname(os.path.abspath(__file__))
+        # the v3 model (sim/train_intent_torch.py) once it exists next to the relay, else the v2 one
+        path = path or next((q for q in (os.path.join(here, "intent_v3.json"), os.path.join(here, "intent_net.json"))
+                             if os.path.exists(q)), os.path.join(here, "intent_net.json"))
         self.net = IntentNet(path) if os.path.exists(path) else None
         self.profile = DriverProfile()
         self.assist, self.trust_threshold = assist, trust
         self.hist, self.pwm_hist, self.last_t = [], [], None
+        self.zhist = []                                 # v3 models: the last 1.6 s of tick vectors
         self.p_crash, self.trusted, self.attentive = None, False, False
 
     def update(self, now, servo, physical, v, points):
@@ -158,7 +162,15 @@ class RelayIntent:
         self.hist = (self.hist + [servo])[-80:]
         self.pwm_hist = (self.pwm_hist + [physical])[-40:]
         self.p_crash, self.trusted = None, False
-        if self.net is not None:
+        if self.net is not None and self.net.version == 3:
+            from adas.intent_net import HORIZON3, WINDOW, Z_FREE_NOW, tick_vector, window_of
+            z = tick_vector(servo, physical, v, a.points_vehicle_frame(points, a.p.lidar_x), a.p, a.centre,
+                            K_CURV_PER_SERVO_DEG, react=self.profile.reaction_distance)
+            self.profile.update(self.hist, z[Z_FREE_NOW] * HORIZON3)
+            self.zhist = (self.zhist + [z])[-WINDOW:]
+            self.p_crash = self.net.risk(window_of(self.zhist))
+            self.trusted = self.p_crash < self.trust_threshold
+        elif self.net is not None:
             f = features(self.hist, physical, v, a.points_vehicle_frame(points, a.p.lidar_x), a.p, a.centre,
                          K_CURV_PER_SERVO_DEG, profile=self.profile, pwm_hist=self.pwm_hist)
             if f is not None:

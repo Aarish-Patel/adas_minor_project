@@ -387,6 +387,10 @@ class Clearance:
         with self.lock:
             return list(self.points), self.scan_seq
 
+    def read_seq(self):
+        with self.lock:
+            return self.scan_seq
+
     def read_points(self):
         with self.lock:
             return list(self.points)
@@ -721,22 +725,30 @@ def main():
     print("looking for LiDAR and ESP32 on /dev/ttyUSB*...")
     lidar_port, esp_port = find_ports()
     print(f"LiDAR on {lidar_port}, ESP32 on {esp_port}")
-    if not lidar_port or not esp_port:
-        print("Could not identify both devices, aborting.")
-        return
+    if not lidar_port:
+        print("No LiDAR found, aborting (exit 1 so systemd tries again).")
+        sys.exit(1)
+    if not esp_port:
+        print("No ESP32 found - running without it (LiDAR + GUI only) and looking for it every second.")
 
-    esp = serial.Serial()
-    esp.port = esp_port
-    esp.baudrate = 115200
-    esp.timeout = 0.2
-    esp.dtr = False
-    esp.rts = False
-    esp.open()
-    time.sleep(1.0)
+    def open_esp(port):
+        s = serial.Serial()
+        s.port = port
+        s.baudrate = 115200
+        s.timeout = 0.2
+        s.dtr = False
+        s.rts = False
+        s.open()
+        return s
+
     # full-rate recording of scans + every ESP32 line + driver input vs ADAS output (pi/drive_log.py)
     from pi.drive_log import DriveLog, LoggedSerial
+    from pi.esp_link import EspLink
     dlog = DriveLog("relay", tuning_path=TUNING_PATH)
-    esp = LoggedSerial(esp, dlog)
+    # supervised link: pings the ESP32, notices silence / reboots / USB drop-outs and reopens it (pi/esp_link.py)
+    esp_link = EspLink(open_esp, esp_port, lidar_port, on_event=lambda msg, **kw: dlog.event(msg, **kw))
+    time.sleep(1.0)
+    esp = LoggedSerial(esp_link, dlog)
     esp.write(b"A 90 90\nM 0\n")
 
     clr = Clearance(lidar_port)
@@ -769,6 +781,9 @@ def main():
     follow = FollowController(VP, TUNING.speed_model)   # adaptive cruise / follow-the-leader,
                                                           # opt-in via FOLLOW_ON/FOLLOW_OFF
     logger = DriveLogger(LOG_DIR)
+    from pi.health import HealthMonitor
+    health = HealthMonitor()           # LiDAR / loop / link / ESP32 / temperature -> normal, limp or fault
+    last_health_note = "normal"
     start_gui_server(clr)
     start_gui_stream(clr)          # the native dashboard's live stream (only sends while someone subscribes)
 
@@ -776,6 +791,9 @@ def main():
         while True:
             ft, rt, bmf, bmr = clr.read()
             gui_update_distances(ft, rt, bmf, bmr)
+            with GUI_STATE["lock"]:
+                GUI_STATE["data"]["esp32"] = esp_link.status()
+                GUI_STATE["data"]["health"] = health.status()
             time.sleep(0.15)
     threading.Thread(target=_gui_idle_updater, daemon=True).start()
 
@@ -806,6 +824,8 @@ def main():
                 now = time.time()
                 dt, last_tick = now - last_tick, now
                 age = now - last_packet_time
+                health.tick(now, scan_seq=clr.read_seq(), esp_state=esp_link.state,
+                            driving=last_physical != 0)
                 if last_physical != 0:
                     ft, rt, bmf, bmr = clr.read()
                     gpts, gseq = clr.read_points_seq()
@@ -867,11 +887,11 @@ def main():
                 continue
 
             if text.strip() == "PING":
-                esp.reset_input_buffer()
-                esp.write(b"PING\n")
-                time.sleep(0.05)
-                reply = esp.read(esp.in_waiting or 1)
-                sock.sendto(reply or b"PONG", addr)
+                # answered from the link supervisor's own once-a-second PING (no serial read in the control loop):
+                # PONG only if the ESP32 itself answered recently, otherwise say what is wrong
+                st = esp_link.status()
+                sock.sendto(b"PONG" if esp_link.healthy() else f"ESP32 {st['state'].upper()}: {st['detail']}".encode(),
+                            addr)
                 continue
 
             if text.strip() in ("ADAS_OVERRIDE_ON", "ADAS_OVERRIDE_OFF"):
@@ -1047,6 +1067,12 @@ def main():
                         if cap_v_pwm is not None:
                             physical = min(physical, int(cap_v_pwm))
 
+                    # vehicle health (pi/health.py): reduced power in limp mode, motor held in a fault
+                    if not adas_override:
+                        capped_h = health.cap(physical)
+                        if capped_h != physical and health.state != last_health_note:
+                            dlog.event(f"health {health.state}: throttle capped", causes=health.causes)
+                        physical = int(capped_h)
                     wire_out = -physical if WIRE_MOTOR_REVERSED else physical
                     pwm_sent = wire_out
                     final_physical = physical
@@ -1067,6 +1093,13 @@ def main():
             stages.mark("brake gate + checks")
             esp.write(("\n".join(out_lines) + "\n").encode())
             stages.mark("ESP32 write")
+            health.tick(time.time(), scan_seq=gseq, loop_ms=(time.time() - pkt_now) * 1000.0, driver_packet=True,
+                        esp_state=esp_link.state, driving=abs(intent_pwm_now) > 5 or abs(vest.v) > 0.05)
+            if health.state != last_health_note:
+                if health.state != "normal":
+                    print(f"\nHEALTH {health.state.upper()}: {'; '.join(health.causes)}", flush=True)
+                dlog.event(f"health {health.state}", causes=health.causes)
+                last_health_note = health.state
             # --- after the motor command: work whose result is only needed from the next tick on (real-time
             # practice: actuate first, then update the estimators)
             if new_scan:

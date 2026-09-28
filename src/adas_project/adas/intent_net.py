@@ -90,16 +90,144 @@ def features(servo_hist, pwm, v, pts, params, centre, k_per_deg, dt=0.05, profil
     return np.array(f, float)
 
 
+# ---------------------------------------------------------------- features v3 (sim/twin_intent_data.py, sim/train_intent_torch.py)
+# One small vector per 50 ms tick; the models see the last WINDOW ticks. v2 looked only 1.5 m ahead - at full speed
+# the car covers ~1.7 m in the 2 s the label looks ahead, so a fast approach looked the same as a slow one - and only
+# forward. v3 looks 2.5 m ahead, in the direction of travel (reversing too), and keeps a 1.6 s history.
+HORIZON3 = 2.5
+WINDOW = 32                                    # ticks (1.6 s)
+TICK_DIMS = 12
+Z_STICK, Z_THR, Z_V, Z_ARC0, Z_BACK, Z_TTC, Z_STOP, Z_REACT = 0, 1, 2, 3, 8, 9, 10, 11
+Z_FREE_NOW = Z_ARC0 + ARCS.index(0)            # forward, current arc
+FLAT_LAGS = (0, 1, 2, 4, 8, 12, 16, 24, 31)
+
+
+def stopping_distance(v):
+    av = abs(v)
+    return STOP_BASE + av * STOP_REACTION + av * av / (2 * STOP_DECEL)
+
+
+def travel_direction(v, physical):
+    if v > 0.05:
+        return 1
+    if v < -0.05:
+        return -1
+    return -1 if physical < 0 else 1
+
+
+def tick_vector(servo, physical, v, pts, params, centre, k_per_deg, react=1.0):
+    """What the car can observe this tick: stick, throttle (+ forward), estimated speed, free distance along five
+    steering arcs forward and the current arc backward (m, /2.5), time to contact and free distance in stopping
+    distances in the direction of travel, and this driver's usual reaction distance."""
+    z = np.zeros(TICK_DIMS)
+    z[Z_STICK], z[Z_THR], z[Z_V] = (servo - centre) / 30.0, physical / 255.0, v
+
+    def free(offset, direction):
+        if not len(pts):
+            return HORIZON3
+        kappa = -k_per_deg * (servo + offset - centre)
+        d = travel_distance_to_contact(pts, math.atan(kappa * params.wheelbase), direction, params,
+                                       horizon=HORIZON3, margin=0.03)
+        return min(d, HORIZON3)
+
+    for i, a in enumerate(ARCS):
+        z[Z_ARC0 + i] = free(a, 1) / HORIZON3
+    z[Z_BACK] = free(0, -1) / HORIZON3
+    d = travel_direction(v, physical)
+    fd = (z[Z_FREE_NOW] if d > 0 else z[Z_BACK]) * HORIZON3
+    z[Z_TTC] = min(fd / max(abs(v), 0.05), 4.0) / 4.0
+    z[Z_STOP] = min(fd / stopping_distance(v), 5.0) / 5.0
+    z[Z_REACT] = react
+    return z
+
+
+def window_of(zhist):
+    """Last WINDOW tick vectors, oldest first; a short history is padded with its first entry."""
+    zs = list(zhist)[-WINDOW:]
+    if not zs:
+        return None
+    return np.array([zs[0]] * (WINDOW - len(zs)) + zs)
+
+
+def flat_features(W):
+    """Window (WINDOW x TICK_DIMS) -> the tabular vector for the MLP / trees: the tick vector at a few lags plus
+    stick activity, time since the stick moved, throttle easing and speed change, and how overdue this driver's
+    usual reaction is."""
+    zl = [W[-1 - l, :Z_REACT] for l in FLAT_LAGS]
+    stick = W[:, Z_STICK] * 30.0
+    quiet = 0
+    for a, b in zip(stick[::-1][1:], stick[::-1][:-1]):
+        if abs(a - b) > 0.5:
+            break
+        quiet += 1
+    react = W[-1, Z_REACT]
+    extra = [react, max(0.0, react - W[-1, Z_FREE_NOW] * HORIZON3), np.ptp(stick[-20:]) / 10.0,
+             np.ptp(stick) / 10.0, quiet / (WINDOW - 1), W[-1, Z_THR] - W[-20:, Z_THR].max(),
+             W[-1, Z_THR] - W[-20:, Z_THR].min(), W[-1, Z_V] - W[-8, Z_V]]
+    return np.concatenate(zl + [np.array(extra)])
+
+
+def flat_features_batch(Wb):
+    """flat_features for a batch of windows (B x WINDOW x TICK_DIMS), vectorised (training); same numbers."""
+    B = len(Wb)
+    zl = [Wb[:, -1 - l, :Z_REACT] for l in FLAT_LAGS]
+    stick = Wb[:, :, Z_STICK] * 30.0
+    moved = np.abs(np.diff(stick, axis=1))[:, ::-1] > 0.5            # newest pair first
+    quiet = np.where(moved.any(axis=1), moved.argmax(axis=1), WINDOW - 1)
+    react = Wb[:, -1, Z_REACT]
+    extra = np.column_stack([react, np.maximum(0.0, react - Wb[:, -1, Z_FREE_NOW] * HORIZON3),
+                             np.ptp(stick[:, -20:], axis=1) / 10.0, np.ptp(stick, axis=1) / 10.0,
+                             quiet / (WINDOW - 1), Wb[:, -1, Z_THR] - Wb[:, -20:, Z_THR].max(axis=1),
+                             Wb[:, -1, Z_THR] - Wb[:, -20:, Z_THR].min(axis=1), Wb[:, -1, Z_V] - Wb[:, -8, Z_V]])
+    return np.concatenate(zl + [extra], axis=1).reshape(B, -1)
+
+
+def physics_floor_batch(Wb):
+    z = Wb[:, -1]
+    active = (np.abs(z[:, Z_V]) >= 0.1) & (z[:, Z_STOP] * 5.0 < 1.0)
+    still = np.ptp(Wb[:, -8:, Z_STICK], axis=1) * 30.0 < 2.0
+    thr = np.abs(Wb[:, -8:, Z_THR])
+    not_easing = (np.abs(z[:, Z_THR]) >= thr.max(axis=1) - 0.03) & (np.abs(z[:, Z_THR]) > 0.05)
+    return np.where(active & still & not_easing, 0.95, 0.0)
+
+
+def physics_floor(W):
+    """Lower bound on the risk that no learned model may undercut: the driver is not acting (stick still for 0.4 s,
+    throttle not eased) while the free way in the direction of travel is already shorter than the stopping
+    distance - left alone, this ends in contact. Returns 0.95 or 0."""
+    z = W[-1]
+    if abs(z[Z_V]) < 0.1 or z[Z_STOP] * 5.0 >= 1.0:
+        return 0.0
+    still = np.ptp(W[-8:, Z_STICK]) * 30.0 < 2.0
+    thr = W[-8:, Z_THR]
+    not_easing = abs(z[Z_THR]) >= abs(thr).max() - 0.03 and abs(z[Z_THR]) > 0.05
+    return 0.95 if still and not_easing else 0.0
+
+
 class IntentNet:
     """Loads either model the trainer writes: "classifier" / "regressor" (MLP weights) or "trees" (gradient-boosted
     trees exported from scikit-learn's HistGradientBoostingClassifier, evaluated here in numpy - no sklearn on the
-    car). All trees are walked at once, one depth level per step: ~0.05 ms for 100 trees of depth 3."""
+    car). All trees are walked at once, one depth level per step: ~0.05 ms for 100 trees of depth 3.
+    v3 models (sim/train_intent_torch.py): "mlp3" (flat_features) and "gru3" (the window), numpy on the car."""
 
     def __init__(self, path):
         d = json.load(open(path))
         self.kind = d.get("kind", "regressor")
         self.report = d.get("report", {})
-        if self.kind == "trees":
+        self.version = 3 if self.kind in ("mlp3", "gru3", "trees3") else 2
+        self.temperature = float(d.get("temperature", 1.0))
+        if self.version == 3 and self.kind != "trees3":
+            self.mu, self.sd = np.array(d["mu"]), np.array(d["sd"])
+            if self.kind == "mlp3":
+                self.W = [np.array(w) for w in d["W"]]
+                self.b = [np.array(b) for b in d["b"]]
+            else:
+                self.Wih, self.Whh = np.array(d["W_ih"]), np.array(d["W_hh"])
+                self.bih, self.bhh = np.array(d["b_ih"]), np.array(d["b_hh"])
+                self.Wo, self.bo = np.array(d["W_out"]), np.array(d["b_out"])
+                self.hidden = self.Whh.shape[1]
+            return
+        if self.kind in ("trees", "trees3"):
             self.feat = np.array(d["feature"], int)
             self.thr = np.array(d["threshold"], float)
             self.left = np.array(d["left"], int)
@@ -140,6 +268,35 @@ class IntentNet:
         """Classifier head: probability that the driver, left alone, crashes within 2 s."""
         z = self.predict_servo_change(x)
         return 1.0 / (1.0 + math.exp(-z))
+
+    # ---------------------------------------------------------------- v3
+    def logit3(self, W):
+        """Window (WINDOW x TICK_DIMS) -> calibrated logit."""
+        if self.kind == "trees3":
+            return self._trees_raw(flat_features(W)) / self.temperature
+        if self.kind == "mlp3":
+            h = (flat_features(W) - self.mu) / self.sd
+            for i, (Wm, b) in enumerate(zip(self.W, self.b)):
+                h = h @ Wm + b
+                if i < len(self.W) - 1:
+                    h = np.maximum(h, 0.0)
+            return float(h[0]) / self.temperature
+        x = (W - self.mu) / self.sd                      # GRU (PyTorch gate order r, z, n)
+        H = self.hidden
+        h = np.zeros(H)
+        gi_all = x @ self.Wih.T + self.bih
+        for gi in gi_all:
+            gh = self.Whh @ h + self.bhh
+            r = 1.0 / (1.0 + np.exp(-(gi[:H] + gh[:H])))
+            u = 1.0 / (1.0 + np.exp(-(gi[H:2 * H] + gh[H:2 * H])))
+            n = np.tanh(gi[2 * H:] + r * gh[2 * H:])
+            h = (1.0 - u) * n + u * h
+        return float(self.Wo @ h + self.bo) / self.temperature
+
+    def risk(self, W, floor=True):
+        """v3: P(the driver, left alone, hits or nearly hits something within 2 s), never below the physics floor."""
+        p = 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, self.logit3(W)))))
+        return max(p, physics_floor(W)) if floor else p
 
     def kappa_rate(self, x, k_per_deg):
         """Predicted rate of change of path curvature (1/m per s, + = turning more to the left)."""

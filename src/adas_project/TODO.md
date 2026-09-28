@@ -63,11 +63,19 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 ## O. User request (28 Sep, evening): "work on the simulator, the TODO list and everything for the project"
 (the ESP32 died, so no car until it is replaced). Order: M4 research -> M1 data + model -> M3 training tab ->
 M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulator.
-- [ ] O1. Relay: detect a lost / silent ESP32 (serial errors, USB re-enumeration, no PONG) and reopen the port by
-  itself; show "ESP32 link lost" in the GUI and zero the motor. (Needed: this session the relay kept writing to a
-  dead handle after the ESP32 re-enumerated.)
-- [ ] O2. CUDA PyTorch on the laptop for M1 (only torch 2.11 CPU is installed; RTX 4060 8 GB present) - download
-  needs the user's permission.
+- [x] O1. (done: pi/esp_link.py + tests/test_esp_link.py, 5 tests) Relay: detect a lost / silent ESP32 and reopen
+  the port by itself. Background PING every 1 s (no serial read in the control loop any more - the UDP PING handler
+  used to stall the loop 50-250 ms), "silent" after 3 s without PONG, boot banner "ROVER READY" counted as a reboot
+  (brown-out sign), write errors -> "lost", reopened by /dev/serial/by-id name or any non-LiDAR ttyUSB; the relay now
+  starts without an ESP32 (LiDAR + GUI only) instead of exiting, and exits 1 (systemd retries) if the LiDAR is missing.
+  Dashboard top bar shows an ESP32 chip (OK / CONNECTING / SILENT / LOST, reboots). Not yet on the Pi.
+- [x] O2. CUDA PyTorch: the user approved; `pip install torch --index-url .../cu128` running (was CPU-only 2.11).
+- [ ] O4. MISTAKE TO UNDO: the new twin data generator was first written over the existing sim/intent_data.py (the
+  older laptop-simulator intent trainer; sim/assist_eval, bypass_eval, demo_tests, export_slides, faults, lane_eval
+  import MODEL_DIR from it). It now lives in sim/twin_intent_data.py; restore the original with
+  `git checkout -- sim/intent_data.py` as soon as the running data job (started under the old name) has finished.
+- [ ] O3. The laptop was on battery during this session (CPU capped at 2.4 GHz, workers throttled): data generation
+  and GPU training are much slower unplugged - plug in for long jobs.
 
 ## M. User requests (28 Sep, fourth round) - started 28 Sep evening (see O)
 - [ ] M1. **The intent model predicts badly in general** (user: full speed into a wall is only the example they
@@ -84,6 +92,14 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
     learned model should never give low risk when time-to-contact is below the stopping time.
   - Regression tests over a scenario suite (full speed at a wall is one of many): P(crash) high well before the
     brake point on real threats, low on safe driving.
+  Progress (28 Sep evening): v3 pipeline written - adas/intent_net.py tick_vector / flat_features / physics_floor
+  + IntentNet kinds trees3 / mlp3 / gru3; sim/twin_intent_data.py (twin data with domain randomisation, 6 situation
+  families, 7 room styles, every tick labelled); sim/train_intent_torch.py (GPU, trees vs MLP vs GRU, early
+  stopping, temperature scaling, per-slice report vs v2, run-level warning lead time); pi/relay_assists.RelayIntent
+  runs v3 when pi/intent_v3.json exists. Found causes of the bad v2 predictions: trained only within 1.2 m of an
+  obstacle and on drivers who slow down, while the relay asks it every tick; features saturate at 1.5 m although a
+  full-speed car covers ~1.7 m in the 2 s label horizon; forward only; one fixed car and clean sensor.
+  Still to do: generate data (running), train, audit, Monte Carlo with v3, Pi benchmark, copy to pi/.
 - [ ] M2. **Monte Carlo visualiser in the simulator GUI** (`gui/dashboard.py`, new tab): pick Driver only / ADAS /
   ADAS + intent (and driver style, world, number of runs), run `sim/relay_mc.py` in a background process, show
   live results: trajectories on the map, crashes, needless interventions, burden, paired stats (Wilcoxon), and a

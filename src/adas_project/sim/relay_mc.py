@@ -248,7 +248,8 @@ def run(args):
     rint = None
     if variant == "adas+intent":                 # the relay's own intent code (pi/relay_assists.RelayIntent)
         from pi.relay_assists import RelayIntent
-        rint = RelayIntent(assist, os.path.join(HERE, "..", "models", "intent_net.json"), trust=TRUST_THRESHOLD)
+        rint = RelayIntent(assist, os.environ.get("RC_INTENT_PATH") or os.path.join(HERE, "..", "models", "intent_net.json"),
+                           trust=TRUST_THRESHOLD)
     vpts = np.empty((0, 2))
     gate = PathGate(p, tun.speed_model)
     from pi.relay_assists import RelaySpeed
@@ -386,6 +387,80 @@ def main(runs=24, styles=None):
     return summ
 
 
+LIVE_DIR = os.path.join(HERE, "..", "models", "mc_live")
+
+
+def summarise(res, variants=VARIANTS):
+    out = {}
+    for v in variants:
+        r = [x for x in res if x["variant"] == v]
+        if not r:
+            continue
+        ev = [e for x in r for e in x["events"]]
+        out[v] = {"runs": len(r), "crashes": sum(x["crashed"] for x in r),
+                  "reached_goal": sum(x["reached"] is not None for x in r),
+                  "interventions": sum(x["interventions"] for x in r),
+                  "needless": sum(x["false_positives"] for x in r),
+                  "needless_takeovers": sum(1 for e in ev if e[2] == "fp" and e[3] in ("evasive", "steer")),
+                  "needless_brakes": sum(1 for e in ev if e[2] == "fp" and str(e[3]).startswith("gate:")
+                                         and "limited" not in str(e[3])),
+                  "needless_limits": sum(1 for e in ev if e[2] == "fp" and e[3] == "gate:limited"),
+                  "overridden_needlessly_s": round(sum(x["burden"]["needless_s"] for x in r), 1),
+                  "wheel_taken_needlessly_s": round(sum(x["burden"]["needless_steer_s"] for x in r), 1),
+                  "median_time_s": float(np.median([x["reached"] for x in r if x["reached"]] or [np.nan])),
+                  "min_clearance_cm": float(min(x["min_clear"] for x in r) * 100)}
+    return out
+
+
+def paired_tests(res, a="adas", b="adas+intent"):
+    """One-sided Wilcoxon signed-rank tests on paired runs (same room, driver and lapses): is b better than a?"""
+    from scipy.stats import wilcoxon
+    ra = {(x["seed"], x["style"]): x for x in res if x["variant"] == a}
+    rb = {(x["seed"], x["style"]): x for x in res if x["variant"] == b}
+    keys = sorted(set(ra) & set(rb))
+    out = {"pairs": len(keys)}
+    for name, f in (("needless interventions", lambda x: x["false_positives"]),
+                    ("needless takeovers", lambda x: sum(1 for e in x["events"] if e[2] == "fp" and e[3] in ("evasive", "steer"))),
+                    ("overridden needlessly (s)", lambda x: x["burden"]["needless_s"]),
+                    ("wheel taken needlessly (s)", lambda x: x["burden"]["needless_steer_s"])):
+        xa = np.array([f(ra[k]) for k in keys], float)
+        xb = np.array([f(rb[k]) for k in keys], float)
+        diff = xa - xb
+        p = wilcoxon(xa, xb, alternative="greater").pvalue if len(keys) and np.any(np.abs(diff) > 1e-9) else 1.0
+        out[name] = {a: float(xa.sum()), b: float(xb.sum()), "better": int((diff > 0).sum()),
+                     "worse": int((diff < 0).sum()), "p": float(p)}
+    return out
+
+
+def live(runs, variants, styles, intent_path=None):
+    """Monte Carlo for the GUI (gui/lab_tabs.py): every finished run is appended to models/mc_live/runs.jsonl (with
+    its trace for the replay), a status file tracks progress, and the summary + paired tests are written at the end."""
+    from concurrent.futures import as_completed
+    if intent_path:
+        os.environ["RC_INTENT_PATH"] = intent_path
+    os.makedirs(LIVE_DIR, exist_ok=True)
+    runs_path, status_path = os.path.join(LIVE_DIR, "runs.jsonl"), os.path.join(LIVE_DIR, "status.json")
+    open(runs_path, "w").close()
+    jobs = [(sd, v, st) for sd in range(runs) for v in variants for st in styles]
+
+    def status(**kw):
+        json.dump(dict(kw, total=len(jobs), variants=list(variants), styles=list(styles)), open(status_path + ".tmp", "w"))
+        os.replace(status_path + ".tmp", status_path)
+    status(state="running", done=0)
+    res = []
+    with ProcessPoolExecutor() as ex:
+        futs = [ex.submit(run, j) for j in jobs]
+        for f in as_completed(futs):
+            r = f.result()
+            res.append(r)
+            with open(runs_path, "a") as fh:
+                fh.write(json.dumps(r, default=str) + "\n")
+            status(state="running", done=len(res), summary=summarise(res, variants))
+    tests = paired_tests(res) if "adas" in variants and "adas+intent" in variants else {}
+    status(state="done", done=len(res), summary=summarise(res, variants), tests=tests)
+    return res
+
+
 def figure(res, summ, panels=12):
     from sim.report import style
     plt = style()
@@ -419,4 +494,8 @@ def figure(res, summ, panels=12):
 
 
 if __name__ == "__main__":
-    main(int(sys.argv[1]) if len(sys.argv) > 1 else 24)
+    if len(sys.argv) > 1 and sys.argv[1] == "--live":
+        # python -m sim.relay_mc --live <runs> <variants,...> <styles,...> [intent model path]
+        live(int(sys.argv[2]), sys.argv[3].split(","), sys.argv[4].split(","), sys.argv[5] if len(sys.argv) > 5 else None)
+    else:
+        main(int(sys.argv[1]) if len(sys.argv) > 1 else 24)

@@ -165,3 +165,50 @@ Intent-aware vs the same ADAS without intent, paired one-sided Wilcoxon signed-r
 - Replay mode: scrub a drive log, see scans, commands, predictions and decisions at any moment.
 - Monte Carlo lab: hundreds of random scenario drives, crash/intervention rates, intent-aware vs not.
 - Learned policy (RL, e.g. PPO) trained in the simulator as a comparison to the classical planner.
+
+## 7. Training ML models with the digital twin (TODO M4)
+
+**The problem.** A driver-intent / crash-risk model needs thousands of near-crashes and crashes to learn from.
+Collecting those on the real car is slow, risky and breaks things (it cost an ESP32 on 28 Sep). The standard answer
+in robotics and automated driving is to generate the data in a simulator. A model trained on one exact simulator,
+though, learns that simulator's quirks and fails on the real machine (the "reality gap"). The field closes the gap
+with a digital twin that is (1) identified from the real system, (2) randomised around that identification, and
+(3) checked against real data in a loop.
+
+**What the literature does** (references from my background knowledge, not a fresh literature search):
+| Method | Key reference | Idea |
+|---|---|---|
+| Digital twin | Grieves & Vickers 2017; Tao et al., IEEE TII 2019 | a virtual copy kept consistent with the physical system through its data |
+| System identification | Ljung, *System Identification* (1999) | fit the simulator's parameters (speed response, delays, steering gain) to logged real behaviour |
+| Domain randomisation | Tobin et al., IROS 2017 | randomise the simulator's appearance/sensing so the real world looks like one more variation |
+| Dynamics randomisation | Peng et al., ICRA 2018 | randomise masses, friction, delays, so the policy works across the whole range, including the real car |
+| Automatic DR | OpenAI et al. 2019 (Rubik's cube) | widen the randomisation ranges automatically while the model still performs |
+| Real-to-sim-to-real loop | Chebotar et al., ICRA 2019 (SimOpt); Ramos et al., RSS 2019 (BayesSim) | use real rollouts to update the simulator's parameter distribution, retrain, repeat |
+| Sim-vs-real agreement metric | Kadian et al., "Sim2Real Predictivity", IEEE RA-L 2020 | does ranking models in simulation predict their ranking on the real robot? |
+| Small-scale car platforms | Balaji et al., ICRA 2020 (AWS DeepRacer); O'Kelly et al. 2020 (F1TENTH) | 1/10-1/18 scale cars trained in simulation with randomisation, then run on the real car |
+| Safety-critical scenario generation | Feng et al., *Nature* 2023 (dense RL for AV testing) | over-sample the rare dangerous moments that natural driving almost never produces |
+| Calibrated probabilities | Guo et al., ICML 2017 | temperature scaling so "P = 0.8" really means 80 % |
+
+**How this project applies it:**
+1. *Identified twin.* `sim/hw_sim.py` uses the car model fitted from the real logging drive (`sim/log_fit.py`:
+   top speed, dead-band, motor lag, 0.12 s command delay, steering gain) and the braking measured on 28 Sep. Its
+   accuracy is measured by replaying real commands (`sim/twin_report.py`: path error 4.5 cm median over 3 s).
+2. *Randomised twin* (`sim/twin_intent_data.py`). Every training run draws a different car and sensor around the fit:
+   top speed ±15 %, dead-band 6-18 PWM, motor lag 20-80 ms, coast 2.5-5 m/s², brake 5-10 m/s², command delay
+   60-200 ms, steering gain ±15 %, servo centre ±3°, LiDAR range noise 4-20 mm, dropout 0-12 %, yaw-offset error
+   ±2°, vibration jitter up to 1.2° per scan, and a speed estimate with 0-100 ms lag, 1-5 cm/s noise and ±10 %
+   scale error. The real car's vibration and inconsistency (TODO N) are one more draw from these ranges.
+3. *Scenario coverage instead of one driver type.* Random rooms with seven driver styles, plus scripted
+   approaches: straight at walls and boxes, alongside a wall, on a curve, reversing, through gaps. Each reacts
+   (brake, coast, steer away, stop, or not at all) at a random distance from far too late to comfortably early.
+   This over-samples the dangerous moments, in the spirit of Feng et al.
+4. *Labels from the twin itself.* Every tick gets its ground truth by letting the run continue with no ADAS: did
+   the car touch something, or pass within 2 cm while moving, within 2 s? No hand labelling is involved.
+5. *Held-out evaluation by run and by situation.* The test runs use new rooms and newly drawn cars. Metrics are
+   reported per slice (situation family, speed, free distance, reversing, turning, lapsed vs attentive, time to
+   contact), so a good average cannot hide a situation where the model fails.
+6. *Randomisation ablation* (evidence that step 2 matters): a model trained on the nominal twin only vs one
+   trained with randomisation, both tested on cars drawn from wider ranges than either saw.
+7. *Real-to-sim loop (next, when the car runs again).* Real drive logs are scored by the model. The twin's
+   randomisation ranges are then re-centred on what the logs show, following SimOpt / BayesSim. The model is
+   retrained, and the sim-vs-real agreement of candidate models is reported, as in Kadian et al. (TODO B15).

@@ -5,7 +5,8 @@ redraws at ~30 Hz locally, with no HTTP polling.
     python gui/dashboard.py                    the laptop simulator (tools/sim_car.py) on this machine
     python gui/dashboard.py --host 192.168.1.6 the car
 
-Modes (tabs): Drive 3D - Map & click-to-go - Assists - Diagnostics - Reports, plus an event log. The instrument
+Modes (tabs): Drive 3D - Map & click-to-go - Assists - Diagnostics - Reports, plus an event log, and two simulator
+labs that need no car (gui/lab_tabs.py): the Monte Carlo lab and the ML training lab. The instrument
 cluster on the left is always visible: speed, gear, throttle (driver vs sent), steering, time to contact, "what might
 happen", the learned driver-intent model and the speed estimate. Driving itself stays on rc_controller.py.
 """
@@ -366,6 +367,9 @@ class Dashboard(QtWidgets.QMainWindow):
         self.tabs.addTab(self._diag_tab(), "Diagnostics")
         self.tabs.addTab(self._report_tab(), "Reports")
         self.tabs.addTab(self._events_tab(), "Events")
+        from gui.lab_tabs import MonteCarloTab, TrainingTab
+        self.tabs.addTab(MonteCarloTab(), "Monte Carlo lab")      # simulator jobs, no car needed
+        self.tabs.addTab(TrainingTab(), "ML training lab")
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(33)
@@ -389,6 +393,10 @@ class Dashboard(QtWidgets.QMainWindow):
         self.reset_btn.clicked.connect(lambda: self.link.http_post("/api/sim/reset"))
         self.reset_btn.hide()
         bar.addWidget(self.reset_btn)
+        self.health = QtWidgets.QLabel("")
+        bar.addWidget(self.health)
+        self.esp = QtWidgets.QLabel("")
+        bar.addWidget(self.esp)
         self.conn = QtWidgets.QLabel("")
         self.conn.setStyleSheet(f"color: {COL['dim']}; padding-left: 12px;")
         bar.addWidget(self.conn)
@@ -426,6 +434,7 @@ class Dashboard(QtWidgets.QMainWindow):
             lab.setStyleSheet(f"color: {COL['dim']}; font-size: 11px;")
             bar = QtWidgets.QProgressBar()
             bar.setRange(-255, 255)
+            bar.setValue(0)
             bar.setFormat("%v")
             setattr(self, attr, bar)
             l.addWidget(lab)
@@ -434,6 +443,7 @@ class Dashboard(QtWidgets.QMainWindow):
         lab.setStyleSheet(f"color: {COL['dim']}; font-size: 11px;")
         self.steer = QtWidgets.QProgressBar()
         self.steer.setRange(-55, 55)
+        self.steer.setValue(0)
         self.steer.setFormat("%v")
         l.addWidget(lab)
         l.addWidget(self.steer)
@@ -631,6 +641,31 @@ class Dashboard(QtWidgets.QMainWindow):
             if v and self.last_msgs.get(k) != v:
                 self._event(f"{k}: {v}")
             self.last_msgs[k] = v
+        # vehicle health (pi/health.py): normal / limp (reduced power) / fault (motor held)
+        hl = st.get("health")
+        if hl:
+            hs = str(hl.get("state", "normal"))
+            col = COL["ok"] if hs == "normal" else COL["warn"] if hs == "limp" else COL["bad"]
+            self.health.setText({"normal": "HEALTH OK", "limp": "LIMP MODE", "fault": "FAULT - MOTOR HELD"}.get(hs, hs))
+            self.health.setStyleSheet(self._chip(col))
+            self.health.setToolTip("\n".join(hl.get("causes") or []) +
+                                   f"\nLiDAR {hl.get('lidar_hz')} Hz, link {hl.get('link_hz')} packets/s, "
+                                   f"Pi {hl.get('temp_c')} C")
+            if hs != "normal" and self.last_msgs.get("health") != tuple(hl.get("causes") or []):
+                self._event(f"health {hs}: {'; '.join(hl.get('causes') or [])}")
+            self.last_msgs["health"] = tuple(hl.get("causes") or [])
+        # ESP32 link (pi/esp_link.py): the motor controller answering, silent, rebooting or unplugged
+        esp = st.get("esp32")
+        if esp:
+            state = str(esp.get("state", "?"))
+            col = COL["ok"] if state == "ok" else COL["warn"] if state == "connecting" else COL["bad"]
+            extra = f"  reboots {esp['reboots']}" if esp.get("reboots") else ""
+            self.esp.setText(f"ESP32 {state.upper()}{extra}")
+            self.esp.setStyleSheet(self._chip(col))
+            self.esp.setToolTip(str(esp.get("detail", "")))
+            if state != "ok" and self.last_msgs.get("esp32") != state:
+                self._event(f"ESP32 link {state}: {esp.get('detail', '')}")
+            self.last_msgs["esp32"] = state
         # simulator
         if sim:
             self.sim.setText(f"SIMULATOR  {sim.get('world', '')}   crashes {sim.get('crashes', 0)}")
@@ -707,7 +742,8 @@ def main():
     ap.add_argument("--host", default="127.0.0.1", help="the relay: 127.0.0.1 for the laptop simulator, "
                                                          "192.168.1.6 for the car")
     ap.add_argument("--tab", type=int, default=0, help="the mode to open: 0 Drive 3D, 1 Map, 2 Assists, "
-                                                        "3 Diagnostics, 4 Reports, 5 Events")
+                                                        "3 Diagnostics, 4 Reports, 5 Events, 6 Monte Carlo lab, "
+                                                        "7 ML training lab")
     ap.add_argument("--snapshot", help="save the window as this PNG after --after seconds, then quit (tests, slides)")
     ap.add_argument("--after", type=float, default=6.0)
     a = ap.parse_args()
