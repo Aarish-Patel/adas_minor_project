@@ -767,6 +767,7 @@ def main():
     assist = RelayAssists(TUNING, WIRE_MOTOR_REVERSED, plan_mode="process")
     from pi.path_gate import PathGate
     pgate = PathGate(assist.p, TUNING.speed_model)      # path-predicted emergency braking + obstacle memory
+    assist.memory = pgate.memory                        # the planners avoid what the gate remembers
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(TUNING.speed_model, assist.p.lidar_x)   # throttle model + EKF with LiDAR range flow
     assist.speed = vest                                        # the assists use the same speed as the brake

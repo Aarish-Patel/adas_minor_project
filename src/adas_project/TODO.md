@@ -70,6 +70,12 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   Twin: box 0.4 m ahead at full throttle from rest: stuck -> round it, no contact. 91 tests + 12/12 pass.
 - [x] A7. (28 Sep 22:00) Deployed A3-A6 + O1 (ESP32 link) + N8 (health) + intent v3 display + FCW to ~/rc_car
   (backup ~/rc_car_backup_20260928_2200.tgz; car json kept, LiDAR 45.7 deg); relay restarted 22:05.
+- [x] A9. (28 Sep 22:15) On the car, click-to-go with the new code still crawled/held next to a board 13 cm off
+  the nose: the planners used only the live scan, the gate also its remembered blind-ring points (4 of them), so
+  the plan went through a spot the gate would not drive. Fix: RelayAssists._planning_points adds the gate
+  memory's blind points for both planners. Also: goal-pose approaches turning > 270 deg (a full loop on the car)
+  are refused (user: loops are fine unless they cause issues). Twin: board 10-14 cm ahead-right, goal up-left at
+  150 deg: arrives 9-10 deg off, no contact. 91 tests + 12/12.
 - [ ] A8. Relay start is slow: every open of the LiDAR's CP2102 (ttyUSB1) waits ~13 s in the kernel
   ('cp210x ttyUSB1: failed set request 0x12 status: -110'), so find_ports takes a minute and the LiDAR stops
   meanwhile. Hardware/USB: try another port / cable / powered hub; software: skip probing once the by-id names

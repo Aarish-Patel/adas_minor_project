@@ -252,6 +252,7 @@ class RelayAssists:
         self.assists.plan_service = self.planner
         self.est = SpeedEstimator(self.model)
         self.speed = None              # a RelaySpeed shared with the brake gate; if set, the assists use its speed
+        self.memory = None             # the brake gate's obstacle memory (its blind-ring points join the planners)
         self.nudge_on = False          # steering correction instead of braking (see nudge())
         self._nudge_note = None        # this tick's correction, for the GUI (process() keeps it)
         self.reversed = motor_reversed
@@ -379,8 +380,19 @@ class RelayAssists:
             self.assists._stop_evading("autonomy started")
         self.odo, self.nav_pose = None, (0.0, 0.0, 0.0)
         raw = points if points else self._last_raw
-        return self.nav.start((float(x), float(y)), self.points_vehicle_frame(raw, self.p.lidar_x),
+        return self.nav.start((float(x), float(y)), self._planning_points(raw),
                               None if heading_deg is None else math.radians(float(heading_deg)))
+
+    def _planning_points(self, points):
+        """The scan in the vehicle frame PLUS the brake gate's remembered points in the LiDAR's blind ring (closer
+        than its minimum range, e.g. right at the nose): the planners must avoid what the gate will brake for, or
+        they plan through a spot the gate then refuses to drive (seen on the car, 28 Sep)."""
+        v = self.points_vehicle_frame(points, self.p.lidar_x)
+        if self.memory is not None:
+            blind = self.memory.blind_points()
+            if len(blind):
+                v = np.vstack([v, blind]) if len(v) else blind
+        return v
 
     def planned_leg(self):
         """The planned path leg being followed right now (click-to-go or evasive manoeuvre), for the brake gate."""
@@ -450,7 +462,7 @@ class RelayAssists:
         if points:
             self._last_raw = points
         if self.nav.active:
-            nav = self._navigate(dt, self.points_vehicle_frame(points, self.p.lidar_x), stick, physical,
+            nav = self._navigate(dt, self._planning_points(points), stick, physical,
                                  points, seq, now)
             if nav is not None:
                 self._nav_was_active = True
@@ -472,7 +484,7 @@ class RelayAssists:
             self.est.update(dt, physical)
             self.info, self.level = dict(nudged), (1 if nudged else 0)
             return lines
-        pts = self.points_vehicle_frame(points, self.p.lidar_x)
+        pts = self._planning_points(points)
         self._odometry(points, seq, stick, now)
         s_out, p_out, self.level = self.assists.update(dt, pts, stick, physical, self.v)
         self._odometry(points, seq, stick, now)     # a manoeuvre that just began: this scan is its reference

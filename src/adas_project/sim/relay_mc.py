@@ -252,6 +252,7 @@ def run(args):
                            trust=TRUST_THRESHOLD)
     vpts = np.empty((0, 2))
     gate = PathGate(p, tun.speed_model)
+    assist.memory = gate.memory
     from pi.relay_assists import ThrottleSmoother
     smoother = ThrottleSmoother()
     from pi.relay_assists import RelaySpeed

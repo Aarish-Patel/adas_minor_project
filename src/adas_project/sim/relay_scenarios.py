@@ -43,6 +43,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     car.last_cmd_t = 0.0
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
     gate = PathGate(p, tun.speed_model)
+    assist.memory = gate.memory
     from pi.relay_assists import ThrottleSmoother
     smoother = ThrottleSmoother()
     from pi.relay_assists import RelaySpeed

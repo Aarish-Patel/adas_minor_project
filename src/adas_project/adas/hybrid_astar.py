@@ -186,6 +186,11 @@ class HybridAStar:
                 P = fn(pose, goal, radius)
                 if P is None or len(P) * 0.04 > 4.0:
                     continue
+                # no loops: an approach that turns more than 270 deg in total (a Dubins word with a full circle in
+                # it, seen on the car, 28 Sep) is refused - the search goes on and finds a sensible way in
+                turn = np.abs(np.diff(np.unwrap(np.concatenate([[pose[2]], P[:, 2]])))).sum()
+                if turn > math.radians(270):
+                    continue
                 if self.clearance(grid, P[::2]) >= m and self.clearance(grid, P[-1:]) >= m:
                     cost = len(P) * (1.0 if d > 0 else 1.0 + self.w_reverse)
                     if best is None or cost < best[0]:
