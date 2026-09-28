@@ -167,6 +167,17 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   for small vehicles; updated at every session end / major milestone.
 - [ ] P17. Repository clean-up (old files, backups, junk) and consistent pushes to GitHub (remote to be confirmed).
 - [ ] P18. The rest of the TODO list (open items in A, B, C, D, F, H, I, J).
+- [ ] P19. (user, 29 Sep) Keep improving the intent-aware ADAS: fewer useless interventions, better on difficult AND
+  everyday cases; use the real car logs (logs/car_20260928/) and any real test data as evidence; look into more
+  algorithms / additions. Steps: (a) audit the interventions in the real 22:11 / 21:24 logs (what fired, was it
+  needed), (b) learn the takeover decision directly (would this intervention be needless?), (c) fix the weak scenario
+  families the repeatability protocol shows, (d) research + add algorithms (RSS, conformal risk, ...).
+- [ ] P20. (user, 29 Sep) A back-facing Lenovo webcam will be added: research every algorithm usable with it and write
+  the code (tested on synthetic / recorded frames, no camera needed yet): rear optical-flow odometry and speed,
+  ground-plane monocular distance, rear object detection + approaching-object time to contact, ArUco parking /
+  docking markers, image-quality / vibration monitor, LiDAR-camera fusion for the rear sector, driver-facing
+  nothing. Camera capture + calibration tools ready for when it arrives.
+- [ ] P21. (user, 29 Sep) Continue with the rest of the TODO that needs neither the Pi nor the car.
 - [ ] P13. Check: a Monte Carlo started from the lab at ~22:24 (all 5 styles, interrupted at 101/255 runs) showed
   ~250 needless BRAKES for ADAS (earlier runs: 2-5). Re-run on the current code and find the cause.
 
