@@ -38,6 +38,9 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
     supply looks dead, not the Pi. Next (user): BOOT+EN manual download mode and chip-id again; measure 3V3 pin;
     check what killed it before fitting a spare (servo/motor power on the ESP32 pins, VIN voltage, back-EMF).
     Real-car tests A2 wait for a working ESP32.
+    BOOT+EN manual download mode: esptool still "No serial data received"; on the laptop's USB power the ESP32 is
+    not on WiFi either (no PONG to a broadcast, no RC_CAR hotspot). -> ESP32 chip (or its 3.3 V regulator) dead.
+    The user needs a replacement ESP32 (flash ESP32_RC/ESP32_RC.ino) and to fix what killed it first.
   - [ ] Hybrid A* click-to-go into open space
   - [ ] Evasive steer at the obstacle
   - [ ] Hybrid A* click-to-go to a goal behind/across the obstacle
@@ -57,7 +60,16 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   passed the door (far wall) or failed to swerve at the box. LOW PRIORITY: the user says "no safe way around" when
   the wall is too close is fine for now.
 
-## M. User requests (28 Sep, fourth round) - logged only, not started (out of credits)
+## O. User request (28 Sep, evening): "work on the simulator, the TODO list and everything for the project"
+(the ESP32 died, so no car until it is replaced). Order: M4 research -> M1 data + model -> M3 training tab ->
+M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulator.
+- [ ] O1. Relay: detect a lost / silent ESP32 (serial errors, USB re-enumeration, no PONG) and reopen the port by
+  itself; show "ESP32 link lost" in the GUI and zero the motor. (Needed: this session the relay kept writing to a
+  dead handle after the ESP32 re-enumerated.)
+- [ ] O2. CUDA PyTorch on the laptop for M1 (only torch 2.11 CPU is installed; RTX 4060 8 GB present) - download
+  needs the user's permission.
+
+## M. User requests (28 Sep, fourth round) - started 28 Sep evening (see O)
 - [ ] M1. **The intent model predicts badly in general** (user: full speed into a wall is only the example they
   saw - do NOT just patch that case). Audit where it fails across all situations (per scenario, speed, distance,
   driver style, turning vs straight, time before contact), then retrain / replace the intent model:
