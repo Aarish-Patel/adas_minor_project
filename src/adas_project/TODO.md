@@ -117,11 +117,11 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
   Next: retrain the takeover decision itself on a mixed set (v3 data + Monte Carlo drivers) or learn the decision
   (would the intervention be needless?) directly; weak slices: turning AP 0.65, false alarms at 0-0.5 m (19 %) and
   reversing (10 %); Pi benchmark in ~/rc_bench; randomisation ablation (sim.twin_intent_data ablation).
-- [ ] M2. **Monte Carlo visualiser in the simulator GUI** (`gui/dashboard.py`, new tab): pick Driver only / ADAS /
+- [x] M2. (done 28 Sep: dashboard tab "Monte Carlo lab", gui/lab_tabs.py + sim/relay_mc.py --live; checked end to end) **Monte Carlo visualiser in the simulator GUI** (`gui/dashboard.py`, new tab): pick Driver only / ADAS /
   ADAS + intent (and driver style, world, number of runs), run `sim/relay_mc.py` in a background process, show
   live results: trajectories on the map, crashes, needless interventions, burden, paired stats (Wilcoxon), and a
   replay of any single run.
-- [ ] M3. **ML training visualisation in the simulator GUI** (new tab): start training from the GUI, live loss /
+- [x] M3. (done 28 Sep: dashboard tab "ML training lab" - identified twin, randomisation table, generate / train buttons, live loss + AP curves per model, calibration, risk over time on held-out drives, per-situation v2 vs v3; the real-log sim-to-real panel waits for labelled real drives, B15) **ML training visualisation in the simulator GUI** (new tab): start training from the GUI, live loss /
   AUC / precision-recall curves per epoch, confusion matrix, risk-vs-time on example drives (e.g. full throttle
   into a wall), compare model versions. **It must use the digital-twin training methods from M4** (user request):
   show the domain-randomisation settings (noise, latency, braking, vibration jitter), the sim data vs real-log
