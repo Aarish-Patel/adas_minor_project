@@ -12,3 +12,4 @@ logs/
 *.jsonl.gz
 sim/fitted_car.json.synthetic
 pi/lidar_stream/rc_lidar_stream
+data/intent/
