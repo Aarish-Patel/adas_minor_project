@@ -1,0 +1,181 @@
+{
+ "level": 1.0,
+ "runs_per_scenario": 12,
+ "overall": 0.75,
+ "overall_safe": 1.0,
+ "scenarios": [
+  {
+   "name": "Evasive steer around a block",
+   "runs": 12,
+   "passed": 6,
+   "rate": 0.5,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 3.0,
+   "example_failures": [
+    "with evasive: around the box (x 3.9 m), closest 3 cm, handed back; without: braked to a stop at x 3.54 m",
+    "with evasive: around the box (x 4.7 m), closest 14 cm, handed back; without: braked to a stop at x 3.96 m"
+   ]
+  },
+  {
+   "name": "Steering correction instead of braking (nudge)",
+   "runs": 12,
+   "passed": 3,
+   "rate": 0.25,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 5.0,
+   "example_failures": [
+    "with the nudge: steering corrected, passed (x 2.0 m), closest 7 cm, throttle reduced on 92 ticks; without: throttle reduced on 92 ticks, stopped at x 1.99",
+    "with the nudge: steering corrected, passed (x 3.3 m), closest 27 cm, throttle reduced on 0 ticks; without: throttle reduced on 0 ticks"
+   ]
+  },
+  {
+   "name": "Doorway at full throttle: no throttle cut mid-manoeuvre (B4)",
+   "runs": 12,
+   "passed": 12,
+   "rate": 1.0,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 7.5,
+   "example_failures": []
+  },
+  {
+   "name": "Evasive stays out when the driver is already avoiding",
+   "runs": 12,
+   "passed": 8,
+   "rate": 0.6666666666666666,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 10.1,
+   "example_failures": [
+    "driver steers around the box themselves: evasive took over for 40 ticks, no contact",
+    "driver steers around the box themselves: evasive took over for 77 ticks, no contact"
+   ]
+  },
+  {
+   "name": "Full speed at a wall: stops close, not early (B11)",
+   "runs": 12,
+   "passed": 12,
+   "rate": 1.0,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 3.9,
+   "example_failures": []
+  },
+  {
+   "name": "Corridor centring",
+   "runs": 12,
+   "passed": 2,
+   "rate": 0.16666666666666666,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 21.9,
+   "example_failures": [
+    "steering drifts left in a 72 cm corridor: with centring within 3 cm of the centre for 4.8 m; without: stopped at x 3.1 m",
+    "steering drifts left in a 72 cm corridor: with centring within 1 cm of the centre for 4.6 m; without: stopped at x 1.2 m"
+   ]
+  },
+  {
+   "name": "Centring yields to a deliberate turn",
+   "runs": 12,
+   "passed": 12,
+   "rate": 1.0,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 10.1,
+   "example_failures": []
+  },
+  {
+   "name": "Speed-vs-steering limiter",
+   "runs": 12,
+   "passed": 12,
+   "rate": 1.0,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 47.9,
+   "example_failures": []
+  },
+  {
+   "name": "Narrow gap: won't fit",
+   "runs": 12,
+   "passed": 12,
+   "rate": 1.0,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 5.1,
+   "example_failures": []
+  },
+  {
+   "name": "Narrow gap: tight but fits",
+   "runs": 12,
+   "passed": 6,
+   "rate": 0.5,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 4.0,
+   "example_failures": [
+    "32 cm gap (6 cm each side): with the narrow-gap assist slowed and passed, closest 4 cm; with no assist the brake gate let it through untouched (throttle reduced on 10 ticks)",
+    "32 cm gap (6 cm each side): with the narrow-gap assist slowed and passed, closest 6 cm; with no assist the brake gate let it through untouched (throttle reduced on 10 ticks)"
+   ]
+  },
+  {
+   "name": "Side proximity alert",
+   "runs": 12,
+   "passed": 12,
+   "rate": 1.0,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 11.0,
+   "example_failures": []
+  },
+  {
+   "name": "No needless slowing beside a wall",
+   "runs": 12,
+   "passed": 9,
+   "rate": 0.75,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 10.7,
+   "example_failures": [
+    "parallel to a wall 15 cm off the side, all assists on: throttle reduced on 32 ticks",
+    "parallel to a wall 15 cm off the side, all assists on: throttle reduced on 22 ticks"
+   ]
+  },
+  {
+   "name": "Moving obstacle: yield to a crossing person",
+   "runs": 12,
+   "passed": 12,
+   "rate": 1.0,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 20.5,
+   "example_failures": []
+  },
+  {
+   "name": "Moving obstacle: no needless waiting for a late crosser",
+   "runs": 12,
+   "passed": 6,
+   "rate": 0.5,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 28.4,
+   "example_failures": [
+    "person 3.2 m to the side, walking in at 0.5 m/s: through in 7.5 s, closest 28 cm",
+    "person 3.2 m to the side, walking in at 0.5 m/s: through in 7.6 s, closest 29 cm"
+   ]
+  },
+  {
+   "name": "Moving obstacle: head-on, stop or back away",
+   "runs": 12,
+   "passed": 11,
+   "rate": 0.9166666666666666,
+   "safe": 12,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 1.7,
+   "example_failures": [
+    "person walking straight at the car: no contact (closest 2 cm), car ended at x 1.95 m"
+   ]
+  }
+ ]
+}

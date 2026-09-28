@@ -564,7 +564,9 @@ class RelayAssists:
         # the decision flips between yield / pass every tick
         moving, seen = [], {}
         for t in self._tracks:
-            if not t.moving:
+            # only tracks that have moved consistently and at a real speed: with noisy scans wall points flicker into
+            # 'moving' clusters (seen at 20 mm range noise), and reacting to them is worse than ignoring them
+            if not t.moving or t.moving_count < 5 or math.hypot(*t.vel_obj) < 0.15 or math.hypot(*t.vel_obj) > 2.0:
                 continue
             ov = self._xv.get(t.id, t.vel_obj)
             sv = (0.6 * ov[0] + 0.4 * t.vel_obj[0], 0.6 * ov[1] + 0.4 * t.vel_obj[1])
@@ -600,10 +602,12 @@ class RelayAssists:
         rear = travel_distance_to_contact(pts, 0.0, -1, self.p, horizon=1.0, margin=0.03) if len(pts) else math.inf
         action, v_t, info = decide(moving, path, v_along, v_want, self.p, CrossingConfig(), rear_free=rear)
         self.crossing = (action, v_t, info)
-        if action == "clear":
+        if action == "clear" and not (self._xhold is not None and now < self._xhold["until"]):
             return out
         swerve = None
-        if action in ("away", "stop") and not self.nav.active and len(pts):
+        if self._xhold is not None and now < self._xhold["until"]:
+            swerve = self._xhold["swerve"]                       # a swerve in progress is followed, not re-decided
+        elif action in ("away", "stop") and not self.nav.active and len(pts):
             # nothing works along the current path (it is coming AT the car): move out of the way - the first
             # steering arc (smallest turn first, either side) that is clear of the static scene and safe at some speed
             near = min(moving, key=lambda m: math.hypot(m[0], m[1]))
@@ -616,8 +620,6 @@ class RelayAssists:
                 if a2 in ("clear", "pass", "yield") and v2 > 0.05 and free > 0.9:
                     swerve = (k, a2, v2, i2)
                     break
-        if swerve is None and self._xhold is not None and now < self._xhold["until"]:
-            swerve = self._xhold["swerve"]
         if swerve is not None:
             if self._xhold is None or now >= self._xhold["until"]:
                 self._xhold = {"until": now + 1.4, "swerve": swerve}

@@ -25,6 +25,9 @@ def _tuning():
     return tun
 
 
+RANDOMISE = {"level": None, "seed": 0}          # sim/repeat_scenarios.py sets this: a different car every run
+
+
 def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_when=None, hook=None):
     """driver(t, x, y, th, v) -> (stick -1..1, + = left, physical PWM, + = forward). hook(t, assist, pts, seq), if
     given, runs each tick before the relay logic (e.g. to send a click-to-go goal). Returns a record with a per-tick
@@ -42,6 +45,18 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     car = VirtualCar(world, p, start, threaded=False)
     car.last_cmd_t = 0.0
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
+    noise, dropout = 0.008, 0.04
+    if RANDOMISE["level"] is not None:
+        # domain randomisation (RESEARCH.md section 7): a different car (speed, braking, delay, steering gain, servo
+        # centre) and LiDAR (noise, dropout, yaw error) around the identified twin - the real car's inconsistency
+        from sim.twin_intent_data import apply_car, randomise
+        dr = randomise(np.random.default_rng(RANDOMISE["seed"]), RANDOMISE["level"])
+        apply_car(car, dr)
+        lidar.yaw += dr["yaw_err_deg"]
+        noise, dropout = dr["noise"], dr["dropout"]
+        rec_dr = dr
+    else:
+        rec_dr = None
     gate = PathGate(p, tun.speed_model)
     assist.memory = gate.memory
     from pi.relay_assists import ThrottleSmoother
@@ -63,8 +78,8 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
             next_scan += SCAN_DT
             ox, oy = x + p.lidar_x * math.cos(th), y + p.lidar_x * math.sin(th)
             best, _ = lidar._raycast(ox, oy, th)
-            r = best + lidar.rng.normal(0, 0.008, len(best))
-            ok = np.isfinite(best) & (r >= 0.2) & (r < 12) & (lidar.rng.random(len(best)) > 0.04)
+            r = best + lidar.rng.normal(0, noise, len(best))
+            ok = np.isfinite(best) & (r >= 0.2) & (r < 12) & (lidar.rng.random(len(best)) > dropout)
             cw = (-np.degrees(lidar.ccw)) % 360
             cw = np.where(cw > 180, cw - 360, cw)
             pts = [(round(float(a), 1), round(float(d), 3)) for a, d, o in zip(cw, r, ok) if o]
@@ -108,6 +123,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     x, y, th, v, *_ = car.pose()
     rec.update(collided=car.crash_count > 0, x=x, y=y, th=th, v=v, evading_end=assist.assists.evading, p=p,
                assist=assist, t_end=t)
+    RANDOMISE.setdefault("log", []).append((tuple(assists), rec["collided"], rec["min_clear"]))   # safety bookkeeping
     return rec
 
 
