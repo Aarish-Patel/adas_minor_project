@@ -22,9 +22,10 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 sys.path.insert(0, ROOT)
 MC_DIR = os.path.join(ROOT, "models", "mc_live")
 TRAIN_DIR = os.path.join(ROOT, "models", "intent_training")
-COLS = ["#60a5fa", "#34d399", "#f472b6", "#facc15", "#a78bfa", "#22d3ee", "#fb923c", "#94a3b8"]
+from gui import theme
+COLS = [theme.C[k] for k in ("s1", "s2", "s3", "s5", "s4", "s6")] + ["#B48EAD", "#88C0D0"]
 VARIANT_LABEL = {"off": "driver only", "brake-only": "brake only", "adas": "ADAS", "adas+intent": "ADAS + intent"}
-VARIANT_COL = {"off": "#ef4444", "brake-only": "#fbbf24", "adas": "#60a5fa", "adas+intent": "#2dd4bf"}
+VARIANT_COL = {"off": theme.C["bad"], "brake-only": theme.C["warn"], "adas": theme.C["s1"], "adas+intent": theme.C["accent"]}
 
 
 def read_json(path, default=None):
@@ -105,14 +106,13 @@ def small_label(text, dim=True):
     lab = QtWidgets.QLabel(text)
     lab.setWordWrap(True)
     if dim:
-        lab.setStyleSheet("color: #8b9ac0; font-size: 11px;")
+        lab.setStyleSheet(f"color: {theme.C['dim']}; font-size: 11px;")
     return lab
 
 
 def plot(title, left=None, bottom=None):
     p = pg.PlotWidget(title=title)
-    p.setBackground("#0b1020")
-    p.showGrid(x=True, y=True, alpha=0.15)
+    theme.style_plot(p, title)
     p.addLegend(offset=(5, 5), labelTextSize="8pt")
     for ax in ("left", "bottom"):
         p.getAxis(ax).enableAutoSIPrefix(False)
@@ -128,12 +128,17 @@ class MonteCarloTab(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.runs, self.tail = [], JsonlTail(os.path.join(MC_DIR, "runs.jsonl"))
-        lay = QtWidgets.QVBoxLayout(self)
+        outer = QtWidgets.QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        pages = QtWidgets.QTabWidget()
+        outer.addWidget(pages)
+        run_page = QtWidgets.QWidget()
+        lay = QtWidgets.QVBoxLayout(run_page)
         lay.addWidget(small_label(
             "The Monte Carlo drives the car's OWN decision code (relay assists, path gate, evasive steer, intent model) "
             "on the digital twin: the same room, driver and attention lapses are driven by every system, and a "
             "needless intervention is one where the same driver, left alone, would not have come within 2 cm of "
-            "anything in the next 2 s (counterfactual).", dim=False))
+            "anything in the next 2 s (counterfactual).", dim=True))
         ctl = QtWidgets.QHBoxLayout()
         self.var_boxes = {}
         for v in ("off", "brake-only", "adas", "adas+intent"):
@@ -169,7 +174,9 @@ class MonteCarloTab(QtWidgets.QWidget):
         lay.addLayout(ctl)
         self.progress = QtWidgets.QProgressBar()
         lay.addWidget(self.progress)
-        split = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        self.console = QtWidgets.QPlainTextEdit()
+        self.console.setReadOnly(True)
+        lay.addWidget(self.console, 1)
         left = QtWidgets.QWidget()
         ll = QtWidgets.QVBoxLayout(left)
         self.table = QtWidgets.QTableWidget()
@@ -179,7 +186,6 @@ class MonteCarloTab(QtWidgets.QWidget):
         ll.addWidget(self.tests)
         self.bars = plot("crashes (red) and needless interventions (orange) per system")
         ll.addWidget(self.bars, 1)
-        split.addWidget(left)
         right = QtWidgets.QWidget()
         rl = QtWidgets.QVBoxLayout(right)
         row = QtWidgets.QHBoxLayout()
@@ -191,13 +197,10 @@ class MonteCarloTab(QtWidgets.QWidget):
         self.map = plot("every system in the same room: x crash, star goal, dots needed / needless")
         self.map.setAspectLocked(True)
         rl.addWidget(self.map, 1)
-        split.addWidget(right)
-        split.setSizes([650, 650])
-        lay.addWidget(split, 1)
-        self.console = QtWidgets.QPlainTextEdit()
-        self.console.setReadOnly(True)
-        self.console.setMaximumHeight(90)
-        lay.addWidget(self.console)
+        pages.addTab(left, "RESULTS")
+        pages.addTab(right, "REPLAY MAP")
+        pages.addTab(run_page, "RUN")
+        self.pages = pages
         self.job = Job(self.console)
         stop.clicked.connect(self.job.stop)
         self.timer = QtCore.QTimer(self)
@@ -259,9 +262,9 @@ class MonteCarloTab(QtWidgets.QWidget):
         x = np.arange(len(vs))
         if vs:
             self.bars.addItem(pg.BarGraphItem(x=x - 0.2, height=[summ[v]["crashes"] for v in vs], width=0.38,
-                                              brush="#ef4444"))
+                                              brush=theme.C["bad"]))
             self.bars.addItem(pg.BarGraphItem(x=x + 0.2, height=[summ[v]["needless"] for v in vs], width=0.38,
-                                              brush="#fb923c"))
+                                              brush=theme.C["warn"]))
             self.bars.getAxis("bottom").setTicks([[(i, VARIANT_LABEL.get(v, v)) for i, v in enumerate(vs)]])
         if tests:
             lines = [f"Paired one-sided Wilcoxon, ADAS + intent vs ADAS ({tests.get('pairs')} paired drives):"]
@@ -281,19 +284,19 @@ class MonteCarloTab(QtWidgets.QWidget):
         self.map.clear()
         world, goal, _ = scenario(int(k[0]))
         for x1, y1, x2, y2 in world.segments():
-            self.map.plot([x1, x2], [y1, y2], pen=pg.mkPen("#94a3b8", width=2))
-        self.map.plot([goal[0]], [goal[1]], pen=None, symbol="star", symbolSize=18, symbolBrush="#facc15")
+            self.map.plot([x1, x2], [y1, y2], pen=pg.mkPen(theme.C["hair2"], width=2))
+        self.map.plot([goal[0]], [goal[1]], pen=None, symbol="star", symbolSize=18, symbolBrush=theme.C["accent"])
         for r in self.runs:
             if (r["seed"], r["style"]) != tuple(k):
                 continue
             tr = np.array(r["trace"]) if r["trace"] else np.zeros((1, 2))
-            col = VARIANT_COL.get(r["variant"], "#ffffff")
+            col = VARIANT_COL.get(r["variant"], theme.C["text"])
             self.map.plot(tr[:, 0], tr[:, 1], pen=pg.mkPen(col, width=2.5), name=VARIANT_LABEL.get(r["variant"]))
             if r["crashed"]:
                 self.map.plot([tr[-1, 0]], [tr[-1, 1]], pen=None, symbol="x", symbolSize=16, symbolBrush=col)
             for e in r["events"]:
                 self.map.plot([e[0]], [e[1]], pen=None, symbol="o", symbolSize=8,
-                              symbolBrush="#fb923c" if e[2] == "fp" else "#34d399")
+                              symbolBrush=theme.C["warn"] if e[2] == "fp" else theme.C["ok"])
 
 
 # ====================================================================== ML training
@@ -315,12 +318,16 @@ class TrainingTab(QtWidgets.QWidget):
         self.tail = JsonlTail(os.path.join(TRAIN_DIR, "log.jsonl"))
         self.curves, self.hist = {}, {}
         self.report_mtime = None
-        lay = QtWidgets.QVBoxLayout(self)
+        outer = QtWidgets.QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        pages = QtWidgets.QTabWidget()
+        outer.addWidget(pages)
+        run_page = QtWidgets.QWidget()
+        lay = QtWidgets.QVBoxLayout(run_page)
         lay.addWidget(small_label(
-            "Digital-twin training of the driver-intent model (RESEARCH.md section 7): the twin is the car model "
-            "identified from real drive logs; every simulated drive draws a different car and sensor around it "
-            "(domain randomisation), so the real car - vibration and all - is just one more draw. Labels come from "
-            "the twin itself (did this driver, left alone, touch something within 2 s?).", dim=False))
+            "The twin is the car model identified from real drive logs; every simulated drive draws a different car "
+            "and sensor around it (domain randomisation), so the real car - vibration and all - is just one more draw. "
+            "Labels come from the twin itself: did this driver, left alone, touch something within 2 s?", dim=True))
         ctl = QtWidgets.QHBoxLayout()
         ctl.addWidget(QtWidgets.QLabel("training drives"))
         self.n_train = QtWidgets.QSpinBox()
@@ -356,19 +363,19 @@ class TrainingTab(QtWidgets.QWidget):
         lay.addLayout(ctl)
         self.progress = QtWidgets.QProgressBar()
         lay.addWidget(self.progress)
-        split = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        # left: the twin and its randomisation
-        left = QtWidgets.QWidget()
-        ll = QtWidgets.QVBoxLayout(left)
-        ll.addWidget(QtWidgets.QLabel("Identified twin (from real drive logs)"))
+        self.console = QtWidgets.QPlainTextEdit()
+        self.console.setReadOnly(True)
+        lay.addWidget(self.console, 1)
+        twin_page = QtWidgets.QWidget()
+        ll = QtWidgets.QVBoxLayout(twin_page)
+        ll.addWidget(QtWidgets.QLabel("IDENTIFIED TWIN (fitted to real drive logs)"))
         self.twin = small_label("", dim=False)
         ll.addWidget(self.twin)
-        ll.addWidget(QtWidgets.QLabel("Domain randomisation per drive"))
+        ll.addWidget(QtWidgets.QLabel("DOMAIN RANDOMISATION PER DRIVE"))
         self.dr_table = QtWidgets.QTableWidget()
         ll.addWidget(self.dr_table, 1)
         self.data_info = small_label("")
         ll.addWidget(self.data_info)
-        split.addWidget(left)
         # right: live curves and results
         self.p_loss = plot("validation loss per model (lower = better)", "BCE", "epoch")
         self.p_ap = plot("validation average precision per model (higher = better)", "AP", "epoch")
@@ -394,15 +401,12 @@ class TrainingTab(QtWidgets.QWidget):
         pl.addWidget(exw, 1)
         grid.addTab(page, "calibration + example drives")
         grid.addTab(self.p_slices, "per situation (v2 vs v3)")
-        split.addWidget(grid)
-        split.setSizes([380, 1000])
-        lay.addWidget(split, 1)
         self.summary = small_label("", dim=False)
-        lay.addWidget(self.summary)
-        self.console = QtWidgets.QPlainTextEdit()
-        self.console.setReadOnly(True)
-        self.console.setMaximumHeight(90)
-        lay.addWidget(self.console)
+        self.summary.hide()                            # the KPI tiles above the tabs replace this text
+        pages.addTab(grid, "RESULTS")
+        pages.addTab(twin_page, "TWIN && RANDOMISATION")
+        pages.addTab(run_page, "RUN")
+        self.pages = pages
         self.job = Job(self.console)
         stop.clicked.connect(self.job.stop)
         self.examples = []
@@ -517,8 +521,8 @@ class TrainingTab(QtWidgets.QWidget):
             return
         # reliability
         self.p_rel.clear()
-        self.p_rel.plot([0, 1], [0, 1], pen=pg.mkPen("#475569", width=1, style=QtCore.Qt.DashLine))
-        for who, col, lab in (("old_v2", "#9ca3af", "v2"), ("new", "#60a5fa", "v3 + physics floor")):
+        self.p_rel.plot([0, 1], [0, 1], pen=pg.mkPen(theme.C["hair2"], width=1, style=QtCore.Qt.DashLine))
+        for who, col, lab in (("old_v2", theme.C["dim"], "v2"), ("new", theme.C["accent"], "v3 + physics floor")):
             r = np.array(rep.get("reliability", {}).get(who) or [[0, 0, 0]])
             self.p_rel.plot(r[:, 0], r[:, 1], pen=pg.mkPen(col, width=2), symbol="o", symbolSize=6,
                             symbolBrush=col, name=lab)
@@ -529,8 +533,8 @@ class TrainingTab(QtWidgets.QWidget):
         y = np.arange(len(names))
         old = [sl[n]["old_v2"].get("ap") or 0 for n in names]
         new = [sl[n]["new_floor"].get("ap") or 0 for n in names]
-        self.p_slices.addItem(pg.BarGraphItem(x0=0, y=y - 0.2, height=0.38, width=old, brush="#9ca3af"))
-        self.p_slices.addItem(pg.BarGraphItem(x0=0, y=y + 0.2, height=0.38, width=new, brush="#2563eb"))
+        self.p_slices.addItem(pg.BarGraphItem(x0=0, y=y - 0.2, height=0.38, width=old, brush=theme.C["dim"]))
+        self.p_slices.addItem(pg.BarGraphItem(x0=0, y=y + 0.2, height=0.38, width=new, brush=theme.C["accent"]))
         self.p_slices.getAxis("left").setTicks([[(i, n) for i, n in enumerate(names)]])
         self.p_slices.invertY(True)
         a = sl.get("all", {})
@@ -571,11 +575,11 @@ class TrainingTab(QtWidgets.QWidget):
         y = np.array(e["y"], float)
         self.p_ex.addItem(pg.FillBetweenItem(pg.PlotDataItem(t, y), pg.PlotDataItem(t, 0 * y),
                                              brush=pg.mkBrush(248, 113, 113, 50)))
-        self.p_ex.plot(t, np.minimum(np.array(e["free"]), 2.5) / 2.5, pen=pg.mkPen("#facc15", width=1),
+        self.p_ex.plot(t, np.minimum(np.array(e["free"]), 2.5) / 2.5, pen=pg.mkPen(theme.C["accent"], width=1),
                        name="free way (/2.5 m)")
-        self.p_ex.plot(t, np.abs(np.array(e["v"])), pen=pg.mkPen("#22d3ee", width=1), name="speed (m/s)")
-        self.p_ex.plot(t, e["p_old"], pen=pg.mkPen("#9ca3af", width=2), name="P v2")
-        self.p_ex.plot(t, e["p_new"], pen=pg.mkPen("#60a5fa", width=3), name="P v3")
+        self.p_ex.plot(t, np.abs(np.array(e["v"])), pen=pg.mkPen(theme.C["s3"], width=1), name="speed (m/s)")
+        self.p_ex.plot(t, e["p_old"], pen=pg.mkPen(theme.C["dim"], width=2), name="P v2")
+        self.p_ex.plot(t, e["p_new"], pen=pg.mkPen(theme.C["accent"], width=3), name="P v3")
         self.p_ex.setYRange(0, 1.05)
 
 

@@ -31,32 +31,13 @@ CAR_SCALE = 14.0
 PANEL_PORT = 8080
 ZONES_FILE = os.path.join(ROOT, "gui", "zones.json")
 
-EV = {"bg": "#070b14", "bg2": "#0c1322", "glass": "rgba(18, 27, 46, 215)", "edge": "#1f2d4a", "text": "#e8eefc",
-      "dim": "#8795b5", "blue": "#3b82f6", "cyan": "#22d3ee", "ok": "#34d399", "warn": "#fbbf24", "bad": "#f87171",
-      "violet": "#a78bfa"}
-EV_STYLE = f"""
-QMainWindow, QWidget#root {{ background: {EV['bg']}; }}
-QWidget {{ color: {EV['text']}; font-family: 'Segoe UI', Arial; font-size: 13px; }}
-QLabel {{ background: transparent; }}
-QFrame#glass {{ background: {EV['glass']}; border: 1px solid {EV['edge']}; border-radius: 16px; }}
-QFrame#bar {{ background: {EV['bg2']}; border-top: 1px solid {EV['edge']}; }}
-QFrame#top {{ background: {EV['bg']}; border-bottom: 1px solid {EV['edge']}; }}
-QPushButton {{ background: {EV['bg2']}; border: 1px solid {EV['edge']}; border-radius: 10px; padding: 8px 14px; }}
-QPushButton:hover {{ border-color: {EV['blue']}; }}
-QPushButton:checked {{ background: #1e3a8a; border-color: {EV['blue']}; }}
-QPushButton#app {{ background: transparent; border: none; border-radius: 12px; padding: 6px 12px; color: {EV['dim']};
-                   font-size: 12px; }}
-QPushButton#app:checked {{ background: #16264a; color: {EV['text']}; }}
-QPushButton#app:hover {{ color: {EV['text']}; }}
-QDockWidget {{ color: {EV['text']}; }}
-QDockWidget::title {{ background: {EV['bg2']}; padding: 8px; }}
-QListWidget, QTableWidget, QPlainTextEdit {{ background: {EV['bg2']}; border: 1px solid {EV['edge']}; border-radius: 8px; }}
-QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit {{ background: {EV['bg2']}; border: 1px solid {EV['edge']};
-                   border-radius: 6px; padding: 4px; }}
-QProgressBar {{ background: {EV['bg2']}; border: 1px solid {EV['edge']}; border-radius: 5px; height: 10px;
-               text-align: center; }}
-QProgressBar::chunk {{ background: {EV['blue']}; border-radius: 4px; }}
-"""
+from gui import theme
+from gui.theme import C, rgb
+
+# legacy names used through this file, mapped onto the design system (graphite + brass, not navy + cyan)
+EV = {"bg": C["bg"], "bg2": C["bg1"], "edge": C["hair"], "text": C["text"], "dim": C["dim"], "blue": C["accent"],
+      "cyan": C["accent"], "ok": C["ok"], "warn": C["warn"], "bad": C["bad"], "violet": C["info"]}
+EV_STYLE = theme.STYLE
 
 
 def kmh(v):
@@ -141,22 +122,34 @@ def walls_mesh(segments, h):
     return np.array(V, float), np.array(F)
 
 
-def point_walls(xy, h=0.12, half=0.018):
-    """Short vertical tiles at LiDAR points, facing the car - obstacles read as surfaces, not dots."""
+def point_walls(xy, h=0.10, half=0.02, join=0.12):
+    """Obstacles as surfaces: consecutive LiDAR points closer than `join` become one wall strip (a continuous
+    face, like a mapped surface), isolated points a small tile facing the car."""
     xy = np.asarray(xy, float).reshape(-1, 2)
-    if not len(xy):
+    if len(xy) < 2:
         return None
-    ang = np.arctan2(xy[:, 1], xy[:, 0]) + math.pi / 2
-    dx, dy = np.cos(ang) * half, np.sin(ang) * half
-    seg = np.column_stack([xy[:, 0] - dx, xy[:, 1] - dy, xy[:, 0] + dx, xy[:, 1] + dy])
-    return walls_mesh(seg, h)
+    seg = []
+    d = np.hypot(*(xy[1:] - xy[:-1]).T)
+    for i in range(len(xy) - 1):
+        if d[i] < join:
+            seg.append([*xy[i], *xy[i + 1]])
+    lone = np.ones(len(xy), bool)
+    for i in range(len(xy) - 1):
+        if d[i] < join:
+            lone[i] = lone[i + 1] = False
+    for x, y in xy[lone]:
+        a = math.atan2(y, x) + math.pi / 2
+        seg.append([x - math.cos(a) * half, y - math.sin(a) * half, x + math.cos(a) * half, y + math.sin(a) * half])
+    return walls_mesh(np.array(seg), h) if seg else None
 
 
 class CarModel:
-    """A small EV body: chassis, cabin, glass, wheels, lights, and the blue ground ring of the reference screen.
+    """A small EV body: chassis, cabin, glass, wheels, lights, and the ground ring (brass, pulsing).
     All parts hang off one parent, so the whole car moves with one transform (labs animate several)."""
 
-    def __init__(self, view, colour=(0.92, 0.94, 0.98, 1.0), ring=(0.23, 0.51, 0.96, 0.9), scale=1.0):
+    def __init__(self, view, colour=(0.90, 0.91, 0.92, 1.0), ring=None, scale=1.0):
+        ring = ring or rgb('accent', 0.85)
+        self.scale = scale
         r, f, w = GEO["rear"] - 0.03, GEO["front"], GEO["width"] / 2
         wb = GEO["wheelbase"]
         a = np.linspace(0, 2 * math.pi, 60)
@@ -166,13 +159,13 @@ class CarModel:
         view.addItem(self.parent)
         L = f - r
         parts = [(merge([box(r, f, -w, w, 0.035, 0.085)]), colour),
-                 (merge([box(r + 0.28 * L, r + 0.78 * L, -w * 0.82, w * 0.82, 0.085, 0.13)]), (0.12, 0.16, 0.24, 1)),
+                 (merge([box(r + 0.28 * L, r + 0.78 * L, -w * 0.82, w * 0.82, 0.085, 0.13)]), (0.07, 0.08, 0.10, 1)),
                  (merge([box(-0.03, 0.03, s * w - 0.02, s * w + 0.02, 0.0, 0.06) for s in (-1, 1)] +
                         [box(wb - 0.03, wb + 0.03, s * w - 0.02, s * w + 0.02, 0.0, 0.06) for s in (-1, 1)]),
-                  (0.05, 0.06, 0.08, 1)),
+                  (0.04, 0.045, 0.05, 1)),
                  (merge([box(f - 0.006, f + 0.004, s * w * 0.55 - 0.02, s * w * 0.55 + 0.02, 0.06, 0.075)
-                         for s in (-1, 1)]), (1.0, 0.95, 0.75, 1)),
-                 (merge([box(r - 0.004, r + 0.006, -w * 0.8, w * 0.8, 0.065, 0.075)]), (0.9, 0.15, 0.2, 1))]
+                         for s in (-1, 1)]), (1.0, 0.97, 0.88, 1)),
+                 (merge([box(r - 0.004, r + 0.006, -w * 0.8, w * 0.8, 0.065, 0.075)]), (0.86, 0.16, 0.18, 1))]
         self.items = []
         for k, ((V, F), col) in enumerate(parts):
             edge = tuple(0.55 * c for c in col[:3]) + (1.0,)
@@ -181,10 +174,15 @@ class CarModel:
             it.setParentItem(self.parent)
             self.items.append(it)
 
+    def pulse(self, t, colour_name="accent", speed=1.6):
+        a = 0.55 + 0.35 * math.sin(t * speed)
+        self.parent.setData(color=rgb(colour_name, a))
+
     def place(self, x, y, th_rad):
         m = QtGui.QMatrix4x4()
         m.translate(x, y, 0)
         m.rotate(math.degrees(th_rad), 0, 0, 1)
+        m.scale(self.scale, self.scale, self.scale)
         self.parent.setTransform(m)
 
     def set_visible(self, on):
@@ -196,11 +194,11 @@ class Scene(gl.GLViewWidget):
 
     def __init__(self, grid=16):
         super().__init__()
-        self.setBackgroundColor(EV["bg"])
+        self.setBackgroundColor(C["bg"])
         g = gl.GLGridItem()
         g.setSize(grid, grid)
         g.setSpacing(0.5, 0.5)
-        g.setColor((30, 45, 80, 160))
+        g.setColor((70, 74, 82, 70))
         self.addItem(g)
         self._meshes = {}
 
@@ -233,9 +231,9 @@ class DriveScene(Scene):
         super().__init__()
         self.car = CarModel(self)
         self.car.place(0, 0, 0)
-        self.goal = gl.GLLinePlotItem(pos=np.zeros((2, 3)), color=(0.65, 0.55, 0.98, 0.0), width=4, antialias=True)
+        self.goal = gl.GLLinePlotItem(pos=np.zeros((2, 3)), color=(0.85, 0.7, 0.35, 0.0), width=4, antialias=True)
         self.addItem(self.goal)
-        self.hit = gl.GLLinePlotItem(pos=np.zeros((2, 3)), mode="lines", color=(0.97, 0.3, 0.3, 0.0), width=5)
+        self.hit = gl.GLLinePlotItem(pos=np.zeros((2, 3)), mode="lines", color=(0.94, 0.32, 0.31, 0.0), width=5)
         self.addItem(self.hit)
         self.labels = []
         self.cam = "chase"
@@ -266,35 +264,35 @@ class DriveScene(Scene):
 
     def show(self, st):
         pts = polar_xy(st.get("_pts"))
-        self.mesh("obstacles", point_walls(pts), (0.42, 0.55, 0.78, 0.85))
+        self.mesh("obstacles", point_walls(pts), (0.72, 0.75, 0.80, 0.80))
         segs = []
         for poly in ((st.get("sim") or {}).get("walls") or []):
             xy = polar_xy(poly)
             segs += [[*xy[i], *xy[i + 1]] for i in range(len(xy) - 1)]
-        self.mesh("walls", walls_mesh(segs, 0.05), (0.35, 0.4, 0.5, 0.12))     # simulator ground truth, faint
+        self.mesh("walls", walls_mesh(segs, 0.05), (0.5, 0.52, 0.56, 0.10))     # simulator ground truth, faint
         plan = st.get("plan") or {}
         state = plan.get("state", "clear")
-        rgb = {"collision": (0.97, 0.35, 0.35), "limited": (0.98, 0.75, 0.15)}.get(state, (0.2, 0.83, 0.6))
-        self.mesh("pred", ribbon(polar_xy(plan.get("pred")), GEO["width"] * 0.9, 0.004), (*rgb, 0.45))
+        col = {"collision": rgb('bad')[:3], "limited": rgb('warn')[:3]}.get(state, (0.93, 0.94, 0.95))
+        self.mesh("pred", ribbon(polar_xy(plan.get("pred")), GEO["width"] * 0.9, 0.004), (*col, 0.30))
         man = polar_xy(plan.get("maneuver"))
-        self.mesh("plan", ribbon(man, 0.12, 0.006) if len(man) >= 2 else None, (0.23, 0.51, 0.96, 0.85))
-        self.mesh("line", ribbon(polar_xy(plan.get("line")), 0.02, 0.002), (0.6, 0.65, 0.75, 0.5))
+        self.mesh("plan", ribbon(man, 0.12, 0.006) if len(man) >= 2 else None, rgb('accent', 0.9))
+        self.mesh("line", ribbon(polar_xy(plan.get("line")), 0.02, 0.002), (0.85, 0.87, 0.9, 0.35))
         if plan.get("hit"):
             hx, hy = polar_xy([plan["hit"]])[0]
             k = 0.07
             self.hit.setData(pos=np.array([[hx - k, hy - k, 0.03], [hx + k, hy + k, 0.03],
-                                           [hx - k, hy + k, 0.03], [hx + k, hy - k, 0.03]]), color=(0.97, 0.3, 0.3, 1))
+                                           [hx - k, hy + k, 0.03], [hx + k, hy - k, 0.03]]), color=rgb('bad'))
         else:
-            self.hit.setData(color=(0.97, 0.3, 0.3, 0.0))
+            self.hit.setData(color=(0.94, 0.32, 0.31, 0.0))
         goal = (st.get("nav") or {}).get("goal")
         if goal:
             g = polar_xy([goal])[0]
             a = np.linspace(0, 2 * math.pi, 40)
             ring = np.column_stack([g[0] + 0.12 * np.cos(a), g[1] + 0.12 * np.sin(a), np.full(40, 0.01)])
             self.goal.setData(pos=np.vstack([ring, [[g[0], g[1], 0.01], [g[0], g[1], 0.35]]]),
-                              color=(0.65, 0.55, 0.98, 1))
+                              color=rgb('accent'))
         else:
-            self.goal.setData(color=(0.65, 0.55, 0.98, 0.0))
+            self.goal.setData(color=(0.85, 0.7, 0.35, 0.0))
         # speed-limit zones, from the world frame into the car's
         world = st.get("world") or {}
         pose = world.get("pose") or [0, 0, 0]
@@ -320,128 +318,149 @@ class DriveScene(Scene):
 
 # ====================================================================== overlays
 class Glass(QtWidgets.QFrame):
+    """A frosted panel that fades in and out (opacity effect, 180 ms) instead of popping."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("glass")
+        self._fx = QtWidgets.QGraphicsOpacityEffect(self)
+        self._fx.setOpacity(1.0)
+        self.setGraphicsEffect(self._fx)
+        self._anim = QtCore.QPropertyAnimation(self._fx, b"opacity", self)
+        self._anim.setDuration(180)
+        self._anim.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+        self._anim.finished.connect(self._hide_if_off)
+        self._shown = True
+
+    def fade(self, on):
+        if on == self._shown:
+            return
+        self._shown = on
+        self._anim.stop()
+        self._anim.setStartValue(self._fx.opacity())
+        self._anim.setEndValue(1.0 if on else 0.0)
+        if on:
+            self.show()
+        self._anim.start()
+
+    def _hide_if_off(self):
+        if not self._shown:
+            self.hide()
 
 
 class SpeedCluster(Glass):
+    """The instrument cluster: a large DIN-style speed readout that tweens, a thin arc gauge, the gear strip
+    (P R N D), the speed-limit sign and the steering-range bar. One custom-painted widget."""
+
     def __init__(self, parent):
         super().__init__(parent)
-        self.setMinimumWidth(340)
-        lay = QtWidgets.QGridLayout(self)
-        lay.setContentsMargins(20, 14, 20, 14)
-        lay.setVerticalSpacing(6)
-        self.speed = QtWidgets.QLabel("0")
-        self.speed.setStyleSheet("font-size: 64px; font-weight: 300;")
-        self.unit = QtWidgets.QLabel("km/h")
-        self.unit.setStyleSheet(f"color: {EV['dim']};")
-        self.ms = QtWidgets.QLabel("0.00 m/s on the car")
-        self.ms.setStyleSheet(f"color: {EV['dim']}; font-size: 11px;")
-        self.gear = QtWidgets.QLabel("P")
-        self.gear.setStyleSheet(f"font-size: 26px; font-weight: 700; color: {EV['blue']};")
-        self.sign = LimitSign()
-        lay.addWidget(self.speed, 0, 0, 2, 1)
-        lay.addWidget(self.gear, 0, 1)
-        lay.addWidget(self.unit, 1, 1)
-        lay.addWidget(self.sign, 0, 2, 2, 1)
-        lay.addWidget(self.ms, 2, 0, 1, 3)
-        self.steer = SteerBar()
-        lay.addWidget(self.steer, 3, 0, 1, 3)
+        self.setFixedSize(360, 250)
+        self.spd = theme.Tween(0.0, 10.0)
+        self.steer = theme.Tween(0.0, 14.0)
+        self.steer_max = 38.0
+        self.gear, self.limit, self.ms = "P", None, 0.0
 
     def set(self, v, gear, limit, steer_deg, steer_max):
-        self.speed.setText(f"{kmh(v):.0f}")
-        self.ms.setText(f"{abs(v):.2f} m/s on the car  (1:{CAR_SCALE:.0f})")
-        self.gear.setText(gear)
-        self.sign.set(limit)
-        self.steer.set(steer_deg, steer_max)
+        self.spd.set(kmh(v))
+        self.ms = abs(v)
+        self.gear, self.limit = gear, limit
+        self.steer.set(steer_deg)
+        self.steer_max = steer_max or 55.0
 
-
-class LimitSign(QtWidgets.QWidget):
-    """The round speed-limit sign EVs show; empty when no zone applies."""
-
-    def __init__(self):
-        super().__init__()
-        self.setFixedSize(64, 64)
-        self.kph = None
-
-    def set(self, kph):
-        if kph != self.kph:
-            self.kph = kph
+    def tick(self, dt):
+        moving = self.spd.step(dt) | self.steer.step(dt)
+        if moving:
             self.update()
 
-    def paintEvent(self, _):
-        if self.kph is None:
-            return
+    def paintEvent(self, ev):
+        super().paintEvent(ev)
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        p.setBrush(QtGui.QColor("#ffffff"))
-        p.setPen(QtGui.QPen(QtGui.QColor("#e11d48"), 7))
-        p.drawEllipse(QtCore.QRectF(5, 5, 54, 54))
-        p.setPen(QtGui.QColor("#111827"))
-        f = p.font()
-        f.setPointSize(15)
-        f.setBold(True)
-        p.setFont(f)
-        p.drawText(self.rect(), QtCore.Qt.AlignCenter, f"{self.kph:.0f}")
-
-
-class SteerBar(QtWidgets.QWidget):
-    """Steering now (white) inside the allowed range at this speed (blue band) - the speed-dependent limit."""
-
-    def __init__(self):
-        super().__init__()
-        self.setFixedHeight(40)
-        self.deg, self.max = 0.0, 55.0
-
-    def set(self, deg, mx):
-        self.deg, self.max = deg, (mx or 55.0)
-        self.update()
-
-    def paintEvent(self, _):
-        p = QtGui.QPainter(self)
-        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        p.setRenderHint(QtGui.QPainter.TextAntialiasing)
         w, h = self.width(), self.height()
-        full = 55.0
-        cx = w / 2
+        r = QtCore.QRectF(22, 18, 190, 190)                      # arc gauge 0..60 km/h
+        p.setPen(QtGui.QPen(theme.qcolor("hair"), 5, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap))
+        p.drawArc(r, 225 * 16, -270 * 16)
+        frac = max(0.0, min(1.0, self.spd.value / 60.0))
+        if frac > 0.004:
+            p.setPen(QtGui.QPen(theme.qcolor("accent"), 5, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap))
+            p.drawArc(r, 225 * 16, int(-270 * 16 * frac))
+        if self.limit:                                            # the zone limit as a red tick on the arc
+            a = math.radians(225 - 270 * min(1.0, self.limit / 60.0))
+            c = r.center()
+            p.setPen(QtGui.QPen(theme.qcolor("bad"), 3, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap))
+            p.drawLine(QtCore.QPointF(c.x() + 89 * math.cos(a), c.y() - 89 * math.sin(a)),
+                       QtCore.QPointF(c.x() + 101 * math.cos(a), c.y() - 101 * math.sin(a)))
+        p.setPen(theme.qcolor("text"))
+        p.setFont(theme.light(78))
+        p.drawText(QtCore.QRectF(22, 50, 190, 100), QtCore.Qt.AlignCenter, f"{self.spd.value:.0f}")
+        p.setPen(theme.qcolor("dim"))
+        p.setFont(theme.font(13, spacing=2.0))
+        p.drawText(QtCore.QRectF(22, 138, 190, 22), QtCore.Qt.AlignCenter, "KM/H")
+        p.setFont(theme.font(11))
+        p.drawText(QtCore.QRectF(22, 162, 190, 18), QtCore.Qt.AlignCenter,
+                   f"{self.ms:.2f} m/s  \u00b7  1:{CAR_SCALE:.0f} scale")
+        p.setFont(theme.semibold(17))                             # gear strip
+        x0 = 236
+        for i, gname in enumerate("PRND"):
+            on = gname == self.gear
+            p.setPen(theme.qcolor("accent") if on else theme.qcolor("faint"))
+            p.drawText(QtCore.QRectF(x0, 20 + i * 27, 30, 26), QtCore.Qt.AlignCenter, gname)
+            if on:
+                p.setPen(QtGui.QPen(theme.qcolor("accent"), 2))
+                p.drawLine(x0 + 36, 24 + i * 27, x0 + 36, 40 + i * 27)
+        if self.limit:                                            # the speed-limit sign
+            c = QtCore.QPointF(w - 50, 150)
+            p.setBrush(QtGui.QColor("#F4F5F6"))
+            p.setPen(QtGui.QPen(QtGui.QColor("#D93A3F"), 6))
+            p.drawEllipse(c, 27, 27)
+            p.setPen(QtGui.QColor("#15171A"))
+            p.setFont(theme.semibold(19))
+            p.drawText(QtCore.QRectF(c.x() - 27, c.y() - 27, 54, 54), QtCore.Qt.AlignCenter, f"{self.limit:.0f}")
+        y = h - 26                                                # steering range bar
         p.setPen(QtCore.Qt.NoPen)
-        p.setBrush(QtGui.QColor(EV["edge"]))
-        yb = h - 10
-        p.drawRoundedRect(QtCore.QRectF(0, yb - 3, w, 6), 3, 3)
-        band = self.max / full * w / 2
-        p.setBrush(QtGui.QColor(59, 130, 246, 140))
-        p.drawRoundedRect(QtCore.QRectF(cx - band, yb - 3, 2 * band, 6), 3, 3)
-        x = cx + max(-full, min(full, self.deg)) / full * w / 2
-        p.setBrush(QtGui.QColor("#ffffff"))
-        p.drawEllipse(QtCore.QPointF(x, yb), 6, 6)
-        p.setPen(QtGui.QColor(EV["dim"]))
-        f = p.font()
-        f.setPointSize(8)
-        p.setFont(f)
-        p.drawText(QtCore.QRectF(0, 0, w, 16), QtCore.Qt.AlignLeft, "steering")
-        p.drawText(QtCore.QRectF(0, 0, w, 16), QtCore.Qt.AlignRight, f"max {self.max:.0f} deg at this speed")
+        p.setBrush(theme.qcolor("hair"))
+        p.drawRoundedRect(QtCore.QRectF(24, y - 2, w - 48, 4), 2, 2)
+        cx, half = w / 2, (w - 48) / 2
+        band = min(1.0, self.steer_max / 55.0) * half
+        p.setBrush(theme.qcolor("accent", 90))
+        p.drawRoundedRect(QtCore.QRectF(cx - band, y - 2, 2 * band, 4), 2, 2)
+        x = cx + max(-1.0, min(1.0, self.steer.value / 55.0)) * half
+        p.setBrush(theme.qcolor("text"))
+        p.drawEllipse(QtCore.QPointF(x, y), 5.5, 5.5)
+        p.setPen(theme.qcolor("dim"))
+        p.setFont(theme.font(10, spacing=1.2))
+        p.drawText(QtCore.QRectF(24, y - 24, w - 48, 14), QtCore.Qt.AlignLeft, "STEERING")
+        p.drawText(QtCore.QRectF(24, y - 24, w - 48, 14), QtCore.Qt.AlignRight,
+                   f"MAX {self.steer_max:.0f}\u00b0 AT THIS SPEED")
 
 
 class Banner(Glass):
-    """Top-centre: what the car is doing (autonomy, manoeuvre) - hidden when there is nothing to say."""
+    """Top-centre: what the car is doing (autonomy, manoeuvre) - fades away when there is nothing to say."""
 
     def __init__(self, parent):
         super().__init__(parent)
         lay = QtWidgets.QHBoxLayout(self)
-        lay.setContentsMargins(16, 8, 16, 8)
-        self.icon = QtWidgets.QLabel("")
-        self.icon.setStyleSheet(f"font-size: 22px; color: {EV['blue']};")
+        lay.setContentsMargins(18, 9, 22, 9)
+        lay.setSpacing(12)
+        self.dot = QtWidgets.QLabel("")
+        self.dot.setFixedSize(8, 8)
         self.text = QtWidgets.QLabel("")
-        self.text.setStyleSheet("font-size: 15px;")
-        lay.addWidget(self.icon)
+        self.text.setFont(theme.font(15))
+        lay.addWidget(self.dot)
         lay.addWidget(self.text)
+        self._shown = True
+        self.fade(False)
+        self.hide()
 
     def set(self, icon, text, colour=None):
-        self.setVisible(bool(text))
-        self.icon.setText(icon)
-        self.icon.setStyleSheet(f"font-size: 22px; color: {colour or EV['blue']};")
-        self.text.setText(text)
-        self.adjustSize()
+        c = colour or C["accent"]
+        if text:
+            self.dot.setStyleSheet(f"background: {c}; border-radius: 4px;")
+            if text != self.text.text():
+                self.text.setText(text)
+                self.adjustSize()
+        self.fade(bool(text))
 
 
 class SafetyPill(Glass):
@@ -450,16 +469,20 @@ class SafetyPill(Glass):
     def __init__(self, parent):
         super().__init__(parent)
         lay = QtWidgets.QHBoxLayout(self)
-        lay.setContentsMargins(16, 6, 16, 6)
-        self.dot = QtWidgets.QLabel("●")
+        lay.setContentsMargins(16, 7, 20, 7)
+        lay.setSpacing(10)
+        self.dot = QtWidgets.QLabel("")
+        self.dot.setFixedSize(8, 8)
         self.text = QtWidgets.QLabel("path clear")
+        self.text.setFont(theme.font(13, spacing=0.4))
         lay.addWidget(self.dot)
         lay.addWidget(self.text)
 
     def set(self, text, colour):
-        self.dot.setStyleSheet(f"color: {colour}; font-size: 16px;")
-        self.text.setText(text)
-        self.adjustSize()
+        self.dot.setStyleSheet(f"background: {colour}; border-radius: 4px;")
+        if text != self.text.text():
+            self.text.setText(text)
+            self.adjustSize()
 
 
 class MiniMap(Glass):
@@ -509,21 +532,22 @@ class MiniMap(Glass):
         if len(wp):
             v = world_to_vehicle(wp, pose)
             xs, ys = to_px(v)
-            p.setPen(QtGui.QPen(QtGui.QColor(96, 165, 250, 200), 2))
+            p.setPen(QtGui.QPen(theme.qcolor("text2", 190), 2))
             for a, b in zip(xs, ys):
                 if 0 <= a <= w and 0 <= b <= h:
                     p.drawPoint(QtCore.QPointF(a, b))
         man = polar_xy((st.get("plan") or {}).get("maneuver"))
         if len(man) >= 2:
             xs, ys = to_px(man)
-            p.setPen(QtGui.QPen(QtGui.QColor(EV["blue"]), 3))
+            p.setPen(QtGui.QPen(theme.qcolor("accent"), 3))
             p.drawPolyline(QtGui.QPolygonF([QtCore.QPointF(a, b) for a, b in zip(xs, ys)]))
         p.setPen(QtCore.Qt.NoPen)
-        p.setBrush(QtGui.QColor("#ffffff"))
+        p.setBrush(QtGui.QColor(C["text"]))
         p.drawPolygon(QtGui.QPolygonF([QtCore.QPointF(cx, cy - 10), QtCore.QPointF(cx - 6, cy + 6),
                                        QtCore.QPointF(cx + 6, cy + 6)]))
         p.setPen(QtGui.QColor(EV["dim"]))
-        p.drawText(QtCore.QRectF(10, 6, w - 20, 16), QtCore.Qt.AlignLeft, "map - click to open")
+        p.setFont(theme.font(10, spacing=1.2))
+        p.drawText(QtCore.QRectF(12, 8, w - 24, 14), QtCore.Qt.AlignLeft, "MAP")
 
 
 class WorldStore:
@@ -597,18 +621,18 @@ class MapZonesPanel(QtWidgets.QWidget):
         self.hint.setStyleSheet(f"color: {EV['dim']}; font-size: 11px;")
         self.hint.setWordWrap(True)
         lay.addWidget(self.hint)
-        self.plot = pg.PlotWidget(background=EV["bg2"])
+        self.plot = theme.style_plot(pg.PlotWidget())
         self.plot.setAspectLocked(True)
         self.plot.showGrid(x=True, y=True, alpha=0.12)
         self.plot.getPlotItem().hideButtons()
         self.plot.getPlotItem().vb.setMouseEnabled(x=False, y=False)
         self.plot.setXRange(-3, 3)
         self.plot.setYRange(-2, 4)
-        self.map_pts = pg.ScatterPlotItem(size=3, brush=pg.mkBrush(96, 165, 250, 160), pen=None)
-        self.live = pg.ScatterPlotItem(size=3, brush=pg.mkBrush(EV["cyan"]), pen=None)
-        self.path = pg.PlotCurveItem(pen=pg.mkPen(EV["blue"], width=4))
-        self.car = pg.PlotCurveItem(pen=pg.mkPen("#ffffff", width=2))
-        self.draft = pg.PlotCurveItem(pen=pg.mkPen(EV["warn"], width=2, style=QtCore.Qt.DashLine))
+        self.map_pts = pg.ScatterPlotItem(size=3, brush=pg.mkBrush(180, 186, 195, 150), pen=None)
+        self.live = pg.ScatterPlotItem(size=3, brush=pg.mkBrush(C["accent"]), pen=None)
+        self.path = pg.PlotCurveItem(pen=pg.mkPen(C["accent"], width=4))
+        self.car = pg.PlotCurveItem(pen=pg.mkPen(C["text"], width=2))
+        self.draft = pg.PlotCurveItem(pen=pg.mkPen(C["warn"], width=2, style=QtCore.Qt.DashLine))
         for it in (self.map_pts, self.live, self.path, self.car, self.draft):
             self.plot.addItem(it)
         self.zone_items = []
@@ -980,7 +1004,7 @@ class DiagnosticsPanel(QtWidgets.QWidget):
         self.health.setWordWrap(True)
         lay.addWidget(self.health)
         w = pg.GraphicsLayoutWidget()
-        w.setBackground(EV["bg2"])
+        w.setBackground(C["bg1"])
         self.p1 = w.addPlot(title="speed m/s: estimate (cyan) vs throttle model (grey)")
         self.c_v = self.p1.plot(pen=pg.mkPen(EV["cyan"], width=2))
         self.c_vm = self.p1.plot(pen=pg.mkPen(EV["dim"], width=1))
@@ -1044,7 +1068,8 @@ class EVWindow(QtWidgets.QMainWindow):
         self.intent = Glass(self.scene)
         il = QtWidgets.QVBoxLayout(self.intent)
         il.setContentsMargins(14, 8, 14, 8)
-        self.intent_txt = QtWidgets.QLabel("driver risk -")
+        self.intent_txt = QtWidgets.QLabel("DRIVER RISK")
+        self.intent_txt.setFont(theme.font(11, spacing=1.2))
         self.intent_bar = QtWidgets.QProgressBar()
         self.intent_bar.setRange(0, 100)
         self.intent_bar.setTextVisible(False)
@@ -1072,20 +1097,22 @@ class EVWindow(QtWidgets.QMainWindow):
 
     # --- chrome
     def _chip(self, colour):
-        r, g, b = (int(colour[i:i + 2], 16) for i in (1, 3, 5))      # Qt reads #RRGGBBAA as #AARRGGBB: use rgba()
-        return (f"background: rgba({r},{g},{b},40); border: 1px solid {colour}; color: {colour}; border-radius: 12px; "
-                f"padding: 3px 12px; font-weight: 600; font-size: 12px;")
+        r, g, b = (int(colour[i:i + 2], 16) for i in (1, 3, 5))
+        return (f"background: rgba({r},{g},{b},26); border: 1px solid rgba({r},{g},{b},140); color: {colour}; "
+                f"border-radius: 11px; padding: 3px 12px; font-family: '{theme.DISPLAY}'; font-size: 11px; "
+                f"letter-spacing: 1.2px; font-weight: 600;")
 
     def _top(self):
         f = QtWidgets.QFrame()
         f.setObjectName("top")
         lay = QtWidgets.QHBoxLayout(f)
         lay.setContentsMargins(18, 8, 18, 8)
-        brand = QtWidgets.QLabel("RC-ADAS")
-        brand.setStyleSheet("font-size: 18px; font-weight: 700; letter-spacing: 3px;")
+        brand = QtWidgets.QLabel("RC‑ADAS")
+        brand.setFont(theme.semibold(17, spacing=4.0))
         lay.addWidget(brand)
         self.clock = QtWidgets.QLabel("")
-        self.clock.setStyleSheet(f"color: {EV['dim']}; padding-left: 14px;")
+        self.clock.setFont(theme.font(13))
+        self.clock.setStyleSheet(f"color: {EV['dim']}; padding-left: 16px;")
         lay.addWidget(self.clock)
         lay.addStretch(1)
         self.mode = QtWidgets.QLabel("CONNECTING")
@@ -1188,14 +1215,14 @@ class EVWindow(QtWidgets.QMainWindow):
         if st.get("mode") == "override":
             mode, col = "OVERRIDE - NO ADAS", EV["bad"]
         elif nav.get("state") not in (None, "idle"):
-            mode, col = "AUTONOMY", EV["violet"]
+            mode, col = "AUTONOMY", C["accent"]
         elif assist.get("evading") or assist.get("phase") in ("EXECUTE", "WAIT", "BACKOFF"):
             mode, col = "AUTONOMOUS MANOEUVRE", EV["cyan"]
         elif "brak" in act or act.startswith("hold") or act == "stopped":
             mode, col = "EMERGENCY BRAKE", EV["bad"]
         else:
             mode, col = "GUARDIAN", EV["ok"]
-        self.mode.setText(mode)
+        self.mode.setText(mode.upper())
         self.mode.setStyleSheet(self._chip(col))
         hl, esp = st.get("health") or {}, st.get("esp32") or {}
         for key, ok_text, data, ok_state in (("health", "HEALTH", hl, "normal"), ("esp", "ESP32", esp, "ok")):
@@ -1208,8 +1235,8 @@ class EVWindow(QtWidgets.QMainWindow):
             self.chips[key].setStyleSheet(self._chip(c))
             self.chips[key].setToolTip("; ".join(data.get("causes") or []) or str(data.get("detail", "")))
         sim = st.get("sim")
-        self.chips["src"].setText(f"SIMULATOR {sim.get('world', '')}" if sim else "CAR")
-        self.chips["src"].setStyleSheet(self._chip(EV["blue"]))
+        self.chips["src"].setText(f"SIMULATOR \u00b7 {sim.get('world', '').upper()}" if sim else "CAR")
+        self.chips["src"].setStyleSheet(self._chip(C["text2"]))
         self.reset_btn.setVisible(bool(sim))
         # cluster
         v = float(drive.get("v", 0.0) or 0.0)
@@ -1217,6 +1244,7 @@ class EVWindow(QtWidgets.QMainWindow):
         gear = "D" if pin > 5 else "R" if pin < -5 else ("N" if abs(v) > 0.03 else "P")
         steer = float(drive.get("servo", 87)) - float(drive.get("centre", 87))
         self.cluster.set(v, gear, world.get("zone_kph"), -steer, drive.get("steer_max_deg"))
+        self.cluster.tick(0.033)
         # banner: autonomy / manoeuvre
         if nav.get("state") not in (None, "idle") or nav.get("msg"):
             self.banner.set("➜", f"{nav.get('msg') or nav.get('state')}", EV["violet"])
@@ -1255,6 +1283,7 @@ class EVWindow(QtWidgets.QMainWindow):
         self.intent_txt.setText(f"driver risk {100 * p:.0f} %  -  " + ("attentive" if intent.get("attentive") else "stick idle")
                                 if p is not None else "driver risk -")
         self.intent_bar.setValue(int(100 * (p or 0)))
+        self.scene.car.pulse(now, "bad" if mode == "EMERGENCY BRAKE" else "warn" if hl.get("state") == "limp" else "accent")
         self.scene.show(st)
         self.mini.set(st)
         self.panels["map"][1].show_state(st)
