@@ -23,28 +23,63 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   the wall is too close is fine for now.
 
 ## M. User requests (28 Sep, fourth round) - logged only, not started (out of credits)
-- [ ] M1. **P(crash) is wrong when driving full speed into a wall** (user observed it in the simulator GUI: the
-  intent model's risk stays too low on a straight full-throttle run at a wall). Retrain / replace the intent model:
+- [ ] M1. **The intent model predicts badly in general** (user: full speed into a wall is only the example they
+  saw - do NOT just patch that case). Audit where it fails across all situations (per scenario, speed, distance,
+  driver style, turning vs straight, time before contact), then retrain / replace the intent model:
   - Train on the laptop's NVIDIA GPU (CUDA, e.g. PyTorch) for many epochs, aiming for high accuracy (report AUC,
     average precision, calibration/Brier, and the specific "full throttle at a wall" case as a test).
   - Must stay light enough for the Pi 5 at the relay's 20 Hz without processing delays: small MLP / 1D-CNN / GRU
     over the stick + scan history, exported to numpy weights or ONNX; benchmark on the Pi in `~/rc_bench` (K2 rule).
-  - Add hard examples: straight full-throttle runs at walls from many distances/speeds, frozen stick, late braking.
+  - Broader, harder data: many worlds/scenarios, speeds, distances, turning and straight, frozen stick, late
+    braking, near misses; hard-example mining from wherever the audit shows errors.
+  - Evaluate per slice (not just one overall AUC) plus calibration, so a good average can't hide bad situations.
   - Consider a physics prior as an input/floor: TTC and free distance in stopping distances already exist; a
     learned model should never give low risk when time-to-contact is below the stopping time.
-  - Add a regression test: full speed at a wall -> P(crash) high well before the brake point.
+  - Regression tests over a scenario suite (full speed at a wall is one of many): P(crash) high well before the
+    brake point on real threats, low on safe driving.
 - [ ] M2. **Monte Carlo visualiser in the simulator GUI** (`gui/dashboard.py`, new tab): pick Driver only / ADAS /
   ADAS + intent (and driver style, world, number of runs), run `sim/relay_mc.py` in a background process, show
   live results: trajectories on the map, crashes, needless interventions, burden, paired stats (Wilcoxon), and a
   replay of any single run.
 - [ ] M3. **ML training visualisation in the simulator GUI** (new tab): start training from the GUI, live loss /
   AUC / precision-recall curves per epoch, confusion matrix, risk-vs-time on example drives (e.g. full throttle
-  into a wall), compare model versions; training reads from the digital twin data.
+  into a wall), compare model versions. **It must use the digital-twin training methods from M4** (user request):
+  show the domain-randomisation settings (noise, latency, braking, vibration jitter), the sim data vs real-log
+  data mix, sim-to-real gap metrics (accuracy on twin data vs on real car logs), and the real-to-sim calibration
+  step, so the whole twin-based training loop is visible.
 - [ ] M4. **Research digital-twin-based ML training** (for the report/teachers; add to `RESEARCH.md` with
   citations): sim-to-real transfer, domain randomisation (Tobin et al. 2017), system identification + twin
   calibration from real logs, real-to-sim-to-real loops, synthetic data for driver-intent/risk models, and how the
   project's twin (hw_sim + measured braking + twin_report accuracy) fits. Then apply it: train on randomised twin
   data, validate on real car logs (ties into B15).
+
+## N. Proposed software improvements (28 Sep, suggested to the user - not agreed yet; ask before starting)
+Consistency on a vibrating car:
+- [ ] N1. Closed-loop speed control (PI + feedforward from pi/car_model.json on the RF2O/EKF speed) instead of
+  open-loop PWM, like an EV's torque/speed controller; jerk-limited commands.
+- [ ] N2. Online adaptation of the car model: recursive least squares with a forgetting factor for speed gain,
+  braking decel and steering curvature, so battery sag / floor / vibration changes are tracked during a drive.
+- [ ] N3. Adaptive noise in the speed EKF (innovation-based adaptive estimation, Mehra 1970) + robust (Huber)
+  weights in ICP/RF2O so vibration-induced outliers don't jerk the estimate; LiDAR motion deskew (LOAM, Zhang &
+  Singh 2014) and a temporal scan filter / log-odds occupancy grid.
+- [ ] N4. Uncertainty-aware safety: margins scaled by the measured spread (e.g. braking distance 95th percentile),
+  calibrated intent probabilities (temperature scaling, Guo et al. 2017), conformal prediction bounds (Angelopoulos
+  & Bates 2021) or a small deep ensemble (Lakshminarayanan et al. 2017).
+- [ ] N5. Repeatability protocol like Euro NCAP AEB tests: every car test repeated N times, report mean +- std and
+  pass rate, not single runs; twin noise randomised to the measured spread (ties into M4).
+Real-EV style software:
+- [ ] N6. Staged AEB as in Euro NCAP / UN R152: forward-collision warning -> partial brake -> full brake, with
+  warnings shown in the GUI (and a buzzer/LED if available).
+- [ ] N7. Responsibility-Sensitive Safety (Shalev-Shwartz et al. 2017) as a formal safe-distance rule to cite
+  alongside the gate/CBF.
+- [ ] N8. Functional-safety style supervision (ISO 26262 ideas): health monitor for LiDAR rate, loop latency, link,
+  CPU temperature; degraded modes (limp mode = speed capped, ADAS off -> warn) with a state machine shown in the GUI.
+- [ ] N9. Fault-injection tests in the twin (LiDAR dropout/freeze, latency spikes, packet loss, stuck throttle) as
+  SOTIF (ISO 21448) scenario testing; ASAM OpenSCENARIO-like scenario files; CI running scenarios + tests.
+- [ ] N10. Driver-facing EV features: adaptive cruise / follow distance setting, speed-limit zones on the map,
+  park assist with distance bars, drive modes (Eco/Normal/Sport = throttle maps + margins), trip/energy log.
+- [ ] N11. Architecture: ROS 2-style layering (perception / prediction / planning / control / HMI) with logged,
+  replayable message streams (rosbag-like), A/B deploy with rollback on the Pi (OTA-style).
 
 ## K. User requests (28 Sep, second round)
 - [x] K1. (done: the 28 Sep relay drive log confirms it - after the 0.12 s command delay a throttle cut rolls ~6 cm
