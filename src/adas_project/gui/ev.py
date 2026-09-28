@@ -824,6 +824,116 @@ class MapZonesPanel(QtWidgets.QWidget):
         self.car.setData(*self._sc(vehicle_to_world(body, self.pose)))
 
 
+class RearCameraPanel(QtWidgets.QWidget):
+    """Reverse-camera view: the rear webcam (pi/rear_camera.py, MJPEG on :8091) with the steering-dependent reverse
+    guidelines drawn on the floor, objects the vision pipeline found (with looming time to contact) and its status."""
+
+    frame_ready = QtCore.Signal(object)
+    state_ready = QtCore.Signal(object)
+
+    def __init__(self, host, port=8091):
+        super().__init__()
+        self.url, self.state_url = f"http://{host}:{port}/stream", f"http://{host}:{port}/state"
+        self.kappa, self.running, self.have = 0.0, False, False
+        lay = QtWidgets.QVBoxLayout(self)
+        self.view = QtWidgets.QLabel()
+        self.view.setMinimumSize(480, 360)
+        self.view.setAlignment(QtCore.Qt.AlignCenter)
+        self.view.setStyleSheet(f"background: {C['bg1']}; border: 1px solid {C['hair']}; border-radius: 12px;")
+        self.placeholder()
+        lay.addWidget(self.view, 1)
+        self.status = QtWidgets.QLabel("")
+        self.status.setWordWrap(True)
+        self.status.setStyleSheet(f"color: {C['text2']};")
+        lay.addWidget(self.status)
+        row = QtWidgets.QHBoxLayout()
+        self.guides = QtWidgets.QPushButton("REVERSE GUIDELINES")
+        self.guides.setCheckable(True)
+        self.guides.setChecked(True)
+        row.addWidget(self.guides)
+        row.addStretch(1)
+        lay.addLayout(row)
+        self.frame_ready.connect(self._on_frame)
+        self.state_ready.connect(self._on_state)
+
+    def placeholder(self):
+        self.view.setText("NO REAR CAMERA\n\nConnect the webcam to the Pi and start\npi/rear_camera.py  (or  --sim  to try it)")
+        self.view.setFont(theme.font(13, spacing=1.0))
+
+    def set_steering(self, kappa):
+        self.kappa = kappa
+
+    def showEvent(self, ev):
+        super().showEvent(ev)
+        if not self.running:
+            self.running = True
+            threading.Thread(target=self._reader, daemon=True).start()
+            threading.Thread(target=self._poller, daemon=True).start()
+
+    def hideEvent(self, ev):
+        super().hideEvent(ev)
+        self.running = False
+
+    def _reader(self):
+        import cv2
+        while self.running:
+            cap = cv2.VideoCapture(self.url)
+            got = False
+            while self.running and cap.isOpened():
+                ok, f = cap.read()
+                if not ok:
+                    break
+                got = True
+                self.frame_ready.emit(f)
+            cap.release()
+            if not got:
+                self.frame_ready.emit(None)
+            time.sleep(1.5)
+
+    def _poller(self):
+        while self.running:
+            try:
+                with urllib.request.urlopen(self.state_url, timeout=1.5) as r:
+                    self.state_ready.emit(json.loads(r.read()))
+            except Exception:
+                self.state_ready.emit(None)
+            time.sleep(0.5)
+
+    def _on_frame(self, f):
+        if f is None:
+            self.have = False
+            self.placeholder()
+            return
+        self.have = True
+        if self.guides.isChecked():
+            try:
+                from adas.vision.guidelines import draw_guidelines
+                from tools.camera_calibrate import load_camera
+                cam = load_camera()
+                cam = type(cam)(**{**cam.__dict__, "width": f.shape[1], "height": f.shape[0]})
+                f = draw_guidelines(f, cam, self.kappa, GEO["width"], GEO["rear"])
+            except Exception:
+                pass
+        h, w = f.shape[:2]
+        img = QtGui.QImage(f.data, w, h, 3 * w, QtGui.QImage.Format_BGR888).copy()
+        self.view.setPixmap(QtGui.QPixmap.fromImage(img).scaled(self.view.size(), QtCore.Qt.KeepAspectRatio,
+                                                                QtCore.Qt.SmoothTransformation))
+
+    def _on_state(self, st):
+        if not st or not st.get("ok"):
+            self.status.setText("camera service not reachable")
+            return
+        o, q = st.get("odometry"), st.get("quality") or {}
+        parts = [f"{st.get('fps', 0):.0f} fps, {st.get('pipeline_ms', 0):.0f} ms per frame"]
+        if o:
+            parts.append(f"visual odometry {o['v']:+.2f} m/s, yaw {o['w']:+.2f} rad/s (quality {o['quality']:.2f})")
+        ttcs = [x["ttc"] for x in st.get("objects", []) if x.get("ttc")]
+        parts.append(f"{len(st.get('objects', []))} object(s)" + (f", nearest contact in {min(ttcs):.1f} s" if ttcs else ""))
+        parts.append(f"image: blur {q.get('blur', 0):.0f}, shake {q.get('jitter_deg', 0):.2f} deg" +
+                     (f"  -  DEGRADED: {', '.join(q.get('why', []))}" if q.get("degraded") else ""))
+        self.status.setText("\n".join(parts))
+
+
 class AssistsPanel(QtWidgets.QWidget):
     def __init__(self, link):
         super().__init__()
@@ -1079,6 +1189,7 @@ class EVWindow(QtWidgets.QMainWindow):
         self.events = QtWidgets.QListWidget()
         self.panels = {"map": ("Map and zones", MapZonesPanel(link, self.store, self.add_event)),
                        "assists": ("Assists", AssistsPanel(link)), "setup": ("Car setup", CarSetupPanel(link.host)),
+                       "rear": ("Rear camera", RearCameraPanel(link.host)),
                        "diag": ("Diagnostics", DiagnosticsPanel()), "events": ("Events", self.events)}
         self.docks = {}
         for key, (title, w) in self.panels.items():
@@ -1133,6 +1244,7 @@ class EVWindow(QtWidgets.QMainWindow):
         lay.setContentsMargins(14, 6, 14, 6)
         self.app_btns = {}
         for key, text in (("map", "⌖  Map && zones"), ("assists", "◎  Assists"), ("setup", "⚙  Car setup"),
+                          ("rear", "◉  Rear camera"),
                           ("diag", "∿  Diagnostics"), ("events", "☰  Events")):
             b = QtWidgets.QPushButton(text)
             b.setObjectName("app")
@@ -1288,5 +1400,8 @@ class EVWindow(QtWidgets.QMainWindow):
         self.mini.set(st)
         self.panels["map"][1].show_state(st)
         self.panels["assists"][1].show_state(st)
+        cal = (st.get("drive") or {}).get("steer_cal") or {}
+        kap = -(cal.get("k", 0.0656)) * (float(drive.get("servo", 87)) - float(drive.get("centre", 87)))
+        self.panels["rear"][1].set_steering(kap)
         self.panels["diag"][1].add(now, st)
         self._place()

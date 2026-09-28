@@ -172,7 +172,14 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   algorithms / additions. Steps: (a) audit the interventions in the real 22:11 / 21:24 logs (what fired, was it
   needed), (b) learn the takeover decision directly (would this intervention be needless?), (c) fix the weak scenario
   families the repeatability protocol shows, (d) research + add algorithms (RSS, conformal risk, ...).
-- [ ] P20. (user, 29 Sep) A back-facing Lenovo webcam will be added: research every algorithm usable with it and write
+- [x] P20. (code done 29 Sep, all tested on the synthetic camera, nothing yet on the real webcam: adas/vision/ - sim_camera,
+  rear_odometry (speed within 0.5 %, yaw within 1 %, reversing too), rear_objects (plane+parallax blobs, looming tau),
+  quality (blur / brightness / vibration RMS + Hz), fusion (LiDAR clusters take the detected class + margin), guidelines
+  (reverse guidelines), detector (optional YOLO, weights must be on disk), Camera.yaw_deg for a rear mount, ArUco pose
+  behind the car; tools/camera_calibrate.py (intrinsics + mounting from a floor checkerboard, tested); pi/rear_camera.py
+  (MJPEG :8091 + JSON state, 3.6 ms/frame on the laptop, --sim); GUI 'Rear camera' drawer. When the webcam arrives:
+  run camera_calibrate intrinsics + extrinsics, then pi/rear_camera.py; feed its odometry/objects into the relay.)
+  (user, 29 Sep) A back-facing Lenovo webcam will be added: research every algorithm usable with it and write
   the code (tested on synthetic / recorded frames, no camera needed yet): rear optical-flow odometry and speed,
   ground-plane monocular distance, rear object detection + approaching-object time to contact, ArUco parking /
   docking markers, image-quality / vibration monitor, LiDAR-camera fusion for the rear sector, driver-facing

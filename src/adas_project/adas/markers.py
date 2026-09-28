@@ -24,6 +24,7 @@ class Camera:
     y: float = 0.0
     z: float = 0.085           # m above the floor
     pitch_deg: float = 5.0     # tilted down by this much
+    yaw_deg: float = 0.0       # mounting direction about the vertical: 0 = looks ahead, 180 = looks backwards (rear camera)
 
     @property
     def fx(self):
@@ -36,9 +37,13 @@ class Camera:
     def rotation(self):
         """Columns are the camera x/y/z axes expressed in the vehicle frame."""
         p = math.radians(self.pitch_deg)
-        return np.array([[0.0, -math.sin(p), math.cos(p)],
-                         [-1.0, 0.0, 0.0],
-                         [0.0, -math.cos(p), -math.sin(p)]])
+        R = np.array([[0.0, -math.sin(p), math.cos(p)],
+                      [-1.0, 0.0, 0.0],
+                      [0.0, -math.cos(p), -math.sin(p)]])
+        if self.yaw_deg:
+            c, s = math.cos(math.radians(self.yaw_deg)), math.sin(math.radians(self.yaw_deg))
+            R = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]]) @ R      # turn the whole camera about z
+        return R
 
 
 @dataclass
