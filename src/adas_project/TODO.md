@@ -19,6 +19,25 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
     offset is still right within ~1 deg (if the object was dead centre). Nothing changed.
   - Pi WiFi flaky (20% ping loss, 1 s spikes, SSH timeouts); USB LiDAR/ESP32 vanished once until a reboot
     (brown-out when the motors were switched on?). ESP32 did not answer a relay PING within 200 ms.
+  - "Motor not responding": the relay passed the stick through (PWM out up to 183, servo 36-135), but the ESP32
+    never answered PING. The user restarted the ESP32 -> its USB re-enumerated (19:40:24-34), leaving the relay on
+    a dead handle; the relay must be restarted (panel Drive) to reopen it. Kernel also logs USB timeouts (-110) on
+    both CP2102s -> power/cable. Idea: the relay should detect a lost ESP32 (PING/serial errors) and reopen it.
+    After the relay restart: still no reply. RTS reset + 3-min serial listener while the user reset the ESP32:
+    zero bytes (not even the ROM boot text); no ESP32 answers a UDP PING broadcast on the home WiFi either.
+    Power LED on. -> ESP32 not running / serial path dead, not a software issue. Next: RC_CAR hotspot check,
+    ESP32 on the laptop's USB, motor battery off vs on (brown-out).
+    Remote RTS/DTR resets + the user's RST button: still zero bytes. ESP32 USB keeps dropping (19:40, 19:45,
+    19:48, 19:49, then gone). The Pi's supply negotiated no USB-PD (usbpd objects all 0) -> the Pi 5 limits all
+    USB ports to 600 mA total, shared by the LiDAR motor and the ESP32 (+ servos if fed from its 5 V pin).
+    Likely cause: USB power budget / cable. User options: power the ESP32 + servos from the car battery via a
+    5 V regulator (USB for data only, common ground), a 5 A USB-PD supply for the Pi (or
+    usb_max_current_enable=1 only if the supply can really deliver), reseat/replace the ESP32 USB cable.
+    ESP32 moved to the laptop (COM7): the USB-serial chip enumerates, but zero bytes on reset, no PONG, and
+    esptool chip-id says "No serial data received" (the ROM bootloader is silent). -> the ESP32 chip / its 3.3 V
+    supply looks dead, not the Pi. Next (user): BOOT+EN manual download mode and chip-id again; measure 3V3 pin;
+    check what killed it before fitting a spare (servo/motor power on the ESP32 pins, VIN voltage, back-EMF).
+    Real-car tests A2 wait for a working ESP32.
   - [ ] Hybrid A* click-to-go into open space
   - [ ] Evasive steer at the obstacle
   - [ ] Hybrid A* click-to-go to a goal behind/across the obstacle
