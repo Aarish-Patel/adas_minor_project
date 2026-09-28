@@ -7,6 +7,15 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] A1. **Deploy to the Pi.** The Pi still runs the version whose obstacle memory made a phantom wall and blocked
   forward driving. Deploy `adas/` and `pi/`, restart `rc-relay`, check a forward drive first.
 
+## L. User requests (28 Sep, third round) - ADAS parked at "acceptable" (11/11 scenarios, 0 crashes), tune later
+- [x] L1. (done: tried "back up then re-plan" (ROS recovery style) - 7x slower, reverted; instead weighted-A*
+  inflation 3.0, 0.25 m steps, 5 primitives for searches with reversing. On the Pi, 31 recorded back-off jobs:
+  median 463 -> 205 ms, 95th 1352 -> 294 ms, max 1807 -> 347 ms, same 26 found) (= K6) Faster back-off searches.
+- [ ] L2. (= B8 + B9) Steering correction instead of braking where a nearby steering is safe (minimal-intervention
+  safety filter), plus a sampling-based fallback (MPPI) when Hybrid A* finds nothing.
+- [ ] L3. (= E3 + E1 + E2 + D7) Native Qt GUI replacing the web pages: modes, map, "what might happen", twin charts.
+- [ ] L4. Tell the user how to test everything on the GUI.
+
 ## K. User requests (28 Sep, second round)
 - [x] K1. (done: the 28 Sep relay drive log confirms it - after the 0.12 s command delay a throttle cut rolls ~6 cm
   from 0.7 m/s (~4 m/s^2), an active brake pulse 1-3 cm (~8 m/s^2); the twin's 2 m/s^2 was an unfitted default.
@@ -21,8 +30,8 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   bins for back-off searches + time budgets; latency-compensated plan start; last point to steer from the turning
   geometry. Stage timing in the relay with RC_TIMING=1. Pi numbers: `python3 -m sim.profile_relay 2 --on-pi`,
   `tools/plan_bench.py`) **Everything must run on the Pi 5 without processing delays**.
-- [ ] K6. Back-off (reversing) searches still take 0.46 s median / 1.8 s max on the Pi (the brake holds the car
-  meanwhile): a Reeds-Shepp heuristic (Dolgov 2010) would cut the nodes. Forward swerves are fast.
+- [x] K6. (done as L1: 0.21 s median / 0.35 s max on the Pi) Back-off (reversing) searches were 0.46 s median /
+  1.8 s max on the Pi.
 - [ ] K7. The Pi reached 74 C under sustained load (throttles at 80-85 C): fit the official active cooler.
   **Everything must run on the Pi 5 without processing delays**: profile every per-tick piece (gate
   sweeps, RF2O/EKF, intent MLP, evasive Hybrid A*, click-to-go), set a budget, move anything slow off the control

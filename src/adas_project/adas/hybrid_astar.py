@@ -30,6 +30,13 @@ RES = 0.05
 HEADING_BIN_DEG = 7.5
 REVERSE_HEADING_BIN_DEG = 15.0
 CELL_M = 0.10
+# searches WITH reversing (backing off from something close): heuristic inflation (weighted A*, as in ARA*), a
+# longer step and fewer steering primitives - these searches only need a feasible way out, not the shortest.
+# On 31 back-off jobs recorded in Monte Carlo drives: same 26 paths found, median 189 -> 100 ms, 95th percentile
+# 586 -> 148 ms on a laptop (sweep of eps 1.2-3, step 0.15-0.25 m, 5-7 primitives)
+REVERSE_EPS = 3.0
+REVERSE_STEP_M = 0.25
+REVERSE_N_KAPPA = 5
 
 
 class Grid:
@@ -191,9 +198,23 @@ class HybridAStar:
         if not near.size or near.min() >= 1e8:
             self.gave_up = "goal unreachable"
             return None
-        kappas = np.linspace(-self.kappa_max, self.kappa_max, 7)
+        kappas = np.linspace(-self.kappa_max, self.kappa_max, REVERSE_N_KAPPA if allow_reverse else 7)
         dirs = (1, -1) if allow_reverse else (1,)
         hbin = math.radians(REVERSE_HEADING_BIN_DEG if allow_reverse else HEADING_BIN_DEG)
+        eps = REVERSE_EPS if allow_reverse else 1.2
+        step_saved = self.step
+        if allow_reverse:
+            self.step = REVERSE_STEP_M
+        try:
+            return self._search_loop(grid, start, h2d, analytic, h_euclid, max_nodes, w_offset, budget_s, t_start,
+                                     kappas, dirs, hbin, eps)
+        finally:
+            self.step = step_saved
+
+    def _search_loop(self, grid, start, h2d, analytic, h_euclid, max_nodes, w_offset, budget_s, t_start, kappas, dirs,
+                     hbin, eps):
+        import time
+        m = self.margin
         start = tuple(float(v) for v in start)
         open_heap = [(0.0, 0, start, 0.0, 0.0, 1)]
         parents = {0: (None, None)}
@@ -212,7 +233,7 @@ class HybridAStar:
                 return None
             # analytic expansion to the goal: every node close in, every 4th further out (Dolgov et al.: the
             # analytic expansion is tried more often as the heuristic gets small)
-            h_node = (f - g) / 1.2
+            h_node = (f - g) / eps
             if h_node < 0.8 or self.expanded % 4 == 0:
                 fin = analytic(pose, d_prev)
                 if fin is not None:
@@ -233,7 +254,7 @@ class HybridAStar:
                     nid += 1
                     nodes[nid] = end
                     parents[nid] = (i, np.column_stack([seg, np.full(len(seg), d)]))
-                    heapq.heappush(open_heap, (g2 + 1.2 * h, nid, end, g2, k, d))
+                    heapq.heappush(open_heap, (g2 + eps * h, nid, end, g2, k, d))
         self.gave_up = "node limit" if open_heap else "no way through"
         return None
 
