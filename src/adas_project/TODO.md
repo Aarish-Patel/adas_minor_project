@@ -68,6 +68,12 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   0.25 s of travel); stopped on the path with the throttle held -> re-plan from where the car stands (3x), then
   back off 30 cm and search again (3x), then hand back with a 1.5 s pause; click-to-go re-plans the same way.
   Twin: box 0.4 m ahead at full throttle from rest: stuck -> round it, no contact. 91 tests + 12/12 pass.
+- [x] A7. (28 Sep 22:00) Deployed A3-A6 + O1 (ESP32 link) + N8 (health) + intent v3 display + FCW to ~/rc_car
+  (backup ~/rc_car_backup_20260928_2200.tgz; car json kept, LiDAR 45.7 deg); relay restarted 22:05.
+- [ ] A8. Relay start is slow: every open of the LiDAR's CP2102 (ttyUSB1) waits ~13 s in the kernel
+  ('cp210x ttyUSB1: failed set request 0x12 status: -110'), so find_ports takes a minute and the LiDAR stops
+  meanwhile. Hardware/USB: try another port / cable / powered hub; software: skip probing once the by-id names
+  are known (LiDAR = the one with a serial number, ESP32 = 'Controller_0001').
 - [x] A3. (done on the laptop 28 Sep, NOT on the Pi yet: adas/dubins.py (Dubins 1957 / Shkel & Lumelsky 2001) as
   the analytic expansion for goal poses, forward or driven backwards; plan_point_job tries forward-only first
   for every goal - also behind the car (forward U-turn) - then a search that may reverse with reversing 7x the
