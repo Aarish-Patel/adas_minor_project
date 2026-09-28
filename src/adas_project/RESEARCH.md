@@ -243,6 +243,20 @@ with a digital twin that is (1) identified from the real system, (2) randomised 
    contact), so a good average cannot hide a situation where the model fails.
 6. *Randomisation ablation* (evidence that step 2 matters): a model trained on the nominal twin only vs one
    trained with randomisation, both tested on cars drawn from wider ranges than either saw.
+   **Result** (`sim/intent_ablation.py`, `models/intent_ablation.json`, `reports/intent_ablation.png`): the same
+   gradient-boosted trees, trained on the same number of ticks (253k) from 1500 nominal-twin drives vs randomised
+   drives, tested on 400 drives each:
+
+   | tested on | trained on | AP | AUC | calibration error | crash drives never warned | warned >= 1 s before |
+   |---|---|---|---|---|---|---|
+   | nominal twin | nominal twin | 0.68 | 0.97 | 0.022 | 6.7 % | 61 % |
+   | nominal twin | randomised twins | 0.68 | 0.96 | 0.015 | 5.6 % | 60 % |
+   | **1.6x wider, unseen cars** | nominal twin | **0.63** | **0.87** | **0.120** | **8.0 %** | **43 %** |
+   | **1.6x wider, unseen cars** | randomised twins | **0.85** | **0.96** | **0.018** | **2.0 %** | **60 %** |
+
+   On the car it was trained for, randomisation costs nothing. On cars it has never seen, the model trained on one
+   twin loses a quarter of its precision, becomes badly calibrated, and warns late. The randomised one keeps its
+   performance. That is the expected behaviour on the real car, whose exact parameters no twin knows.
 7. *Real-to-sim loop (next, when the car runs again).* Real drive logs are scored by the model. The twin's
    randomisation ranges are then re-centred on what the logs show, following SimOpt / BayesSim. The model is
    retrained, and the sim-vs-real agreement of candidate models is reported, as in Kadian et al. (TODO B15).

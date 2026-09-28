@@ -116,7 +116,7 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
   (RelayIntent.risk_net; GUI shows both). 83 tests + 12/12 scenarios pass.
   Next: retrain the takeover decision itself on a mixed set (v3 data + Monte Carlo drivers) or learn the decision
   (would the intervention be needless?) directly; weak slices: turning AP 0.65, false alarms at 0-0.5 m (19 %) and
-  reversing (10 %); Pi benchmark in ~/rc_bench; randomisation ablation (sim.twin_intent_data ablation).
+  reversing (10 %); Pi benchmark in ~/rc_bench; randomisation ablation DONE (unseen 1.6x-wider cars: AP 0.63 nominal-trained vs 0.85 randomised, calibration error 0.12 vs 0.018, RESEARCH.md section 7).
 - [x] M2. (done 28 Sep: dashboard tab "Monte Carlo lab", gui/lab_tabs.py + sim/relay_mc.py --live; checked end to end) **Monte Carlo visualiser in the simulator GUI** (`gui/dashboard.py`, new tab): pick Driver only / ADAS /
   ADAS + intent (and driver style, world, number of runs), run `sim/relay_mc.py` in a background process, show
   live results: trajectories on the map, crashes, needless interventions, burden, paired stats (Wilcoxon), and a
@@ -127,7 +127,7 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
   show the domain-randomisation settings (noise, latency, braking, vibration jitter), the sim data vs real-log
   data mix, sim-to-real gap metrics (accuracy on twin data vs on real car logs), and the real-to-sim calibration
   step, so the whole twin-based training loop is visible.
-- [ ] M4. **Research digital-twin-based ML training** (for the report/teachers; add to `RESEARCH.md` with
+- [x] M4. (done 28 Sep: RESEARCH.md section 7 - methods table with references, how the project applies each, randomisation ablation result; the real-to-sim loop step waits for real drives, B15) **Research digital-twin-based ML training** (for the report/teachers; add to `RESEARCH.md` with
   citations): sim-to-real transfer, domain randomisation (Tobin et al. 2017), system identification + twin
   calibration from real logs, real-to-sim-to-real loops, synthetic data for driver-intent/risk models, and how the
   project's twin (hw_sim + measured braking + twin_report accuracy) fits. Then apply it: train on randomised twin
