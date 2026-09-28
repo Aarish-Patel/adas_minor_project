@@ -113,6 +113,25 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   passed the door (far wall) or failed to swerve at the box. LOW PRIORITY: the user says "no safe way around" when
   the wall is too close is fine for now.
 
+## P. User requests (28 Sep, night) - the rear wheel shaft broke (no crash): simulator + logs until it is fixed
+- [ ] P1. Go through all the car logs: what the car did before the shaft broke (hard direction reversals, brake
+  pulses at speed, the smoother bug, stalls against obstacles), what else looks wrong; fix what software can
+  (drivetrain-friendly braking / reversing).
+- [ ] P2. Speed-limit zones: draw shapes (rectangle / polygon / circle) on the map, type a limit in km/h, scaled
+  down to the car; the throttle is scaled by the zone's limit, no zone = full speed. Needs a world frame on the car
+  (continuous LiDAR odometry) so zones stay put while the car moves.
+- [ ] P3. Ackermann realism: steering limited like a real car scaled down (no steeper than realistic); keep the
+  current limit if it is already right.
+- [ ] P4. Speed-dependent steering: the maximum steering angle shrinks with speed, as in real cars.
+- [ ] P5. More work on the A* / evasive issues seen (e.g. a brake at 0.41 m free / 0.85 m/s allowed from a noisy
+  closing-speed track), and any new ones.
+- [ ] P6. The control panel (web, port 8080) refined or brought into the Qt GUI.
+- [ ] P7. GUI restructure, EV style (reference: automated valet parking screen - 3D car centre, blue path ribbon,
+  minimal essentials; everything else in pop-up / expandable panels).
+- [ ] P8. Monte Carlo + training labs look better and SHOW the process: at least 2-3 3D cars moving (simulation
+  runs side by side; randomised twin cars generating training data), not just graphs.
+- [ ] P9. The rest of the TODO list.
+
 ## O. User request (28 Sep, evening): "work on the simulator, the TODO list and everything for the project"
 (the ESP32 died, so no car until it is replaced). Order: M4 research -> M1 data + model -> M3 training tab ->
 M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulator.
