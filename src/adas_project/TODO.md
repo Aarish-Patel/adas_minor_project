@@ -8,15 +8,21 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   forward driving. Deploy `adas/` and `pi/`, restart `rc-relay`, check a forward drive first.
 
 ## K. User requests (28 Sep, second round)
-- [ ] K1. **Braking model = the real car**: the car stops almost instantly (user: 1-2 cm drift). Check against the
-  drive logs, then fix the twin (VirtualCar), the speed EKF and the gate's stopping distance (DECEL). My earlier
-  "the throttle model thinks the car stops at once" finding came from the twin's slow braking - retract it.
+- [x] K1. (done: the 28 Sep relay drive log confirms it - after the 0.12 s command delay a throttle cut rolls ~6 cm
+  from 0.7 m/s (~4 m/s^2), an active brake pulse 1-3 cm (~8 m/s^2); the twin's 2 m/s^2 was an unfitted default.
+  Twin, speed EKF, gate DECEL 1.2 -> 4.0 and the swerve timing updated; full speed at a wall stops 25 cm short)
+  **Braking model = the real car**: the car stops almost instantly (user: 1-2 cm drift).
 - [ ] K2. **Everything must run on the Pi 5 without processing delays**: profile every per-tick piece (gate
   sweeps, RF2O/EKF, intent MLP, evasive Hybrid A*, click-to-go), set a budget, move anything slow off the control
   loop (worker thread) or make it cheaper; benchmark on the Pi itself when it is reachable.
 - [ ] K3. **Much smarter, more accurate intent-aware ADAS**: interventions down to a very small number, 0 crashes.
-- [ ] K4. **More, different scenarios** in the Monte Carlo (driver styles incl. good drivers who avoid early,
-  corridors, clutter, doorways, moving obstacles) - keep trying.
+- [ ] K4. (in progress: 5 driver styles - lapsing, late, good, distracted, aggressive; drivers now slow down and
+  stop like people (before, they only steered at constant throttle and crashed head-on even without lapses);
+  ground truth counts near misses (< 2 cm) as needed. 120 paired drives: 0 crashes with any ADAS; ADAS+intent vs
+  ADAS: needless takeovers 110 -> 19, override 185 -> 66 s (p < 0.0001). Still to add: corridors, clutter,
+  moving obstacles) **More, different scenarios** in the Monte Carlo - keep trying.
+- [ ] K5. Aggressive drivers (full throttle to within a few cm of walls) still get ~3 gate interventions per drive
+  from the brake's margin (5 cm standoff, FOS 1.3); only shrink it with more braking data from the car.
 
 ## B. Safety and planning (the car must be impossible to crash, with minimal false interruptions)
 - [x] B1. **Research** (done: RESEARCH.md sections 1-2) planning/safety algorithms and pick them (RESEARCH.md): Hybrid A* for the evasive path,

@@ -864,6 +864,7 @@ def main():
                         closing = front_track.speed if physical > 0 else rear_track.speed
                         g_phys, g_brake = pgate.decide(dt_pkt, physical, gate_delta,
                                                        vest.v_gate((physical > 0) - (physical < 0)), closing,
+                                                       intent_k_rate=None if adas_override else rintent.gate_k_rate,
                                                        trusted=rintent.gate_trust and not adas_override)
                         gate_info = dict(pgate.info)
                         if pkt_now - last_seq_t > SCAN_LOST_S and physical != 0:

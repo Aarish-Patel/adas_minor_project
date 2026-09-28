@@ -13,15 +13,16 @@ import numpy as np
 
 
 class SpeedEKF:
-    def __init__(self, v_max, deadband, tau=0.1, delay=0.12, coast_decel=1.2, k_curv_per_deg=0.0656,
+    def __init__(self, v_max, deadband, tau=0.1, delay=0.12, coast_decel=4.0, k_curv_per_deg=0.0656,
                  servo_centre=87.0, lidar_x=0.12, q_v=0.6, q_w=1.5, r_scale=4.0, r_floor=(0.02, 0.02, 0.05),
-                 accel_limits=(-4.0, 3.0)):
+                 accel_limits=(-4.0, 3.0), brake_decel=8.0):
         self.v_max, self.deadband, self.tau, self.delay = v_max, deadband, max(tau, 0.03), delay
         self.coast = coast_decel
         self.k, self.centre, self.lx = k_curv_per_deg, servo_centre, lidar_x
         self.q_v, self.q_w = q_v, q_w                  # process noise densities (m/s per sqrt s, rad/s per sqrt s)
         self.r_scale, self.r_floor = r_scale, np.array(r_floor)
         self.a_min, self.a_max = accel_limits          # the motor cannot change speed faster (fitted twin limits)
+        self.brake = brake_decel                       # reverse throttle while moving: active braking (measured)
         self.rejects = 0
         self.x = np.zeros(2)
         self.P = np.diag([0.05, 0.1])
@@ -65,9 +66,16 @@ class SpeedEKF:
             a = 1.0
         else:
             a = math.exp(-dt / self.tau)
-            dv = (self.v_steady(u) - v) * (1 - a)
-            if not self.a_min * dt <= dv <= self.a_max * dt:
-                dv = min(self.a_max * dt, max(self.a_min * dt, dv))
+            vss = self.v_steady(u)
+            dv = (vss - v) * (1 - a)
+            if v * vss < 0:                            # braking against the motion
+                lo, hi = (-self.brake * dt, self.a_max * dt) if v > 0 else (-self.a_max * dt, self.brake * dt)
+            elif abs(vss) < abs(v):                    # less throttle: slows like a cut
+                lo, hi = (-self.coast * dt, self.a_max * dt) if v > 0 else (-self.a_max * dt, self.coast * dt)
+            else:
+                lo, hi = self.a_min * dt, self.a_max * dt
+            if not lo <= dv <= hi:
+                dv = min(hi, max(lo, dv))
                 a = 1.0                                # saturated: the change no longer depends on v
         v2 = v + dv
         # yaw rate relaxes to v * kappa at the same rate the speed does

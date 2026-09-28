@@ -78,8 +78,9 @@ def collect(args):
 
 
 def main(train_runs=60, test_runs=20):
-    train_jobs = [(100 + i, st) for i in range(train_runs) for st in ("lapsing", "late")]
-    test_jobs = [(500 + i, st) for i in range(test_runs) for st in ("lapsing", "late")]
+    from sim.relay_mc import DEFAULT_STYLES
+    train_jobs = [(100 + i, st) for i in range(train_runs) for st in DEFAULT_STYLES]
+    test_jobs = [(500 + i, st) for i in range(test_runs) for st in DEFAULT_STYLES]
     with ProcessPoolExecutor() as ex:
         tr = list(ex.map(collect, train_jobs, chunksize=2))
         te = list(ex.map(collect, test_jobs, chunksize=2))

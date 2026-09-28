@@ -23,14 +23,22 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
 
 
+# Braking of the real car (the logging drive only ramps down, so these come from the relay drive of 28 Sep,
+# pi/drive_logs/drive_20260928_015209.csv): after the 0.12 s command delay, a throttle cut at 0.7 m/s rolls ~6 cm
+# (~4 m/s^2) and an active brake pulse stops it within 1-3 cm (~8 m/s^2), as the user also observed ("brakes almost
+# instantly, 1-2 cm drift"). The old 2 m/s^2 coast was an unfitted default.
+MEASURED_COAST_DECEL = 4.0
+MEASURED_BRAKE_DECEL = 8.0
+
+
 def load_car_model():
     fit_path = os.path.join(HERE, "fitted_car.json")
-    m = {"v_max": 0.834, "deadband": 11.2, "tau_motor": 0.033, "coast_decel": 2.0, "delay_s": 0.12,
-         "k_curv_per_deg": 0.0656, "servo_centre": 86.8}
+    m = {"v_max": 0.834, "deadband": 11.2, "tau_motor": 0.033, "coast_decel": MEASURED_COAST_DECEL, "delay_s": 0.12,
+         "k_curv_per_deg": 0.0656, "servo_centre": 86.8, "brake_decel": MEASURED_BRAKE_DECEL}
     if os.path.exists(fit_path):
         f = json.load(open(fit_path, encoding="utf-8"))
         if "truth" not in f:
-            m.update({k: f["speed"][k] for k in ("v_max", "deadband", "tau_motor", "coast_decel", "delay_s")})
+            m.update({k: f["speed"][k] for k in ("v_max", "deadband", "tau_motor", "delay_s")})
             if f["steer"].get("identifiable"):
                 m["k_curv_per_deg"] = f["steer"]["k_curv_per_deg"]
                 m["servo_centre"] = f["steer"]["servo_centre"]
@@ -114,7 +122,17 @@ class VirtualCar:
             self.v = 0.0 if abs(self.v) <= dec else self.v - math.copysign(dec, self.v)
         else:
             a = (target - self.v) / max(m["tau_motor"], 0.02)
-            self.v += max(-4.0, min(3.0, a)) * dt
+            if self.v * target < 0:                  # reverse throttle while moving: active braking
+                lim = m["brake_decel"]
+            elif abs(target) < abs(self.v):          # less throttle: slows like a throttle cut
+                lim = m["coast_decel"]
+            else:
+                lim = 4.0
+            if self.v > 0:
+                a = max(-lim, min(3.0, a))
+            else:
+                a = max(-3.0, min(lim, a))
+            self.v += a * dt
         kappa = -m["k_curv_per_deg"] * (self.servo - m["servo_centre"])      # + = left
         nth = self.th + kappa * self.v * dt
         nx = self.x + self.v * math.cos((self.th + nth) / 2) * dt

@@ -53,7 +53,7 @@ class AssistConfig:
     lps_fos: float = 1.3
     lps_base: float = 0.05
     lps_reaction: float = 0.20
-    lps_decel: float = 1.2
+    lps_decel: float = 4.0
     evade_driver_override: float = 0.45   # stick: a driver steering harder than this takes over at once
     evade_max_s: float = 15.0        # s: a manoeuvre never lasts longer...
     evade_max_past: float = 2.5      # m: ...or goes further than this past the obstacle

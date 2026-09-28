@@ -48,6 +48,17 @@ def main(a="adas", b="adas+intent"):
             pv = wilcoxon(xa, xb, alternative="greater").pvalue if any(abs(d) > 1e-9 for d in diff) else 1.0
             out[key] = {a: round(sum(xa), 1), b: round(sum(xb), 1), "better": better, "worse": worse, "p_one_sided": pv}
             print(f"  {label:42s}: {sum(xa):6.1f} -> {sum(xb):6.1f}   {better} better, {worse} worse, p = {pv:.4f}")
+    # per driver style
+    styles = sorted({p[0]["style"] for p in pairs})
+    for st in styles:
+        sp = [p for p in pairs if p[0]["style"] == st]
+        row = []
+        for which, i in ((a, 0), (b, 1)):
+            n = sum(1 for p in sp for e in p[i]["events"] if e[2] == "fp")
+            s_ = sum(p[i]["burden"]["needless_s"] for p in sp if "burden" in p[i])
+            near = sum(1 for p in sp for e in p[i]["events"] if e[2] == "ok" and len(e) > 5 and e[5] == "near-miss")
+            row.append(f"{which}: {n:3d} needless ({s_:5.1f} s), {near} near-miss saves")
+        print(f"  {st:11s} " + " | ".join(row))
     # where the remaining needless interventions happened: free distance on the driver's own path / physical
     # stopping distance at that moment (< 1.3 = inside the brake's safety factor; the driver then swerved late)
     for variant in (a, b):

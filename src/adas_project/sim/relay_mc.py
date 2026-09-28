@@ -55,29 +55,42 @@ def scenario(seed):
     return _finish(w), goal, rng
 
 
+# driver styles: (throttle range, look-ahead m, turn length m, stick rate deg/s, lapses: (mean gap s, duration s),
+# slow-down distance m: below this much free way on the chosen heading the driver eases off, as people do)
+STYLES = {
+    "lapsing": ((120, 200), (1.3, 1.3), 0.6, 90.0, (5.0, (1.0, 2.0)), 0.9),       # careful, but attention lapses
+    "late": ((120, 200), (0.7, 0.9), 0.4, 180.0, None, 0.55),                    # reacts close in, steers decisively
+    "good": ((120, 200), (1.3, 1.5), 0.6, 90.0, None, 1.0),                      # avoids early and smoothly
+    "distracted": ((120, 200), (1.3, 1.3), 0.6, 90.0, (3.0, (1.5, 3.0)), 0.9),   # frequent, long lapses
+    "aggressive": ((200, 250), (0.8, 1.0), 0.4, 180.0, None, 0.45),              # fast and late, but competent
+}
+STOP_GAP = 0.22    # m of free way (bumper to obstacle) at which a driver stops and backs up to re-steer
+DEFAULT_STYLES = ("lapsing", "late", "good", "distracted", "aggressive")
+
+
 class HumanDriver:
-    """Heads for the goal, steers round what it sees (ground truth) every 0.3 s, and has attention lapses:
-    1-2 s where it keeps doing whatever it was doing (the hazards the ADAS exists for)."""
+    """Heads for the goal, steers round what it sees (ground truth) every 0.2 s, and - depending on the style - has
+    attention lapses where it keeps doing whatever it was doing (the hazards the ADAS exists for)."""
 
     STEER_RATE = 90.0          # servo degrees per second: people move the stick smoothly, not in jumps
 
     def __init__(self, world, goal, rng, params, k_curv, centre, style="lapsing"):
-        """style 'lapsing': looks well ahead but has attention lapses (the hazards the ADAS is for).
-        style 'late': never lapses, but only reacts to obstacles close in and then steers round them - correct
-        driving that a naive ADAS mistakes for a threat."""
+        """style: see STYLES. 'late' / 'aggressive' never lapse but only react close in and then steer round -
+        correct driving that a naive ADAS mistakes for a threat; 'good' is the driver who is already avoiding."""
         self.w, self.goal, self.p = world, goal, params
         self.k, self.c = k_curv, centre
         self.style = style
-        self.cruise = rng.uniform(120, 200)
-        self.look = 1.3 if style == "lapsing" else rng.uniform(0.7, 0.9)
-        self.turn_len = 0.6 if style == "lapsing" else 0.4          # a late driver steers more decisively
-        self.steer_rate = self.STEER_RATE if style == "lapsing" else 180.0
+        thr, look, self.turn_len, self.steer_rate, lapse, self.slow_at = STYLES[style]
+        self.cruise = rng.uniform(*thr)
+        self.look = rng.uniform(*look) if look[0] != look[1] else look[0]
         self.lapses = []
-        t = rng.exponential(5.0)
-        while style == "lapsing" and t < T_MAX:
-            d = rng.uniform(1.0, 2.0)
-            self.lapses.append((t, t + d))
-            t += d + rng.exponential(5.0)
+        if lapse is not None:
+            gap, dur = lapse
+            t = rng.exponential(gap)
+            while t < T_MAX:
+                d = rng.uniform(*dur)
+                self.lapses.append((t, t + d))
+                t += d + rng.exponential(gap)
         self.servo, self.pwm, self.next_decide = centre, 0.0, 0.3
         self.target = centre
         self.stuck_for, self.recover_until, self.recover_servo = 0.0, -1.0, centre
@@ -106,7 +119,7 @@ class HumanDriver:
         self.next_decide = t + 0.2
         x, y, th = pose
         gx, gy = self.goal
-        best, best_cost = 0.0, 1e9
+        best, best_cost, best_clear = 0.0, 1e9, 9.0
         for cand in np.radians(np.arange(-60, 61, 10)):
             h = th + cand
             clear = min(self._ray(x, y, h), self.look + 0.3)
@@ -114,10 +127,22 @@ class HumanDriver:
             err = abs((h - want + math.pi) % (2 * math.pi) - math.pi)
             cost = err + 3.0 * max(0.0, self.look - clear)
             if cost < best_cost:
-                best, best_cost = cand, cost
+                best, best_cost, best_clear = cand, cost, clear
         kappa_left = best / self.turn_len                        # turn toward it
         self.target = float(np.clip(self.c - kappa_left / self.k, 50, 125))
-        self.pwm = self.cruise
+        # speed like a person: ease off when even the best way is short of room; stop and back up when blocked
+        ahead = min(best_clear, self._ray(x, y, th))
+        if ahead < STOP_GAP and v > -0.05:
+            self.recover_until = t + 1.3
+            self.recover_servo = self.c
+            self.next_decide = t + 1.3
+            self.pwm = 0.0
+            return self._slew(), 0.0
+        if ahead < self.slow_at:
+            frac = (ahead - STOP_GAP) / max(self.slow_at - STOP_GAP, 1e-3)
+            self.pwm = max(70.0, self.cruise * (0.35 + 0.65 * frac))
+        else:
+            self.pwm = self.cruise
         return self._slew(), self.pwm
 
     def _slew(self):
@@ -149,15 +174,19 @@ class HumanDriver:
         return best - self.p.front_x                             # the ray starts at the rear axle
 
 
-def counterfactual_crash(car, driver, t0, horizon=2.0):
+NEAR_MISS_M = 0.02    # body-to-obstacle clearance counted as a near miss (surrogate safety measure)
+
+
+def counterfactual(car, driver, t0, horizon=2.0):
     """Ground truth for "was this intervention needed?": fork the simulation now, let the SAME driver carry on
-    with no ADAS for `horizon` seconds (their own reactions, their own lapses), and see whether they crash."""
+    with no ADAS for `horizon` seconds (their own reactions, their own lapses). Returns "crash", "near-miss" (the
+    body came within NEAR_MISS_M - ADAS evaluations count near-crashes as justified interventions too) or None."""
     from sim.hw_sim import VirtualCar
     c2 = VirtualCar(car.world, car.p, (car.x, car.y, car.th), car.reversed, threaded=False)
     c2.v, c2.servo, c2.servo_cmd, c2.pwm = car.v, car.servo, car.servo_cmd, car.pwm
     c2.queue, c2.clock, c2.last_cmd_t = list(car.queue), car.clock, car.last_cmd_t
     d2 = driver.clone()
-    t = t0
+    t, closest = t0, 9.0
     while t < t0 + horizon:
         x, y, th, v, *_ = c2.pose()
         s, u = d2.command(t, (x, y, th), v)
@@ -166,8 +195,13 @@ def counterfactual_crash(car, driver, t0, horizon=2.0):
         t += DT
         c2.step_to(t)
         if c2.crash_count:
-            return True
-    return False
+            return "crash"
+        closest = min(closest, car.world.clearance(c2.x, c2.y, c2.th, car.p))
+    return "near-miss" if closest < NEAR_MISS_M else None
+
+
+def counterfactual_crash(car, driver, t0, horizon=2.0):
+    return counterfactual(car, driver, t0, horizon) == "crash"
 
 
 def would_hit(world, params, pose, v, servo, k, c, horizon=2.0, direction=1):
@@ -271,7 +305,8 @@ def run(args):
                     phys = -float(q[1])
             delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
             # intent decides whether to take over the STEERING (evasive hold above); braking stays pure physics
-            g_phys, _ = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0, None,
+            g_phys, _ = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0,
+                                    intent_k_rate=None if rint is None else rint.gate_k_rate,
                                     trusted=rint is not None and rint.gate_trust)
             kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
                                                                  ("steer" if abs(servo_out - d_servo) > 1.0 else None))
@@ -289,12 +324,13 @@ def run(args):
             f_drv, _ = gate.free_distance(d_delta, 1 if d_pwm >= 0 else -1, slop=False)
             stop = BASE_M + abs(v) * REACTION_S + v * v / (2 * DECEL)
             ratio = round(f_drv / stop, 2) if math.isfinite(f_drv) else None
-            if not counterfactual_crash(car, driver, t):
+            why = counterfactual(car, driver, t)
+            if why is None:
                 fp += 1
                 events.append((x, y, "fp", kind, None if p_crash is None else round(p_crash, 3), driver.lapsed(t),
                                round(rint.profile.reaction_distance, 2) if rint is not None else None, ratio))
             else:
-                events.append((x, y, "ok", kind, ratio))
+                events.append((x, y, "ok", kind, ratio, why))
             ep_fp = events[-1][2] == "fp"
         if intervening:
             # how much the driver felt it: seconds overridden, seconds the wheel was taken, share of throttle removed
@@ -318,12 +354,13 @@ def run(args):
             "trace": trace, "events": events, "goal": goal, "burden": {k: round(v, 2) for k, v in burden.items()}}
 
 
-def main(runs=24):
-    jobs = [(sd, v, st) for sd in range(runs) for v in VARIANTS for st in ("lapsing", "late")]
+def main(runs=24, styles=None):
+    styles = styles or tuple(os.environ.get("RC_STYLES", ",".join(DEFAULT_STYLES)).split(","))
+    jobs = [(sd, v, st) for sd in range(runs) for v in VARIANTS for st in styles]
     with ProcessPoolExecutor() as ex:
         res = list(ex.map(run, jobs, chunksize=1))
     summ = {}
-    for st in ("lapsing", "late", "all"):
+    for st in tuple(styles) + ("all",):
         for v in VARIANTS:
             r = [x for x in res if x["variant"] == v and (st == "all" or x["style"] == st)]
             summ[f"{st}/{v}"] = {"runs": len(r), "crashes": sum(x["crashed"] for x in r),

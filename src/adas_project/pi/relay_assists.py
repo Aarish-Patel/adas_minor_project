@@ -87,7 +87,7 @@ class RelaySpeed:
         except (OSError, ValueError):
             pass
         self.ekf = SpeedEKF(speed_model.v_max, speed_model.deadband, tau=max(cm.get("tau_motor", 0.1), 0.05),
-                            delay=cm.get("delay_s", 0.12), coast_decel=2.0,
+                            delay=cm.get("delay_s", 0.12), coast_decel=4.0, brake_decel=8.0,   # measured, see sim/hw_sim.py
                             k_curv_per_deg=cm.get("k_curv_per_deg", K_CURV_PER_SERVO_DEG),
                             servo_centre=cm.get("servo_centre", 87.0), lidar_x=lidar_x)
         self.rf = RangeFlow()
@@ -173,6 +173,11 @@ class RelayIntent:
     def gate_trust(self):
         """For the brake gate's later soft cap: the model trusts the driver AND they are active on the stick."""
         return self.trusted and self.attentive
+
+    @property
+    def gate_k_rate(self):
+        """The trusted, active driver's curvature rate (1/m per s) for the gate's predicted path, else None."""
+        return self.assist.assists.intent_k_rate if self.gate_trust else None
 
     def gui(self):
         return {"p_crash": None if self.p_crash is None else round(self.p_crash, 3), "trusted": self.trusted,

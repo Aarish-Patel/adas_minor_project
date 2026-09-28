@@ -28,6 +28,10 @@ FOS = 1.3                  # the stopping distance must fit into the free distan
 # Monte Carlo at 1.1 and 1.0: needless speed limits fell but became needless brakes and swerves (21 -> 22 in total),
 # so it is OFF (= FOS). Active braking stays at the physical limit for every driver either way.
 FOS_TRUSTED = FOS
+# ...instead, a trusted driver who is steering is judged on their predicted (still-curving) path, but the soft cap
+# never goes above this safety factor on the frozen-steering path - so it can still slow the car smoothly before the
+# physical limit would need a hard brake (going all the way to 1.0 turned limits into brakes for fast drivers)
+TRUSTED_FOS_FLOOR = 1.15
 BODY_MARGIN_M = 0.03       # extra clearance around the whole body (at speed)
 # Speed-dependent protective field, as laser scanners on AGVs switch field size with speed (ISO 3691-4): up to each
 # speed the body margin is smaller, so the car can slow down and fit through a tight gap it would be refused at
@@ -35,7 +39,9 @@ BODY_MARGIN_M = 0.03       # extra clearance around the whole body (at speed)
 MARGIN_LEVELS = ((0.15, 0.012), (0.40, 0.02))
 BASE_M = 0.05              # standoff kept at walking pace (bumper to obstacle)
 REACTION_S = 0.20          # LiDAR scan + relay + motor delay (fitted command delay 0.12 s + scan period)
-DECEL = 1.2                # m/s^2 the car stops at when the throttle is cut (logs: 1-7 cm roll-out at ~0.3 m/s)
+DECEL = 4.0                # m/s^2 the car stops at when the throttle is cut, after the delay in REACTION_S: relay
+                           # drive log 28 Sep - ~6 cm roll-out from 0.7 m/s on a cut, 1-3 cm with an active brake
+                           # pulse (user: "brakes almost instantly"). Was 1.2 (too pessimistic: early interventions)
 KAPPA_SLOP = 0.35          # 1/m: the old fixed band (kept for comparison: GATE_BAND = "fixed")
 # Steering the car can actually be on before the next decision (least-restrictive safety filter, Hsu/Hu/Fisac 2023):
 # every arc between the previous command and this one (servo slew during the command delay), widened by the
@@ -223,22 +229,8 @@ class PathGate:
             self.k_hist.append((0.0, k_now))
             return 0, False
         direction = 1 if physical > 0 else -1
-        free, n_blind = self.free_distance(delta, direction)
+        free, n_blind = self.free_distance(delta, direction)      # the steering the car can physically be on
         self.k_hist.append((0.0, k_now))
-        # intent-aware (only for an ATTENTIVE driver - intent_k_rate is None when the stick shows no recent
-        # activity, i.e. a lapse): predict the path with the curvature changing at the driver's current steering
-        # rate. A driver already steering away from the obstacle is predicted to miss it, so a clip of the frozen
-        # current arc is not treated as a threat. Close in, only the current path counts.
-        if intent_k_rate is not None and free > INTENT_FLOOR_M:
-            blind = self.memory.blind_points()
-            pts = np.vstack([self.pts, blind]) if len(blind) else self.pts
-            pts = self._drop_receding(pts, delta, direction)
-            k0 = math.tan(delta) / self.p.wheelbase
-            free_i = contact_along_changing_curvature(pts, k0, intent_k_rate, v_est, direction, self.p,
-                                                      horizon=HORIZON_M, margin=BODY_MARGIN_M)
-            if free_i > free:
-                self.info["intent"] = f"driver is steering away - predicted path free {min(free_i, 9):.2f} m"
-                free = min(free_i, free + INTENT_MAX_GAIN_M)
         v = max(abs(v_est) if v_est * direction > 0 else 0.0, closing)
         v_ok = self.allowed_speed(free, fos)
         v_phys = self.allowed_speed(free, 1.0)     # the physical limit: brake above this whoever is driving
@@ -255,10 +247,25 @@ class PathGate:
             free = max(free, f_creep)
         else:
             v_ok = 0.0
+        # intent-aware soft cap: a driver the learned model trusts AND who is steering right now (intent_k_rate =
+        # their curvature rate) is predicted along their still-curving path, so turning away from an obstacle is not
+        # slowed. The frozen-steering path keeps its physical limit (v_phys): if the driver stops steering, the brake
+        # below still stops the car in time. Close in, only the physical path counts.
+        if trusted and intent_k_rate is not None and free > INTENT_FLOOR_M:
+            blind = self.memory.blind_points()
+            pts = np.vstack([self.pts, blind]) if len(blind) else self.pts
+            pts = self._drop_receding(pts, delta, direction)
+            free_i = contact_along_changing_curvature(pts, k_now, intent_k_rate, v_est, direction, self.p,
+                                                      horizon=HORIZON_M, margin=BODY_MARGIN_M)
+            free_i = min(free_i, free + INTENT_MAX_GAIN_M)
+            v_i = min(self.allowed_speed(free_i, FOS), max(self.allowed_speed(free, TRUSTED_FOS_FLOOR), v_ok))
+            if v_i > v_ok:
+                self.info["intent"] = f"driver is steering away - predicted path free {min(free_i, 9):.2f} m"
+                v_ok = v_i
         self.info.update({"free_m": round(free, 3) if math.isfinite(free) else None, "v_allowed": round(v_ok, 2),
                           "blind_pts": n_blind})
-        # active braking: clearly over the soft cap - and for a trusted driver (whose soft cap is later) no later
-        # than the physical limit
+        # active braking: clearly over the soft cap - and for a trusted driver (whose soft cap can be later) no
+        # later than the physical limit of the frozen-steering path
         v_brake = v_ok + BRAKE_OVER_V
         if trusted:
             v_brake = min(v_brake, max(v_phys, v_ok) + 0.03)
