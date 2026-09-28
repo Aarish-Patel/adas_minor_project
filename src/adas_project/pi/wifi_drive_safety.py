@@ -784,6 +784,8 @@ def main():
     logger = DriveLogger(LOG_DIR)
     from pi.health import HealthMonitor
     health = HealthMonitor()           # LiDAR / loop / link / ESP32 / temperature -> normal, limp or fault
+    from pi.relay_assists import ThrottleSmoother
+    smoother = ThrottleSmoother()
     last_health_note = "normal"
     start_gui_server(clr)
     start_gui_stream(clr)          # the native dashboard's live stream (only sends while someone subscribes)
@@ -844,6 +846,7 @@ def main():
                         dlog.event("driver link lost - dead-man ramp" if not danger else "driver link lost - obstacle, stopped",
                                    pwm=new)
                     last_physical = new
+                    smoother.out = float(new)          # the dead-man ramp is already gradual
                     w = -int(round(new)) if WIRE_MOTOR_REVERSED else int(round(new))
                     esp.write(f"M {w}\n".encode())
                 elif age > 0.6 and now - last_zero_sent > 0.5:
@@ -981,7 +984,8 @@ def main():
                         g_phys, g_brake = pgate.decide(dt_pkt, physical, gate_delta,
                                                        vest.v_gate((physical > 0) - (physical < 0)), closing,
                                                        intent_k_rate=None if adas_override else rintent.gate_k_rate,
-                                                       trusted=rintent.gate_trust and not adas_override)
+                                                       trusted=rintent.gate_trust and not adas_override,
+                                                       leg=assist.planned_leg())    # a planned path: check it
                         gate_info = dict(pgate.info)
                         if pkt_now - last_seq_t > SCAN_LOST_S and physical != 0:
                             g_phys, g_brake = 0, False
@@ -1075,6 +1079,12 @@ def main():
                         if capped_h != physical and health.state != last_health_note:
                             dlog.event(f"health {health.state}: throttle capped", causes=health.causes)
                         physical = int(capped_h)
+                    # smooth throttle changes (pi/relay_assists.ThrottleSmoother) unless a safety function cut it
+                    safety_cut = braking or health.state == "fault" or                         str(gate_info.get("action", "")).startswith(("holding", "stopped", "LiDAR lost"))
+                    if not adas_override:
+                        physical = int(round(smoother.step(physical, dt_pkt, emergency=safety_cut)))
+                    else:
+                        smoother.out = float(physical)
                     wire_out = -physical if WIRE_MOTOR_REVERSED else physical
                     pwm_sent = wire_out
                     final_physical = physical

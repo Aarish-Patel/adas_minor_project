@@ -130,6 +130,32 @@ class RelaySpeed:
         return e
 
 
+class ThrottleSmoother:
+    """Rate limit on the throttle actually sent (user, 28 Sep: the car jumped forward / backward when a manoeuvre
+    re-planned or switched direction). Up gently, down quickly, and through zero when changing direction; a cut
+    made for safety (brake gate braking / holding / stopped, health fault) goes straight through."""
+
+    RISE_PWM_S = 600.0     # 0 -> full throttle in ~0.4 s
+    FALL_PWM_S = 1500.0    # full -> 0 in ~0.17 s
+
+    def __init__(self):
+        self.out = 0.0
+
+    def step(self, target, dt, emergency=False):
+        if emergency:
+            self.out = float(target)
+            return self.out
+        cur = self.out
+        if cur != 0 and target * cur < 0:            # changing direction: come down to zero first
+            target = 0.0
+        if abs(target) > abs(cur):
+            cur += math.copysign(min(abs(target) - abs(cur), self.RISE_PWM_S * dt), target)
+        elif cur:
+            cur -= math.copysign(min(abs(cur) - abs(target), self.FALL_PWM_S * dt), cur)
+        self.out = cur
+        return cur
+
+
 class RelayIntent:
     """The learned driver-intent model (adas/intent_net.py, trained in sim/train_intent_net.py) as the relay runs it:
     the stick sampled on the 50 ms clock the model was trained on, features from the live scan, the driver's online
@@ -356,6 +382,12 @@ class RelayAssists:
         return self.nav.start((float(x), float(y)), self.points_vehicle_frame(raw, self.p.lidar_x),
                               None if heading_deg is None else math.radians(float(heading_deg)))
 
+    def planned_leg(self):
+        """The planned path leg being followed right now (click-to-go or evasive manoeuvre), for the brake gate."""
+        if self.nav.active:
+            return self.nav.leg()
+        return self.assists.leg()
+
     def _navigate(self, dt, pts, stick, physical, points, seq, now):
         """One tick of autonomy. Like Smart Summon, the operator holds the throttle as a dead-man switch: held =
         drive at the planner's speed, released = stop and wait, stick or brake = cancel and hand back.
@@ -371,7 +403,7 @@ class RelayAssists:
         th += math.tan(steer_to_delta(self._nav_stick, self.p)) / self.p.wheelbase * v * dt
         self.nav_pose = (x + v * math.cos(th) * dt, y + v * math.sin(th) * dt, th)
         self._odometry(points, seq, self._nav_stick, now)
-        out = self.nav.step(dt, self.nav_pose, pts, v)
+        out = self.nav.step(dt, self.nav_pose, pts, v, held=physical > 20)
         if out is None:
             return None
         kappa, v_target = out

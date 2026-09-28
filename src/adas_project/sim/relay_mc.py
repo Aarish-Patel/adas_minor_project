@@ -252,6 +252,8 @@ def run(args):
                            trust=TRUST_THRESHOLD)
     vpts = np.empty((0, 2))
     gate = PathGate(p, tun.speed_model)
+    from pi.relay_assists import ThrottleSmoother
+    smoother = ThrottleSmoother()
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(tun.speed_model, p.lidar_x)       # the relay's speed: throttle model + LiDAR EKF
     assist.speed = vest
@@ -310,9 +312,11 @@ def run(args):
                     phys = -float(q[1])
             delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
             # intent decides whether to take over the STEERING (evasive hold above); braking stays pure physics
-            g_phys, _ = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0,
+            g_phys, g_brake = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0,
                                     intent_k_rate=None if rint is None else rint.gate_k_rate,
-                                    trusted=rint is not None and rint.gate_trust)
+                                    trusted=rint is not None and rint.gate_trust, leg=assist.planned_leg())
+            act = str(gate.info.get("action") or "")
+            g_phys = smoother.step(g_phys, DT, emergency=bool(g_brake) or act.startswith(("holding", "stopped")))  # as the relay
             kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
                                                                  ("steer" if abs(servo_out - d_servo) > 1.0 else None))
             intervening = kind is not None

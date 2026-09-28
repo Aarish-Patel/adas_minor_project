@@ -58,6 +58,10 @@ BRAKE_GAIN = 300.0         # PWM per m/s over
 BRAKE_PWM_MAX = 140
 BRAKE_MAX_S = 0.3          # s of active braking per event (never enough to drive the car backwards)
 LATCH_RELEASE_M = 0.08     # the hold after braking lets go once the free distance grows this much
+# ...or when the steering has turned to a new path that is clear at SOME speed (user, 28 Sep: a manoeuvre or driver
+# steering round the obstacle must not stay held because the old, straight path was blocked - go at the
+# speed the new path allows; the gate keeps checking it every tick)
+LATCH_STEER_DEG = 5.0
 # steering correction instead of braking (steer_correction): the largest nudge of path curvature tried (0.7 1/m is
 # ~11 servo degrees at the fitted 0.0656 1/m per degree), tried smallest first, and only above walking pace
 NUDGE_MAX_KAPPA = 0.7
@@ -120,6 +124,28 @@ class PathGate:
             for kq in posts:
                 best = min(best, self._composite_contact(pts, kp, d_pre, kq, direction, margin))
         return best, len(blind)
+
+    PATH_TRACK_TOL_M = 0.02        # extra margin for how far the car may be off a planned path while following it
+
+    def free_along_leg(self, leg, margin=BODY_MARGIN_M):
+        """Free travel along a PLANNED path leg (poses (N, 3) in the vehicle frame, the car at its start): the
+        distance to the first pose where the body plus margin (and a path-tracking tolerance) touches anything;
+        HORIZON_M if the whole leg is clear (the car follows the leg, so the arc it is on right now does not count)."""
+        blind = self.memory.blind_points()
+        pts = np.vstack([self.pts, blind]) if len(blind) else self.pts
+        if len(pts) == 0 or len(leg) == 0:
+            return HORIZON_M
+        m = margin + self.PATH_TRACK_TOL_M
+        s = np.concatenate([[0.0], np.cumsum(np.hypot(np.diff(leg[:, 0]), np.diff(leg[:, 1])))])
+        near = pts[np.hypot(pts[:, 0], pts[:, 1]) < s[-1] + self.p.front_x + 0.5]
+        if len(near) == 0:
+            return HORIZON_M
+        c, sn = np.cos(leg[:, 2])[:, None], np.sin(leg[:, 2])[:, None]
+        dx, dy = near[None, :, 0] - leg[:, 0][:, None], near[None, :, 1] - leg[:, 1][:, None]
+        lx, ly = c * dx + sn * dy, -sn * dx + c * dy
+        hit = ((lx >= self.p.rear_x - m) & (lx <= self.p.front_x + m) & (np.abs(ly) <= self.p.width / 2 + m)).any(axis=1)
+        idx = np.flatnonzero(hit)
+        return float(s[idx[0]]) if len(idx) else HORIZON_M
 
     @staticmethod
     def _widen(k, side):
@@ -254,10 +280,13 @@ class PathGate:
         a, r = DECEL, REACTION_S
         return -a * r + math.sqrt((a * r) ** 2 + 2 * a * room)
 
-    def decide(self, dt, physical, delta, v_est, closing=0.0, intent_k_rate=None, trusted=False):
+    def decide(self, dt, physical, delta, v_est, closing=0.0, intent_k_rate=None, trusted=False, leg=None):
         """physical: the throttle to be sent (+ forward). delta: commanded steering angle (rad). v_est: speed
         estimate (+ forward), closing: LiDAR-measured closing speed toward what is ahead in the travel direction.
         trusted: the learned intent model expects this (attentive) driver to handle it - later soft cap only.
+        leg: (poses (N, 3) vehicle frame, direction) of a planned path the car is following (evasive manoeuvre or
+        click-to-go) - then the free distance is measured ALONG that path: a path that is clear at a slower speed is
+        driven at that speed instead of the car being held because its current arc points at the obstacle.
         Returns (physical to send, braking?)."""
         fos = FOS_TRUSTED if trusted else FOS
         self.memory.advance(dt, v_est, delta)
@@ -272,13 +301,25 @@ class PathGate:
         direction = 1 if physical > 0 else -1
         free, n_blind = self.free_distance(delta, direction)      # the steering the car can physically be on
         self.k_hist.append((0.0, k_now))
+        # a planned path counts only while the car is really on it (within 5 cm / 10 deg of its start), and the arc
+        # the car is on right now still counts for the distance covered before the steering can change
+        on_leg = leg is not None and leg[1] == direction and len(leg[0]) >= 2 and             math.hypot(leg[0][0, 0], leg[0][0, 1]) < 0.05 and abs(math.remainder(leg[0][0, 2], 2 * math.pi)) < math.radians(10)
+        d_pre = max(abs(v_est), 0.10) * K_WINDOW_S + 0.05
+        if on_leg:
+            f_leg = self.free_along_leg(leg[0])
+            free = f_leg if free > d_pre else min(free, f_leg)
+            self.info["leg"] = True
         v = max(abs(v_est) if v_est * direction > 0 else 0.0, closing)
         v_ok = self.allowed_speed(free, fos)
         v_phys = self.allowed_speed(free, 1.0)     # the physical limit: brake above this whoever is driving
         f_creep = free
         if v_ok < MARGIN_LEVELS[-1][0]:            # slower speeds may use their smaller protective field
             for v_lvl, m in MARGIN_LEVELS[::-1]:
-                f_creep, _ = self.free_distance(delta, direction, margin=m)
+                f_arc = self.free_distance(delta, direction, margin=m)[0]
+                f_creep = f_arc
+                if on_leg:
+                    f_l = self.free_along_leg(leg[0], margin=m)
+                    f_creep = f_l if f_arc > d_pre else min(f_arc, f_l)
                 v_l = min(v_lvl, self.allowed_speed(f_creep, fos))
                 if v_l > v_ok:
                     v_ok, free = v_l, f_creep
@@ -314,9 +355,15 @@ class PathGate:
         # latch: after braking for an obstacle, hold the throttle at zero toward it (no brake/throttle/brake
         # stutter) until the driver lets go or reverses, or the free distance has clearly grown again
         if self.latch is not None:
-            l_dir, l_free = self.latch
-            if l_dir != direction or free > l_free + LATCH_RELEASE_M:
+            l_dir, l_free, l_delta = self.latch
+            # released onto a path that is clear at a slower speed: the steering turned to a new one, or the car has
+            # stopped and the commanded path is clear at a creep (the cap below keeps it within its envelope, so
+            # there is no brake/throttle stutter to prevent any more)
+            new_way = v_ok > 0 and (abs(delta - l_delta) > math.radians(LATCH_STEER_DEG) or abs(v_est) < 0.05)
+            if l_dir != direction or free > l_free + LATCH_RELEASE_M or new_way:
                 self.latch = None
+                if new_way:
+                    self.info["released"] = "the new steering is clear at a slower speed - going on slowly"
             else:
                 self.brake_t += dt
                 if self.brake_t < BRAKE_MAX_S and v > v_brake:
@@ -325,7 +372,7 @@ class PathGate:
                 self.info["action"] = "holding (stopped for an obstacle - release the throttle)"
                 return 0, False
         if v > v_brake and free < HORIZON_M:
-            self.latch = (direction, free)
+            self.latch = (direction, free, delta)
             self.brake_t = 0.0
             pulse = min(BRAKE_PWM_MAX, BRAKE_GAIN * (v - v_ok))
             self.info["action"] = "braking"

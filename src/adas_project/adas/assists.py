@@ -72,6 +72,15 @@ class AssistConfig:
     track_look: float = 0.30         # m pure-pursuit look-ahead on the planned path
     evade_speed: float = 0.40        # m/s: fastest the manoeuvre is driven (the driver's throttle is capped)
     reverse_speed: float = 0.15      # m/s when backing off
+    # held at an obstacle with the throttle on and no way round found (user, 28 Sep: "don't just sit there"):
+    # back straight off a little and search again from there, a few times, then hand back and pause
+    backoff_m: float = 0.30          # m to back off before searching again
+    backoff_max_s: float = 2.5       # s a back-off may take
+    backoff_rear_clear: float = 0.12 # m that must stay free behind the car while backing off
+    backoff_tries: int = 3           # back-offs per obstacle before handing back
+    stall_replan_s: float = 0.6      # s stopped on a planned path with the throttle held before searching again
+    stall_replans: int = 3           # such searches before backing off
+    retry_pause_s: float = 1.5       # s without a new trigger after handing back (no on/off flicker)
     offset_min: float = 0.16         # m: smallest sideways offset tried (half the car + a little)
     offset_max: float = 0.90         # m: largest
     offset_step: float = 0.04
@@ -105,6 +114,38 @@ class AssistConfig:
     # proximity
     side_zone: float = 0.20          # m beside the body
     rear_zone: float = 0.35          # m behind the body when reversing
+
+
+def past_cusp(P, j, pose, tol=0.03):
+    """If the leg containing index j ends at a change of direction (a cusp) and the car at pose has reached or
+    passed that cusp (along the leg's own heading, in its direction of travel), the first index of the next leg;
+    otherwise j. Without this an overshoot at the end of a reversing leg left the tracker aiming at a point it had
+    already passed - the car kept reversing (user, 28 Sep)."""
+    d = P[j, 3]
+    e = j
+    while e + 1 < len(P) and P[e + 1, 3] == d:
+        e += 1
+    if e + 1 >= len(P):
+        return j
+    along = (pose[0] - P[e, 0]) * math.cos(P[e, 2]) + (pose[1] - P[e, 1]) * math.sin(P[e, 2])
+    return e + 1 if d * along >= -tol else j
+
+
+def _leg_vehicle(P, i, pose):
+    """Rows of path P (x, y, heading, direction) from index i up to the next change of direction, moved into the
+    vehicle frame of a car at pose: ((N, 3) poses, direction)."""
+    if P is None or i >= len(P):
+        return None
+    d = P[i, 3]
+    j = i
+    while j + 1 < len(P) and P[j + 1, 3] == d:
+        j += 1
+    rest = P[i:j + 1]
+    x, y, th = pose
+    c, s = math.cos(th), math.sin(th)
+    dx, dy = rest[:, 0] - x, rest[:, 1] - y
+    poses = np.column_stack([c * dx + s * dy, -s * dx + c * dy, rest[:, 2] - th])
+    return poses, int(d)
 
 
 def _kappa(steer, p):
@@ -148,6 +189,11 @@ class DrivingAssists:
         self.phase_t = 0.0
         self.ex = self.ey = self.eth = 0.0   # dead-reckoned pose since the swerve began
         self._trigger_for = 0.0
+        self._backoffs = 0              # back-offs tried for the current obstacle
+        self._backoff_from = None       # x where the current back-off began (line frame)
+        self._pause = 0.0               # no new trigger until this runs out (after handing back)
+        self._stall = 0.0               # s stopped on the planned path with the throttle held
+        self._stalls = 0
         self._pwm_hist = []
         self._wall_ref = None          # (side, distance) for single-wall following
         self._steer_prev = 0.0
@@ -170,8 +216,45 @@ class DrivingAssists:
         self._job = None                # a search still running is abandoned
         self.evade_side = 0
         self._trigger_for = 0.0
+        self._backoffs = 0
+        self._stall, self._stalls = 0.0, 0
         if why:
             self.info["evasive"] = why
+
+    def _fail(self, why, v, pwm):
+        """No way round found. If the car is held at the obstacle with the throttle still on, back off a little and
+        search again from there (up to backoff_tries times) instead of sitting still; otherwise hand back and pause
+        new triggers briefly, so the assist does not switch on and off every tick while the brake holds the car."""
+        c = self.cfg
+        if pwm > 0 and abs(v) < 0.08 and self._backoffs < c.backoff_tries:
+            self._backoffs += 1
+            self.phase, self.evading = "BACKOFF", True
+            self._backoff_from = self.ex
+            self.phase_t = 0.0
+            self._job = None
+            self.info["evasive"] = f"{why} - backing off to try again ({self._backoffs}/{c.backoff_tries})"
+            return
+        tried = self._backoffs
+        self._stop_evading(why + (f" (after {tried} back-off{'s' if tried > 1 else ''})" if tried else ""))
+        self._pause = c.retry_pause_s
+
+    def _backoff(self, pts, steer, v):
+        """Reverse straight back at a creep until backoff_m is gained (or the space behind runs out), then search
+        for a way round again from there, standing still."""
+        c = self.cfg
+        rear = travel_distance_to_contact(pts, 0.0, -1, self.p, horizon=0.6, margin=0.03) if len(pts) else math.inf
+        moved = self._backoff_from - self.ex
+        if moved >= c.backoff_m or rear < c.backoff_rear_clear or self.phase_t > c.backoff_max_s:
+            self._submit_plan(self._to_start_frame(pts), 0.0, 0.0)
+            self.phase, self.evading = "PLANNING", False
+            self.phase_t = 0.0
+            self.info["evasive"] = f"backed off {moved * 100:.0f} cm - searching again"
+            self.evade_pwm = 0.0
+            return steer, 1
+        self.evade_kappa = 0.0
+        self.evade_pwm = -self.model.pwm_for_speed(c.reverse_speed)
+        self.info["evasive"] = f"no way round from here - backing off ({moved * 100:.0f} cm)"
+        return _steer(0.0, self.p), 2
 
     # ---- Hybrid A* manoeuvres (adas/hybrid_astar.py; Dolgov et al., IJRR 2010) -------------------------------
     # Frame: the "line frame" - where the manoeuvre began, x along the driver's desired path, y left.
@@ -254,6 +337,7 @@ class DrivingAssists:
         j0 = self._track_i
         d = np.hypot(P[j0:j0 + 60, 0] - self.ex, P[j0:j0 + 60, 1] - self.ey)
         j = j0 + int(np.argmin(d)) if len(d) else j0
+        j = past_cusp(P, j, (self.ex, self.ey, self.eth))
         self._track_i = j
         direction = int(P[j, 3])
         k = j
@@ -264,6 +348,13 @@ class DrivingAssists:
         dd = xl * xl + yl * yl
         kappa = 2.0 * yl / dd if dd > 1e-4 else 0.0
         return max(-self.kappa_max, min(self.kappa_max, kappa)), direction
+
+    def leg(self):
+        """The part of the planned manoeuvre being driven now - up to the next change of direction - as
+        (poses (N, 3) in the vehicle frame, direction), for the brake gate; None when no path is being followed."""
+        if self.phase != "EXECUTE" or self._plan_poses is None:
+            return None
+        return _leg_vehicle(self._plan_poses, self._track_i, (self.ex, self.ey, self.eth))
 
     def preview(self):
         """For the GUI, in the current vehicle frame: the planned manoeuvre and the original line, or None."""
@@ -306,6 +397,9 @@ class DrivingAssists:
         if pwm <= 0 or len(pts) == 0:
             self._trigger_for = 0.0
             return steer, None
+        if self.phase is None and self._pause > 0:          # just handed back after finding no way round
+            self._pause -= dt
+            return steer, None
         look = self._look(v)
 
         if self.phase is None:
@@ -344,7 +438,7 @@ class DrivingAssists:
             path, self._job = self._job.result(), None
             if self.phase == "PLANNING":
                 if path is None and not c.mppi_fallback:
-                    self._stop_evading("no safe way around - braking only")
+                    self._fail("no safe way around - braking only", v, pwm)
                     return steer, 2
                 if path is None:                    # MPPI steers locally (WAIT) while Hybrid A* keeps trying
                     self.phase, self.evading = "WAIT", True
@@ -362,12 +456,17 @@ class DrivingAssists:
                 self.replans += 1
         self.phase_t += dt
         self._since_plan += dt
+        if self.phase == "BACKOFF":
+            return self._backoff(pts, steer, v)
         if self.phase == "PLANNING":
             if self.phase_t > c.plan_timeout_s:
-                self._stop_evading("planning took too long - braking only")
+                self._fail("planning took too long - braking only", v, pwm)
                 return steer, 2
             self.info["evasive"] = "planning a way around"
-            return steer, 1                         # the driver keeps control meanwhile; the brake gate watches
+            # slow to the manoeuvre speed while the plan is made: a way round that works at that speed must not be
+            # lost because the driver's full throttle carries the car too close before it arrives (user, 28 Sep)
+            self.evade_pwm = min(pwm, self.model.pwm_for_speed(c.evade_speed))
+            return steer, 1                         # the driver keeps the steering meanwhile; the brake gate watches
 
         pts_s = self._to_start_frame(pts)
         if self._since_plan >= c.replan_period and self._job is None:
@@ -386,7 +485,7 @@ class DrivingAssists:
                         self.replans += 1
         if self.phase == "WAIT":
             if self.phase_t > c.evade_max_s:
-                self._stop_evading("no way around found - handed back")
+                self._fail("no way around found", v, pwm)
                 return steer, 2
             if c.mppi_fallback:
                 # local fallback while Hybrid A* keeps searching: MPPI (adas/mppi.py) steers past what it can
@@ -396,7 +495,7 @@ class DrivingAssists:
                     return steer, None
                 kappa, ok = self._mppi_step(pts_s, v)
                 if not ok:                          # even the best sampled way touches something: brake only
-                    self._stop_evading("no safe way around - braking only")
+                    self._fail("no safe way around - braking only", v, pwm)
                     return steer, 2
                 self.evade_kappa = kappa
                 self.evade_pwm = min(pwm, self.model.pwm_for_speed(c.evade_speed))
@@ -416,6 +515,24 @@ class DrivingAssists:
         if self.phase_t > c.evade_max_s:
             self._stop_evading("manoeuvre took too long - handed back")
             return steer, None
+        # stalled on the path with the throttle held (the brake gate holds the car, e.g. the arc it is on still
+        # points at the obstacle): search again from exactly where the car stands - that path starts at the car, so
+        # the gate can check it - and back off after a few (user, 28 Sep: "no replanning, nothing")
+        self._stall = self._stall + dt if abs(v) < 0.03 else 0.0
+        if self._stall > c.stall_replan_s and self._job is None:
+            self._stall = 0.0
+            self._stalls += 1
+            if self._stalls > c.stall_replans:
+                self._stalls = 0
+                self._fail("stuck on the planned path", v, pwm)
+                return steer, 2
+            self._submit_plan(pts_s, 0.0, 0.0)
+            if self._job.ready(0.0):
+                path, self._job = self._job.result(), None
+                if path is not None:
+                    self._plan_poses, self._track_i = path, 0
+                    self.replans += 1
+            self.info["evasive"] = f"stopped on the path - re-planning from here ({self._stalls}/{c.stall_replans})"
         kappa, direction = self._track()
         self.evade_kappa = kappa
         # speed the path can be followed at: the driver's throttle, capped; reversing legs at a creep
@@ -542,7 +659,7 @@ class DrivingAssists:
             s2, lv = self._evasive(dt, pts, steer, pwm, v)
             if lv:
                 steer, level = s2, max(level, lv)
-            if self.evading and self.evade_pwm is not None:
+            if self.phase is not None and self.evade_pwm is not None:
                 pwm = self.evade_pwm
         if en.get("centring") and not self.evading:
             s2, lv = self._centring(pts, steer, v)

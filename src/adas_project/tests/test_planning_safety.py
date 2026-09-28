@@ -269,12 +269,22 @@ class GateTests(unittest.TestCase):
         self.assertGreater(out, 100)
 
     def test_brake_latch_holds_until_released(self):
-        g = self.gate(wall(P.front_x + 0.10, -1, P.front_x + 0.10, 1))
+        g = self.gate(wall(P.front_x + 0.04, -1, P.front_x + 0.04, 1))
         g.decide(0.05, 200, 0.0, 0.6)                        # brakes
-        out, _ = g.decide(0.05, 200, 0.0, 0.0)               # driver still pushing: hold, no throttle
+        out, _ = g.decide(0.05, 200, 0.0, 0.0)               # driver still pushing, no room even to creep: hold
         self.assertEqual(out, 0)
         g.decide(0.05, 0, 0.0, 0.0)                          # driver lets go -> released
         self.assertIsNone(g.latch)
+
+    def test_stopped_with_room_to_creep_goes_on_slowly(self):
+        """After braking, stopped with the commanded path clear at a creep: released onto it at creep speed only
+        (user, 28 Sep: a path that is safe slower must not stay held)."""
+        from pi.path_gate import CREEP_V
+        g = self.gate(wall(P.front_x + 0.12, -1, P.front_x + 0.12, 1))
+        g.decide(0.05, 200, 0.0, 0.6)                        # brakes
+        out, _ = g.decide(0.05, 200, 0.0, 0.0)               # stopped: the path is clear at a creep
+        self.assertGreater(out, 0)
+        self.assertLessEqual(out, g.model.pwm_for_speed(CREEP_V) + 1)
 
 
 class IntentTests(unittest.TestCase):
@@ -336,3 +346,35 @@ class MonteCarloSmoke(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StuckRecoveryTests(unittest.TestCase):
+    """User, 28 Sep: at full throttle the evasive steer / click-to-go sat still in front of an obstacle although a
+    way round existed at a slower speed; reversing legs overshot; the throttle jumped between directions."""
+
+    def test_full_throttle_close_to_a_box_gets_round(self):
+        from sim.relay_scenarios import _world, run, steady
+        from sim.world import Box
+        w = _world()
+        w.add(Box(0.80, 0.0, 0.26, 0.26))                       # 0.4 m ahead of the bumper, full throttle from rest
+        r = run(w, steady(255), 30, ("evasive",), stop_when=lambda t, x, y, th, v: x > 2.3)
+        self.assertFalse(r["collided"])
+        self.assertGreater(r["x"], 2.0)                           # round it, not held in front of it
+
+    def test_cusp_switches_to_the_next_leg_after_an_overshoot(self):
+        from adas.assists import past_cusp
+        P = np.array([[0.0, 0, 0, -1], [-0.2, 0, 0, -1], [-0.4, 0, 0, -1], [-0.4, 0, 0, 1], [-0.2, 0.1, 0.3, 1]])
+        self.assertEqual(past_cusp(P, 1, (-0.25, 0.0, 0.0)), 1)   # still reversing towards the cusp
+        self.assertEqual(past_cusp(P, 2, (-0.45, 0.0, 0.0)), 3)   # overshot it: drive the forward leg
+
+    def test_throttle_is_smoothed_but_safety_cuts_are_not(self):
+        from pi.relay_assists import ThrottleSmoother
+        t = ThrottleSmoother()
+        self.assertLess(t.step(255, 0.05), 60)                    # no jump to full throttle
+        for _ in range(20):
+            t.step(255, 0.05)
+        seq = [t.step(-150, 0.05) for _ in range(12)]
+        self.assertTrue(all(b <= a for a, b in zip(seq, seq[1:])))  # forward -> reverse through zero, no jump
+        self.assertIn(0.0, seq)
+        self.assertEqual(t.step(200, 0.05, emergency=True), 200)
+        self.assertEqual(t.step(0, 0.05, emergency=True), 0)      # a brake / hold cut is immediate

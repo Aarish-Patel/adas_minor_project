@@ -43,6 +43,8 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     car.last_cmd_t = 0.0
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
     gate = PathGate(p, tun.speed_model)
+    from pi.relay_assists import ThrottleSmoother
+    smoother = ThrottleSmoother()
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(tun.speed_model, p.lidar_x)
     assist.speed = vest                          # as in the relay: the assists use the brake's speed
@@ -83,7 +85,10 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
                 phys = -float(q[1])
         delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
         g_phys, g_brake = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0,
-                                      intent_k_rate=rint.gate_k_rate, trusted=rint.gate_trust)
+                                      intent_k_rate=rint.gate_k_rate, trusted=rint.gate_trust,
+                                      leg=assist.planned_leg())
+        act = str(gate.info.get("action") or "")
+        g_phys = smoother.step(g_phys, DT, emergency=g_brake or act.startswith(("holding", "stopped")))   # as the relay
         vest.command(t, DT, g_phys, servo_out)
         rec["infos"].update(f"{k}: {s}" for k, s in assist.info.items())
         rec["max_level"] = max(rec["max_level"], assist.level)
@@ -266,7 +271,8 @@ def passing_beside_a_wall():
     w = _world()
     w.add(Wall(-1.0, 0.25, 6.0, 0.25))
     r = run(w, steady(180), 5, ("evasive", "centring", "limiter", "narrow", "proximity"))
-    slowed = sum(1 for row in r["trace"] if row[0] > 0.5 and row[6] < row[5] - 1)
+    # (from 0.7 s: the throttle smoother ramps the driver's 180 in over 0.3 s after they open it at 0.3 s)
+    slowed = sum(1 for row in r["trace"] if row[0] > 0.7 and row[6] < row[5] - 1)
     ok = (not r["collided"]) and slowed == 0
     return ok, f"parallel to a wall 15 cm off the side, all assists on: throttle reduced on {slowed} ticks"
 

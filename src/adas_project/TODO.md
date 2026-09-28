@@ -47,11 +47,27 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   - [ ] Evasive steer at the obstacle
   - [x] Hybrid A* click-to-go to a goal behind/across the obstacle (works on the car, 28 Sep)
   - [ ] Evasive steer at the obstacle (user testing now - do not restart / deploy to the Pi meanwhile)
-- [ ] A4. (user, 28 Sep) Evasive steer / Hybrid A* get stuck when the driver holds full throttle: the prediction
+- [x] A4. (done on the laptop, see note below) (user, 28 Sep) Evasive steer / Hybrid A* get stuck when the driver holds full throttle: the prediction
   at full speed says crash, though a slower speed along the same path would be safe. (1) When the driver's speed
   predicts contact, check whether a slower speed along the path is safe and go through at that speed instead of
   stopping; (2) when the car is held still while the driver keeps the throttle on, look for alternatives
   (other side, back off and re-plan) instead of waiting. Laptop + simulator; deploy with the user's OK.
+- [~] A5. (cusp fix done: adas/assists.past_cusp in both trackers - an overshoot at the end of a reversing leg
+  now switches to the next leg instead of reversing on; 'path disappears' not reproduced yet in the simulator -
+  check on the car) (user, 28 Sep) A long reversing leg in the evasive steer or click-to-go: once reversing, the path
+  disappears or the car keeps reversing instead of following the path.
+- [x] A6. (done: pi/relay_assists.ThrottleSmoother in the relay and both simulators - up 600 PWM/s, down
+  1500 PWM/s, through zero on a direction change; brake gate braking/holding/stopped, LiDAR lost and health
+  faults bypass it) (user, 28 Sep) Smooth the throttle and brake (rate limit / filter) except for emergency stops: the car
+  sometimes jumps forward / backward when re-planning or switching direction.
+  A4 note (28 Sep, laptop only): found on the car + in the twin - the brake gate braked once and LATCHED 'holding
+  - release the throttle' although the manoeuvre's path was clear at a slower speed (v_allowed 0.32 m/s), and
+  the evasive steer re-triggered every tick. Fixes: throttle capped to the manoeuvre speed while planning; the
+  latch releases when stopped (or steered to a new path) and the commanded path is clear at some speed; the gate
+  checks the PLANNED leg itself while the car is on it (within 5 cm / 10 deg; the current arc still counts for
+  0.25 s of travel); stopped on the path with the throttle held -> re-plan from where the car stands (3x), then
+  back off 30 cm and search again (3x), then hand back with a 1.5 s pause; click-to-go re-plans the same way.
+  Twin: box 0.4 m ahead at full throttle from rest: stuck -> round it, no contact. 91 tests + 12/12 pass.
 - [x] A3. (done on the laptop 28 Sep, NOT on the Pi yet: adas/dubins.py (Dubins 1957 / Shkel & Lumelsky 2001) as
   the analytic expansion for goal poses, forward or driven backwards; plan_point_job tries forward-only first
   for every goal - also behind the car (forward U-turn) - then a search that may reverse with reversing 7x the

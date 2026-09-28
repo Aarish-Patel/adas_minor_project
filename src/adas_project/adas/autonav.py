@@ -35,6 +35,7 @@ class AutoNav:
         self.plan_ms = None
         self._job = None                  # the search in progress (plans from a cancelled goal are dropped)
         self._job_t = 0.0
+        self.stall_s, self.stalls = 0.0, 0   # stopped on the path with the throttle held -> search again
 
     @property
     def active(self):
@@ -72,6 +73,7 @@ class AutoNav:
         self.goal = (float(goal[0]), float(goal[1]))
         self.goal_heading = None if heading is None else float(heading)
         self.path, self.replans = None, 0
+        self.stall_s, self.stalls = 0.0, 0
         self.msg = "planning a path"
         self._launch(np.asarray(pts_vehicle, float).reshape(-1, 2), (0.0, 0.0, 0.0))
         return self.state != "idle"
@@ -93,7 +95,7 @@ class AutoNav:
                                 self.y + s * pts_vehicle[:, 0] + c * pts_vehicle[:, 1]])
 
     # ------------------------------------------------------------------ driving
-    def step(self, dt, pose, pts_vehicle, v):
+    def step(self, dt, pose, pts_vehicle, v, held=True):
         """pose: the car in the start frame. Returns (curvature, target speed m/s, + forward), or None when
         finished or stopped. While a plan is being made it returns (0, 0): hold still."""
         if self.state == "planning" and self._job is not None and self._job.ready(dt):
@@ -126,8 +128,25 @@ class AutoNav:
                 if self.state != "driving":
                     return (0.0, 0.0) if self.state == "planning" else None
                 P = self.path
+        # stopped on the path although the operator holds the throttle (the brake gate holds the car): search
+        # again from exactly here - that path starts at the car - and give up after a few (user, 28 Sep)
+        self.stall_s = self.stall_s + dt if held and abs(v) < 0.03 else 0.0
+        if self.stall_s > 0.8 and len(pts_vehicle):
+            self.stall_s = 0.0
+            self.stalls += 1
+            if self.stalls > 3:
+                self.cancel("stuck - no way through from here")
+                return None
+            self.replans += 1
+            self.msg = f"stopped on the path - re-planning from here ({self.stalls}/3)"
+            self._launch(self.to_start(pts_vehicle), (self.x, self.y, self.th))
+            if self.state != "driving":
+                return (0.0, 0.0) if self.state == "planning" else None
+            P = self.path
+        from .assists import past_cusp
         d = np.hypot(P[self.i:self.i + 60, 0] - self.x, P[self.i:self.i + 60, 1] - self.y)
         self.i += int(np.argmin(d)) if len(d) else 0
+        self.i = past_cusp(P, self.i, (self.x, self.y, self.th))
         direction = int(P[self.i, 3])
         k = self.i
         while k + 1 < len(P) and P[k + 1, 3] == direction and \
@@ -143,6 +162,14 @@ class AutoNav:
         to_stop = dist_goal if k == len(P) - 1 else math.hypot(P[k, 0] - self.x, P[k, 1] - self.y)
         speed = min(self.cruise, math.sqrt(1.2 / max(abs(kappa), 1e-3)), 0.12 + 0.6 * to_stop)
         return kappa, direction * speed
+
+    def leg(self):
+        """The leg of the path being driven (up to the next change of direction) in the vehicle frame, for the
+        brake gate: ((N, 3) poses, direction), or None."""
+        if self.state != "driving" or self.path is None:
+            return None
+        from .assists import _leg_vehicle
+        return _leg_vehicle(self.path, self.i, (self.x, self.y, self.th))
 
     def preview(self):
         """The rest of the planned path in the current vehicle frame, for the GUI."""
