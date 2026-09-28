@@ -1,4 +1,4 @@
-# Task list
+﻿# Task list
 
 Every task, asked for or noticed, is written here first and checked off when done. Unfinished work keeps its
 current state in the note. Algorithm choices and paper citations are in `RESEARCH.md`.
@@ -97,10 +97,10 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   fitted 0.0656 rad/m per servo degree about the calibrated centre, the same as the path gate; the old turn-radius
   table is only a fallback) `pi/path_predict.py` `VP` still had the old body (14 cm wide).
 
-- [ ] B8. (partly: the gate is now a least-restrictive filter over the reachable steering with a speed-dependent
+- [x] B8. (done as L2: nudge steering correction; earlier partly: the gate is now a least-restrictive filter over the reachable steering with a speed-dependent
   protective field - B16; still to do: steering correction instead of braking when a nearby arc is safe, i.e. the
   QP over (steering, throttle)) CBF safety filter (RESEARCH.md 2) replacing the heuristic speed caps in `pi/path_gate.py`.
-- [ ] B9. MPPI local fallback when Hybrid A* has no path or execution deviates.
+- [x] B9. (done as L2: adas/mppi.py in the evasive WAIT phase) MPPI local fallback when Hybrid A* has no path or execution deviates.
 - [x] B10. (done inside B2: the planner adds reverse legs when no forward path exists) "Unstuck" mode with reversing (Reeds-Shepp) - the user's option 1.
 
 - [x] B11. (checked on the relay code with the fitted speed model: full throttle at a wall now stops 23 cm short,
@@ -129,7 +129,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] B17. (done) Intent hold limited by the last point to steer for a driver not moving the stick; attentive swerve
   trigger only with an active stick. 11/11 scenarios; MC 96 drives: takeovers 14 -> 8 (p = 0.007), overridden
   needlessly 101 -> 80 s (p = 0.030), 0 crashes.
-- [ ] E3 next session: native Qt (PySide6 + Qt Quick 3D, the usual automotive HMI toolkit) GUI fed by a UDP/ZeroMQ
+- [x] E3 (done as L3, PySide6 + pyqtgraph GL + UDP stream) next session: native Qt (PySide6 + Qt Quick 3D, the usual automotive HMI toolkit) GUI fed by a UDP/ZeroMQ
   push stream from the relay instead of HTTP polling.
 - [ ] C9. Measure the braking deceleration on the car (only when the user asks - calibration) so DECEL/FOS can be
   tightened: full speed currently stops ~35 cm short of a wall.
@@ -140,7 +140,7 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] D3b. Twin LiDAR map built properly: log-odds occupancy with free-space carving (Moravec & Elfes; Probabilistic
   Robotics ch. 9) instead of "cells hit 3 times". Median |sim - real| 3.7 -> 1.1 cm, bias -3.7 -> -0.6 cm, 86% of
   9928 beams within 5 cm, bias now uniform in every direction.
-- [ ] D7. Show the twin report figures in the dashboard (Diagnostics mode) and as slides.
+- [ ] D7. (dashboard part done: Reports tab; slides still to do) Show the twin report figures in the dashboard (Diagnostics mode) and as slides.
 - [ ] C6. Room map (Cartographer-style submaps) for localisation, point-to-point navigation, return-to-start.
 
 - [x] B14. (done: relay samples the stick on a 50 ms clock, features from live scans, P(crash) < 0.5 -> no evasive takeover; dashboard 'Driver intent' card with risk bar, trust state, learned reaction distance) Put the learned intent model + driver profile into the relay on the car (features from live scans,
@@ -164,13 +164,13 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] D6. GUI "connection lost" flicker while the planner runs.
 
 ## E. GUI (EV-grade frontend)
-- [ ] E1. (v1 done: `pi/dash/index.html` at /dash on the car and in the simulator - 3D scene, speed/gear/throttle/steering cluster, time-to-contact ring, mode chip, alert banner, assist toggles, events, camera slot. Still to do: modes page (Drive/Assist/Autonomy/Diagnostics/Replay), intent bars, map - to be built in the native GUI, E3) Redesign: EV-style dashboard (speed, gear/direction, ADAS state, predicted path, alerts, camera slot),
+- [x] E1. (native version done in L3: tabs Drive 3D / Map / Assists / Diagnostics / Reports / Events; v1 web: `pi/dash/index.html` at /dash on the car and in the simulator - 3D scene, speed/gear/throttle/steering cluster, time-to-contact ring, mode chip, alert banner, assist toggles, events, camera slot. Still to do: modes page (Drive/Assist/Autonomy/Diagnostics/Replay), intent bars, map - to be built in the native GUI, E3) Redesign: EV-style dashboard (speed, gear/direction, ADAS state, predicted path, alerts, camera slot),
   useful modes (Drive, Assist, Autonomy, Diagnostics, Replay), all relevant information visible.
-- [ ] E3. **Native (locally running) GUI instead of web GUIs** (user request), above all for the 3D simulator /
+- [x] E3. (done as L3: gui/dashboard.py) **Native (locally running) GUI instead of web GUIs** (user request), above all for the 3D simulator /
   digital twin: browser rendering and HTTP polling add lag. Follow the field's norm (Gazebo, CARLA, Webots and
   RViz are native apps): pick a native Python 3D toolkit, measure frame rate and input-to-screen latency against
   the web dashboard, and build the remaining E1 modes there. Keep the web page only for viewing from a phone.
-- [ ] E2. Show "what might happen": predicted path, time to collision, intent probabilities, planned manoeuvre,
+- [x] E2. (done in gui/dashboard.py: path, TTC ring, intent card, 'what might happen', planned manoeuvre) Show "what might happen": predicted path, time to collision, intent probabilities, planned manoeuvre,
   alternatives considered.
 
 ## F. Autonomy (show everything the car can do)
