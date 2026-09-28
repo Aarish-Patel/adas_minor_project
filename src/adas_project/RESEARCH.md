@@ -144,6 +144,40 @@ Intent-aware vs the same ADAS without intent, paired one-sided Wilcoxon signed-r
 - Tried and rejected: a later soft cap for trusted drivers (FOS 1.1 / 1.0) - fewer limits but more brakes and
   swerves (21 -> 22 needless). Earlier result (48 drives, old gate): takeovers 17 -> 7, p = 0.0008.
 
+### v3: trained on the randomised digital twin (28 Sep; section 7, `sim/twin_intent_data.py`, `sim/train_intent_torch.py`)
+Why v2 predicted badly in general (the user saw it at full speed into a wall):
+- it was trained only on moments within 1.2 m of an obstacle, but the relay asks it every tick;
+- its view ahead stopped at 1.5 m, although at full speed the car covers ~1.7 m in the 2 s the label looks ahead;
+- it looked forward only, and it saw one fixed car with a clean sensor and drivers who slow down.
+
+v3 uses a 12-number tick vector (stick, throttle, speed, free distance on five arcs up to 2.5 m ahead and on the
+current arc behind, time to contact, free distance in stopping distances, the driver's reaction distance) over a
+1.6 s window. It was trained on 3000 randomised-twin drives (543k labelled ticks) and tested on 600 new drives.
+Candidates were trained on the RTX 4060: gradient-boosted trees 0.862 validation AP, MLPs 0.847-0.851, GRUs
+0.845-0.846. All plateau after ~30 epochs, so the limit is the data, not the model size. The trees were chosen:
+24k nodes, 0.22 ms per tick in numpy on the laptop.
+
+| held-out test (600 drives) | v2 | v3 |
+|---|---|---|
+| average precision / AUC | 0.42 / 0.73 | 0.86 / 0.96 |
+| recall / false alarms at 0.5 | 0.07 / 0.007 | 0.77 / 0.039 |
+| calibration error (ECE) | 0.12 | 0.004 |
+| crash drives never warned / warned >= 1 s before | 54 % / 8 % | 6 % / 62 % |
+| safe drives with a false alarm >= 0.25 s | 4 % | 17 % |
+
+v3 is better in every situation slice (`reports/intent_v3.png`). Its weakest slices are turning (AP 0.65), and
+false alarms within 0.5 m (19 %) and while reversing (10 %).
+
+**But better prediction did not mean fewer needless interventions.** In the Monte Carlo on the car's own code
+(96 paired drives, lapsing and late drivers, `models/mc_intent_v2_v3.json`), there were 0 crashes with either
+model. Needless takeovers went 53 (ADAS) -> 25 (v2) / 26 (v3). Time overridden needlessly went 128 s -> 65 s (v2) /
+86 s (v3), and trust thresholds 0.7 / 0.85 did not close the gap. v2 was trained on exactly these Monte Carlo
+drivers, and almost never raises its risk (recall 7 %). With the physics brake as a backstop, "trust nearly
+everyone" is a good takeover policy there.
+Decision: v2 keeps deciding steering takeovers; v3 supplies the P(crash) the driver sees and the warnings.
+Next step: learn the takeover decision itself ("would this intervention be needless?") from the Monte Carlo
+counterfactual labels, instead of thresholding a crash probability.
+
 ## 5. Camera plan (one camera; front-facing chosen - it helps every forward feature, rear only helps reversing)
 
 | Use | Method | Feeds |
