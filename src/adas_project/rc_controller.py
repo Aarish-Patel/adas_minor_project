@@ -357,10 +357,17 @@ def drive():
 
 
 def main():
-    global ESP32_IP
+    global ESP32_IP, TRANSPORT, SERIAL_PORT
     args = sys.argv[1:]
     if "--ip" in args:                      # e.g. --ip 127.0.0.1 to drive the laptop simulator (tools/sim_car.py)
         ESP32_IP = args[args.index("--ip") + 1]
+    # controller only, NO safety relay (bench tests): straight to the ESP32 over USB or WiFi
+    if "--serial" in args:                  # --serial COM7
+        TRANSPORT, SERIAL_PORT = "serial", args[args.index("--serial") + 1]
+        print("CONTROLLER ONLY over USB - no obstacle braking, no ADAS")
+    if "--direct" in args:                  # find the ESP32 itself on WiFi (broadcast PING / rccar.local)
+        ESP32_IP = None
+        print("CONTROLLER ONLY over WiFi - no obstacle braking, no ADAS")
 
     if "--table" in args:
         print_table()
