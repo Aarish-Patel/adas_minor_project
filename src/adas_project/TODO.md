@@ -45,7 +45,11 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
     correctly; a goal 0.44 m ahead / 2.09 m left with the object 0.5 m in front started with a reverse-right leg -
     the planner's three-point turn, since a forward-left arc clips the object)
   - [ ] Evasive steer at the obstacle
-  - [ ] Hybrid A* click-to-go to a goal behind/across the obstacle
+  - [x] Hybrid A* click-to-go to a goal behind/across the obstacle (works on the car, 28 Sep)
+  - [ ] Evasive steer at the obstacle (user testing now - do not restart / deploy to the Pi meanwhile)
+- [ ] A3. Click-to-go: choose the arrival heading (click = position, drag = heading, like parking goals in
+  RViz / Nav2), and prefer driving forward - reverse only when the goal heading or the room needs it.
+  Laptop + simulator only until the user finishes the evasive tests; deploy with their OK.
 
 ## L. User requests (28 Sep, third round) - ADAS parked at "acceptable" (11/11 scenarios, 0 crashes), tune later
 - [x] L1. (done: tried "back up then re-plan" (ROS recovery style) - 7x slower, reverted; instead weighted-A*
