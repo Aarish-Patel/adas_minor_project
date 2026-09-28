@@ -981,7 +981,14 @@ def main():
                     intent.update(physical)
                     braking = False
                     if GATE_MODE == "path":
-                        closing = front_track.speed if physical > 0 else rear_track.speed
+                        # the LiDAR closing speed only for an obstacle the tracker flags as MOVING: for static things the
+                        # speed estimate (throttle model + LiDAR range flow EKF) is the car's speed. The raw nearest-point
+                        # closing speed jumps when the car turns and the nearest point changes; on 28 Sep it fired
+                        # repeated hard brake pulses at 0.3 m/s with 0.4-0.75 m free (drive log 22:11) - the rear
+                        # shaft broke in that session
+                        closing = 0.0
+                        if moving_contact[2] is not None:
+                            closing = front_track.speed if physical > 0 else rear_track.speed
                         g_phys, g_brake = pgate.decide(dt_pkt, physical, gate_delta,
                                                        vest.v_gate((physical > 0) - (physical < 0)), closing,
                                                        intent_k_rate=None if adas_override else rintent.gate_k_rate,
@@ -1083,7 +1090,7 @@ def main():
                     # smooth throttle changes (pi/relay_assists.ThrottleSmoother) unless a safety function cut it
                     safety_cut = braking or health.state == "fault" or                         str(gate_info.get("action", "")).startswith(("holding", "stopped", "LiDAR lost"))
                     if not adas_override:
-                        physical = int(round(smoother.step(physical, dt_pkt, emergency=safety_cut)))
+                        physical = int(round(smoother.step(physical, dt_pkt, emergency=safety_cut, v=vest.v)))
                     else:
                         smoother.out = float(physical)
                     wire_out = -physical if WIRE_MOTOR_REVERSED else physical

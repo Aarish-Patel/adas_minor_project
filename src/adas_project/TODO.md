@@ -114,7 +114,16 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   the wall is too close is fine for now.
 
 ## P. User requests (28 Sep, night) - the rear wheel shaft broke (no crash): simulator + logs until it is fixed
-- [ ] P1. Go through all the car logs: what the car did before the shaft broke (hard direction reversals, brake
+- [x] P1. (done 28 Sep night: tools/drivetrain_report.py; logs copied to logs/car_20260928/. Session 21:24:
+  44 direction reversals while moving, 47 reverse brake pulses up to 140 PWM, throttle jumps up to 394 (full
+  forward -> hard reverse). Session 22:11 (the one before the shaft broke): hard brake pulses (up to 140) at
+  0.25-0.3 m/s while the gate itself allowed 0.9-1.4 m/s with 0.4-0.75 m free - the brake used the LiDAR
+  nearest-point closing speed, which jumps when the car turns; and the new latch release let go mid-pulse, so it
+  hammered brake/release several times a second. Fixes: closing speed only for tracker-flagged MOVING obstacles;
+  latch release only after the pulse (0.2 s) with the car still; brake pulse 140 -> 80 PWM, 0.3 -> 0.2 s (full
+  speed at a wall still stops with 8 cm to spare); reverse lockout (no driving the other way above 0.12 m/s);
+  smoother drops to zero on a direction change. Twin stuck cases: all 6 now get round, no contact.)
+  Go through all the car logs: what the car did before the shaft broke (hard direction reversals, brake
   pulses at speed, the smoother bug, stalls against obstacles), what else looks wrong; fix what software can
   (drivetrain-friendly braking / reversing).
 - [ ] P2. Speed-limit zones: draw shapes (rectangle / polygon / circle) on the map, type a limit in km/h, scaled

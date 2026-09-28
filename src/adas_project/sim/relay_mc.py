@@ -317,7 +317,7 @@ def run(args):
                                     intent_k_rate=None if rint is None else rint.gate_k_rate,
                                     trusted=rint is not None and rint.gate_trust, leg=assist.planned_leg())
             act = str(gate.info.get("action") or "")
-            g_phys = smoother.step(g_phys, DT, emergency=bool(g_brake) or act.startswith(("holding", "stopped")))  # as the relay
+            g_phys = smoother.step(g_phys, DT, emergency=bool(g_brake) or act.startswith(("holding", "stopped")), v=vest.v)  # as the relay
             kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
                                                                  ("steer" if abs(servo_out - d_servo) > 1.0 else None))
             intervening = kind is not None

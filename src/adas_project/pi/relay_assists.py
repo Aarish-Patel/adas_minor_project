@@ -141,13 +141,19 @@ class ThrottleSmoother:
     def __init__(self):
         self.out = 0.0
 
-    def step(self, target, dt, emergency=False):
+    REVERSE_LOCK_V = 0.12  # m/s: no driving the other way while still moving faster than this (as ESCs do)
+
+    def step(self, target, dt, emergency=False, v=None):
         if emergency:
             self.out = float(target)
             return self.out
         cur = self.out
         if cur != 0 and target * cur < 0:            # changing direction (or ending a brake pulse): drop to zero at
             cur = 0.0                                # once - ramping a reverse pulse down would keep driving backwards
+        # reverse lockout (drivetrain protection, after the rear shaft broke on 28 Sep): driving against the way the
+        # car is still rolling shock-loads the gearbox and shaft - coast down first
+        if v is not None and target * v < 0 and abs(v) > self.REVERSE_LOCK_V:
+            target = 0.0
         if abs(target) > abs(cur):
             cur += math.copysign(min(abs(target) - abs(cur), self.RISE_PWM_S * dt), target)
         elif cur:

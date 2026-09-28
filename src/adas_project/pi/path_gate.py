@@ -55,13 +55,13 @@ CREEP_V = 0.10             # m/s allowed while there is still more than CREEP_MI
 CREEP_MIN_M = 0.06
 BRAKE_OVER_V = 0.15        # brake actively only when this much faster than allowed
 BRAKE_GAIN = 300.0         # PWM per m/s over
-BRAKE_PWM_MAX = 140
-BRAKE_MAX_S = 0.3          # s of active braking per event (never enough to drive the car backwards)
+BRAKE_PWM_MAX = 80         # peak reverse pulse (was 140: the car stops within 1-2 cm on a throttle cut alone, and
+                           # reverse pulses at speed shock-load the drivetrain - the rear shaft broke on 28 Sep)
+BRAKE_MAX_S = 0.2          # s of active braking per event (never enough to drive the car backwards)
 LATCH_RELEASE_M = 0.08     # the hold after braking lets go once the free distance grows this much
-# ...or when the steering has turned to a new path that is clear at SOME speed (user, 28 Sep: a manoeuvre or driver
-# steering round the obstacle must not stay held because the old, straight path was blocked - go at the
+# ...or, once the brake pulse is over and the car stands still, when the commanded path is clear at SOME speed (user,
+# 28 Sep: a manoeuvre steering round the obstacle must not stay held because the old path was blocked - go at the
 # speed the new path allows; the gate keeps checking it every tick)
-LATCH_STEER_DEG = 5.0
 # steering correction instead of braking (steer_correction): the largest nudge of path curvature tried (0.7 1/m is
 # ~11 servo degrees at the fitted 0.0656 1/m per degree), tried smallest first, and only above walking pace
 NUDGE_MAX_KAPPA = 0.7
@@ -367,7 +367,10 @@ class PathGate:
             # released onto a path that is clear at a slower speed: the steering turned to a new one, or the car has
             # stopped and the commanded path is clear at a creep (the cap below keeps it within its envelope, so
             # there is no brake/throttle stutter to prevent any more)
-            new_way = v_ok > 0 and (abs(delta - l_delta) > math.radians(LATCH_STEER_DEG) or abs(v_est) < 0.05)
+            # never in the middle of a brake pulse (released, braked again next tick: brake/release hammering
+            # that shock-loads the drivetrain - seen in the 28 Sep drive log before the rear shaft broke)
+            settled = self.brake_t >= BRAKE_MAX_S and abs(v_est) < 0.05
+            new_way = v_ok > 0 and settled
             if l_dir != direction or free > l_free + LATCH_RELEASE_M or new_way:
                 self.latch = None
                 if new_way:

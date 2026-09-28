@@ -89,7 +89,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
                                       intent_k_rate=rint.gate_k_rate, trusted=rint.gate_trust,
                                       leg=assist.planned_leg())
         act = str(gate.info.get("action") or "")
-        g_phys = smoother.step(g_phys, DT, emergency=g_brake or act.startswith(("holding", "stopped")))   # as the relay
+        g_phys = smoother.step(g_phys, DT, emergency=g_brake or act.startswith(("holding", "stopped")), v=vest.v)   # as the relay
         vest.command(t, DT, g_phys, servo_out)
         rec["infos"].update(f"{k}: {s}" for k, s in assist.info.items())
         rec["max_level"] = max(rec["max_level"], assist.level)
