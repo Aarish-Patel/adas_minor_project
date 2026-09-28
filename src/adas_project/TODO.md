@@ -7,6 +7,17 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [ ] A1. **Deploy to the Pi.** The Pi still runs the version whose obstacle memory made a phantom wall and blocked
   forward driving. Deploy `adas/` and `pi/`, restart `rc-relay`, check a forward drive first.
 
+## K. User requests (28 Sep, second round)
+- [ ] K1. **Braking model = the real car**: the car stops almost instantly (user: 1-2 cm drift). Check against the
+  drive logs, then fix the twin (VirtualCar), the speed EKF and the gate's stopping distance (DECEL). My earlier
+  "the throttle model thinks the car stops at once" finding came from the twin's slow braking - retract it.
+- [ ] K2. **Everything must run on the Pi 5 without processing delays**: profile every per-tick piece (gate
+  sweeps, RF2O/EKF, intent MLP, evasive Hybrid A*, click-to-go), set a budget, move anything slow off the control
+  loop (worker thread) or make it cheaper; benchmark on the Pi itself when it is reachable.
+- [ ] K3. **Much smarter, more accurate intent-aware ADAS**: interventions down to a very small number, 0 crashes.
+- [ ] K4. **More, different scenarios** in the Monte Carlo (driver styles incl. good drivers who avoid early,
+  corridors, clutter, doorways, moving obstacles) - keep trying.
+
 ## B. Safety and planning (the car must be impossible to crash, with minimal false interruptions)
 - [x] B1. **Research** (done: RESEARCH.md sections 1-2) planning/safety algorithms and pick them (RESEARCH.md): Hybrid A* for the evasive path,
   a minimally-invasive safety filter (control barrier functions) for braking/steering corrections, fallback
