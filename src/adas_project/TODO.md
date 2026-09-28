@@ -258,7 +258,10 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
 Consistency on a vibrating car:
 - [ ] N1. Closed-loop speed control (PI + feedforward from pi/car_model.json on the RF2O/EKF speed) instead of
   open-loop PWM, like an EV's torque/speed controller; jerk-limited commands.
-- [ ] N2. Online adaptation of the car model: recursive least squares with a forgetting factor for speed gain,
+- [x] N2. (done 29 Sep: adas/online_steering.py - RLS with forgetting on the scan-matched heading change per distance
+  driven -> servo centre + steering gain, clipped to +-4.5 deg / +-25 %, applied slowly after 10 samples, live in
+  RelayAssists.centre / .k; twin: centre error 1.72 -> 0.92 deg rms after ~7 samples; unit test recovers +-3 deg / +-10 %
+  in 40 s. Speed / braking adaptation still to do.) Online adaptation of the car model: recursive least squares with a forgetting factor for speed gain,
   braking decel and steering curvature, so battery sag / floor / vibration changes are tracked during a drive.
 - [ ] N3. Adaptive noise in the speed EKF (innovation-based adaptive estimation, Mehra 1970) + robust (Huber)
   weights in ICP/RF2O so vibration-induced outliers don't jerk the estimate; LiDAR motion deskew (LOAM, Zhang &
@@ -266,7 +269,9 @@ Consistency on a vibrating car:
 - [ ] N4. Uncertainty-aware safety: margins scaled by the measured spread (e.g. braking distance 95th percentile),
   calibrated intent probabilities (temperature scaling, Guo et al. 2017), conformal prediction bounds (Angelopoulos
   & Bates 2021) or a small deep ensemble (Lakshminarayanan et al. 2017).
-- [ ] N5. Repeatability protocol like Euro NCAP AEB tests: every car test repeated N times, report mean +- std and
+- [x] N5. (done 29 Sep: sim/repeat_scenarios.py - every relay scenario on N randomised twins; 300 runs: 100 % safe, closest
+  0.6 cm, 92 % meet the exact nominal spec; known weak: nudge assist 55 % (opt-in, fails when the servo-centre error
+  drifts the car toward a 3 cm-clip box)) Repeatability protocol like Euro NCAP AEB tests: every car test repeated N times, report mean +- std and
   pass rate, not single runs; twin noise randomised to the measured spread (ties into M4).
 Real-EV style software:
 - [~] N6. (dashboard part done 28 Sep: COLLISION WARNING chip + beep below 1.6 s to contact, then "PARTIAL BRAKE -

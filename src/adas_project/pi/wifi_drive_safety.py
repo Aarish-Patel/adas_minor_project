@@ -968,7 +968,7 @@ def main():
                         pass
             if servo_cmd is not None:
                 last_servo_cmd = servo_cmd
-            gate_delta = math.atan(-assist_k * (last_servo_cmd - assist.centre) * assist.p.wheelbase)
+            gate_delta = math.atan(-assist.k * (last_servo_cmd - assist.centre) * assist.p.wheelbase)
             gate_info = {}
 
             out_lines = []
@@ -1185,7 +1185,8 @@ def main():
                                               "v_model": round(vest.model_est.v, 3), "pwm_in": -pwm_commanded if WIRE_MOTOR_REVERSED else pwm_commanded,
                                               "pwm_out": -pwm_sent if WIRE_MOTOR_REVERSED else pwm_sent,
                                               "servo": last_servo_cmd, "centre": assist.centre, "t": time.time(),
-                                              "steer_max_deg": round(assist.steer_limit_kappa(vest.v) / assist_k, 1)}
+                                              "steer_max_deg": round(assist.steer_limit_kappa(vest.v) / assist.k, 1),
+                                              "steer_cal": assist.steer_est.status()}
                 GUI_STATE["data"]["world"] = {"pose": [round(c, 3) for c in vest.pose], "zones": assist.zones.zones,
                                               "zone_kph": assist.zone_kph}
             stages.mark("GUI path + state (after write)")

@@ -314,7 +314,7 @@ def run(args):
                     servo_out = (float(q[1]) + float(q[2])) / 2
                 elif q[0] == "M":
                     phys = -float(q[1])
-            delta = math.atan(-K * (servo_out - assist.centre) * p.wheelbase)
+            delta = math.atan(-assist.k * (servo_out - assist.centre) * p.wheelbase)
             # intent decides whether to take over the STEERING (evasive hold above); braking stays pure physics
             g_phys, g_brake = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0,
                                     intent_k_rate=None if rint is None else rint.gate_k_rate,
@@ -335,7 +335,7 @@ def run(args):
             # how deep inside its stopping envelope was the car on the DRIVER's own path: free distance / physical
             # stopping distance (1.0 = the last moment braking could still stop it)
             from pi.path_gate import BASE_M, DECEL, REACTION_S
-            d_delta = math.atan(-K * (d_servo - assist.centre) * p.wheelbase)
+            d_delta = math.atan(-assist.k * (d_servo - assist.centre) * p.wheelbase)
             f_drv, _ = gate.free_distance(d_delta, 1 if d_pwm >= 0 else -1, slop=False)
             stop = BASE_M + abs(v) * REACTION_S + v * v / (2 * DECEL)
             ratio = round(f_drv / stop, 2) if math.isfinite(f_drv) else None

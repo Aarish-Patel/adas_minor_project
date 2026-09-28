@@ -250,7 +250,7 @@ class RelayIntent:
         v3 = self.net if decides_v3 else self.risk_net
         if v3 is not None:
             from adas.intent_net import HORIZON3, WINDOW, Z_FREE_NOW, tick_vector, window_of
-            z = tick_vector(servo, physical, v, pts_v, a.p, a.centre, K_CURV_PER_SERVO_DEG,
+            z = tick_vector(servo, physical, v, pts_v, a.p, a.centre, a.k,
                             react=self.profile.reaction_distance)
             self.zhist = (self.zhist + [z])[-WINDOW:]
             self.p_risk = v3.risk(window_of(self.zhist))
@@ -260,7 +260,7 @@ class RelayIntent:
                 self.trusted = self.p_crash < self.trust_threshold
         if self.net is not None and not decides_v3:
             f = features(self.hist, physical, v, pts_v, a.p, a.centre,
-                         K_CURV_PER_SERVO_DEG, profile=self.profile, pwm_hist=self.pwm_hist)
+                         a.k, profile=self.profile, pwm_hist=self.pwm_hist)
             if f is not None:
                 self.profile.update(self.hist, free_now(f))
                 self.p_crash = self.net.crash_probability(f)
@@ -308,6 +308,13 @@ class RelayAssists:
         from pi.zones import SpeedZones
         self.zones = SpeedZones()      # speed-limit zones in the world frame (pi/zones.py)
         self.zone_kph = None           # the limit applying right now (km/h full-size), for the GUI
+        # online steering calibration (adas/online_steering.py): the servo centre and the steering gain the predicted
+        # paths use follow what the car really does (scan-matched heading change per distance driven)
+        from adas.online_steering import OnlineSteering
+        self.k = K_CURV_PER_SERVO_DEG
+        self.centre0, self.k0 = self.centre, self.k
+        self.steer_est = OnlineSteering(self.centre, self.k, prior_weight=2)
+        self.steer_adapt = True
         self.steer_envelope = True     # realistic, speed-dependent steering limit (steer_limit_kappa)
         self.steer_limited = None      # (asked, allowed) servo offsets when the envelope clipped the steering
         self.nudge_on = False          # steering correction instead of braking (see nudge())
@@ -364,11 +371,11 @@ class RelayAssists:
         if physical <= 0:
             return lines, None
         wb = self.p.wheelbase
-        delta = math.atan(-K_CURV_PER_SERVO_DEG * (servo - self.centre) * wb)
+        delta = math.atan(-self.k * (servo - self.centre) * wb)
         d2 = gate.steer_correction(delta, 1, v)
         if d2 is None:
             return lines, None
-        sv = self.centre - (math.tan(d2) / wb) / K_CURV_PER_SERVO_DEG
+        sv = self.centre - (math.tan(d2) / wb) / self.k
         sv = int(round(max(35.0, min(145.0, sv))))
         out = list(lines)
         out[i_a] = f"A {sv} {sv}"
@@ -395,12 +402,12 @@ class RelayAssists:
 
     # --- unit conversions
     def servo_to_stick(self, servo):
-        kappa_left = -K_CURV_PER_SERVO_DEG * (servo - self.centre)
+        kappa_left = -self.k * (servo - self.centre)
         return delta_to_steer(math.atan(kappa_left * self.p.wheelbase), self.p)
 
     def stick_to_servo(self, stick):
         kappa_left = math.tan(steer_to_delta(stick, self.p)) / self.p.wheelbase
-        return self.centre - kappa_left / K_CURV_PER_SERVO_DEG
+        return self.centre - kappa_left / self.k
 
     @staticmethod
     def points_vehicle_frame(points, lidar_x=0.12):
@@ -501,6 +508,27 @@ class RelayAssists:
         self.est.update(dt, physical)
         return out
 
+    ADAPT_MIN_SAMPLES = 10          # real samples before the estimate is used
+    ADAPT_BLEND = 0.05              # per update: the calibration moves slowly, it is a bias not a signal
+
+    def _adapt_steering(self, lines, now):
+        """Feed the online steering estimator with the servo the driver / assists asked for and the scan-matched pose,
+        and move the centre / gain the predicted paths use toward its estimate."""
+        if not self.steer_adapt or self.speed is None:
+            return
+        for ln in lines:
+            q = ln.split()
+            if len(q) == 3 and q[0] == "A":
+                try:
+                    self.steer_est.command(now, (float(q[1]) + float(q[2])) / 2.0)
+                except ValueError:
+                    pass
+        self.steer_est.update(now, self.v, self.speed.pose)
+        if self.steer_est.n >= self.ADAPT_MIN_SAMPLES:
+            b = self.ADAPT_BLEND
+            self.centre += b * (self.steer_est.centre - self.centre)
+            self.k += b * (self.steer_est.k - self.k)
+
     def steer_limit_kappa(self, v):
         """Realistic steering envelope (user, 28 Sep): the tightest path curvature allowed at speed v (m/s).
         Mechanically the car could turn on 0.27 m (1.35 wheelbases); real cars need ~2 wheelbases (e.g. 2.7 m
@@ -516,12 +544,13 @@ class RelayAssists:
     def limit_servo(self, servo, v):
         """Clamp a servo command to the steering envelope at speed v."""
         k = self.steer_limit_kappa(v)
-        lo, hi = self.centre - k / K_CURV_PER_SERVO_DEG, self.centre + k / K_CURV_PER_SERVO_DEG
+        lo, hi = self.centre - k / self.k, self.centre + k / self.k
         return max(lo, min(hi, servo))
 
     def process(self, lines, points, seq=None, now=None):
         """lines: the driver's packet lines. Returns the lines to hand on to the safety gate, with the steering
         inside the realistic, speed-dependent envelope (steer_limit_kappa)."""
+        self._adapt_steering(lines, time.time() if now is None else now)
         out = self._process(lines, points, seq, now)
         out = self._crossing(out, time.time() if now is None else now)
         out = self._zone_cap(out)
@@ -595,7 +624,7 @@ class RelayAssists:
         if leg is not None and leg[1] == direction:
             path = leg[0]
         else:
-            path = arc_path(-K_CURV_PER_SERVO_DEG * (servo - self.centre), direction)
+            path = arc_path(-self.k * (servo - self.centre), direction)
         v_along = max(0.0, self.v * direction)
         v_want = self.model.speed(abs(physical))
         pts = self.points_vehicle_frame(self._last_raw, self.p.lidar_x) if self._last_raw else np.empty((0, 2))
