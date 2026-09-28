@@ -25,6 +25,8 @@ class AutoNav:
         self.state = "idle"               # idle | planning | driving
         self.path = None
         self.goal = None
+        self.goal_heading = None          # rad in the start frame, or None: arrive pointing any way
+        self.heading_tol = math.radians(20.0)
         self.x = self.y = self.th = 0.0
         self.i = 0
         self.msg = ""
@@ -44,7 +46,7 @@ class AutoNav:
         self.state = "planning"
         self._job_t = time.perf_counter()
         self._job = self.service.submit(plan_point_job, self.p, self.kappa_max, pts_start, start, self.goal,
-                                        self.service.budget(GOTO_BUDGET_S))
+                                        self.service.budget(GOTO_BUDGET_S), self.goal_heading)
         if self._job.ready(0.0):
             self._collect()
 
@@ -63,10 +65,12 @@ class AutoNav:
         self.state = "driving"
         self.msg = "driving to the goal" if self.replans == 0 else "re-planned around a new obstacle"
 
-    def start(self, goal, pts_vehicle):
-        """goal: (x, y) m in the vehicle frame now. Starts planning; returns False if the request is refused."""
+    def start(self, goal, pts_vehicle, heading=None):
+        """goal: (x, y) m in the vehicle frame now; heading: the direction to arrive in (rad, 0 = the car's heading
+        now, + = left), or None for any. Starts planning; returns False if the request is refused."""
         self.x = self.y = self.th = 0.0
         self.goal = (float(goal[0]), float(goal[1]))
+        self.goal_heading = None if heading is None else float(heading)
         self.path, self.replans = None, 0
         self.msg = "planning a path"
         self._launch(np.asarray(pts_vehicle, float).reshape(-1, 2), (0.0, 0.0, 0.0))
@@ -101,8 +105,12 @@ class AutoNav:
             return 0.0, 0.0
         gx, gy = self.goal
         dist_goal = math.hypot(gx - self.x, gy - self.y)
-        if dist_goal < self.arrive:
+        head_err = 0.0 if self.goal_heading is None else             abs((self.th - self.goal_heading + math.pi) % (2 * math.pi) - math.pi)
+        if dist_goal < self.arrive and head_err < self.heading_tol:
             self.cancel("arrived")
+            return None
+        if self.goal_heading is not None and self.i >= len(self.path) - 2 and dist_goal < 2 * self.arrive:
+            self.cancel(f"arrived ({math.degrees(head_err):.0f} deg off the chosen heading)")
             return None
         P = self.path
         self.replan_t += dt
@@ -125,7 +133,9 @@ class AutoNav:
         while k + 1 < len(P) and P[k + 1, 3] == direction and \
                 math.hypot(P[k, 0] - P[self.i, 0], P[k, 1] - P[self.i, 1]) < self.look:
             k += 1
-        tgt = P[k:k + 1, :2] if k < len(P) - 1 or direction < 0 else np.array([[gx, gy]])
+        # the last stretch: aim at the goal point itself - unless a heading was chosen, then follow the planned
+        # path to its end (the Dubins approach arrives pointing the right way)
+        tgt = P[k:k + 1, :2] if k < len(P) - 1 or direction < 0 or self.goal_heading is not None             else np.array([[gx, gy]])
         xl, yl = self.to_vehicle(tgt)[0]
         dd = xl * xl + yl * yl
         kappa = max(-self.kappa_max, min(self.kappa_max, 2.0 * yl / dd if dd > 1e-4 else 0.0))

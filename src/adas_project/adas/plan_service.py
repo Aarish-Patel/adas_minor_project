@@ -33,20 +33,24 @@ def plan_line_job(params, kappa_max, pts, start, x_goal, max_nodes, reverse_node
     return path
 
 
-def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None):
+GOTO_W_REVERSE = 6.0              # click-to-go: a metre driven backwards costs as much as 7 m forwards
+
+
+def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_heading=None):
     # (budget_s applies to each of the two searches)
-    """Click-to-go: to a goal position; forward-only first unless the goal is behind, then with reversing."""
-    import math
+    """Click-to-go to a goal position (and heading, if given): forward-only first - also for goals behind the car
+    (a forward U-turn when there is room) - and only if no forward path exists, a search that may reverse, where
+    reversing is expensive, so it backs up only as much as the goal heading or the room needs."""
     from .hybrid_astar import HybridAStar
     ha = HybridAStar(params, kappa_max=kappa_max)
-    gx, gy = goal
-    x, y, th = start
-    behind = math.cos(th) * (gx - x) + math.sin(th) * (gy - y) < 0
-    if not behind:
-        path = ha.plan_to_point(pts, start, goal, max_nodes=2500, budget_s=budget_s)
-        if path is not None or ha.gave_up == "goal unreachable":
-            return path
-    return ha.plan_to_point(pts, start, goal, allow_reverse=True, max_nodes=6000, budget_s=budget_s)
+    # a goal pose needs more search than a point: the forward stage then uses the coarse lattice too (the fine one
+    # ran out of nodes on a doorway-then-turn goal that the coarse one solves in a fraction of the time)
+    path = ha.plan_to_point(pts, start, goal, max_nodes=2500, budget_s=budget_s, goal_heading=goal_heading,
+                            coarse=goal_heading is not None)
+    if path is not None or ha.gave_up == "goal unreachable":
+        return path
+    return ha.plan_to_point(pts, start, goal, allow_reverse=True, max_nodes=6000, budget_s=budget_s,
+                            goal_heading=goal_heading, w_reverse=GOTO_W_REVERSE)
 
 
 # ------------------------------------------------------------------ the service

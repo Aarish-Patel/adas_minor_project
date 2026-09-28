@@ -70,6 +70,41 @@ class ClickToGoTests(unittest.TestCase):
         self.assertIsNotNone(path)
         self.assertTrue((path[:, 3] < 0).all())
 
+    def test_goal_heading_is_reached_forward(self):
+        """A goal pose (position + heading): the path ends on the pose, driving forward (Dubins approach)."""
+        from sim.hw_worlds import open_room
+        path = HybridAStar(P).plan_to_point(world_points(open_room()[0]), (0.0, 0.0, 0.0), (1.8, 1.0),
+                                            goal_heading=math.radians(90))
+        self.assertIsNotNone(path)
+        self.assertLess(math.hypot(path[-1, 0] - 1.8, path[-1, 1] - 1.0), 0.05)
+        self.assertLess(abs(math.degrees(path[-1, 2]) - 90), 3)
+        self.assertTrue((path[:, 3] > 0).all())
+
+    def test_prefers_forward_even_for_a_goal_behind(self):
+        """Click-to-go goal behind the car in an open room: a forward U-turn, no reversing (user request)."""
+        from adas.plan_service import plan_point_job
+        from sim.hw_worlds import open_room
+        path = plan_point_job(P, 1.5, world_points(open_room()[0]), (0.0, 0.0, 0.0), (-0.3, 1.6))
+        self.assertIsNotNone(path)
+        self.assertTrue((path[:, 3] > 0).all())
+
+    def test_reverses_when_the_heading_needs_it(self):
+        """Arrive pointing backwards in a corridor too narrow to turn round: the planner has to reverse."""
+        from adas.plan_service import plan_point_job
+        from sim.hw_worlds import corridor
+        path = plan_point_job(P, 1.5, world_points(corridor()[0]), (0.0, 0.0, 0.0), (-0.5, 0.0),
+                              goal_heading=0.0)
+        self.assertIsNotNone(path)
+        self.assertTrue((path[:, 3] < 0).any())
+        self.assertLess(math.hypot(path[-1, 0] + 0.5, path[-1, 1]), 0.06)
+
+    def test_drives_to_a_goal_pose_in_the_twin(self):
+        from sim.autonav_eval import drive
+        r = drive("open", (1.8, 0.8), heading_deg=90)
+        self.assertTrue(r["ok"], r["why"])
+        self.assertFalse(r["crashed"])
+        self.assertLess(r["heading_err_deg"], 20)
+
     def test_goal_inside_an_obstacle_is_refused(self):
         from sim.hw_worlds import doorway
         self.assertIsNone(HybridAStar(P).plan_to_point(world_points(doorway()[0]), (0.0, 0.0, 0.0), (1.7, 0.0)))

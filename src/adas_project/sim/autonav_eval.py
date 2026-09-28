@@ -22,7 +22,7 @@ CASES = [
 ]
 
 
-def drive(world_name, goal, t_max=40.0, seed=0):
+def drive(world_name, goal, t_max=40.0, seed=0, heading_deg=None):
     """One click-to-go on the relay code (sim/relay_scenarios.run): the goal is sent once two scans are in, the
     operator holds the throttle and lets go once the car reports it has finished."""
     from sim.hw_worlds import WORLDS
@@ -36,7 +36,7 @@ def drive(world_name, goal, t_max=40.0, seed=0):
         if not st["started"] and seq >= 2:
             st["started"] = True
             t0 = time.perf_counter()
-            st["ok_plan"] = assist.goto(*goal, points=pts)
+            st["ok_plan"] = assist.goto(*goal, points=pts, heading_deg=heading_deg)
             st["plan_ms"] = (time.perf_counter() - t0) * 1000
             st["planned"] = None if assist.nav.path is None else assist.nav.path.copy()
         elif st["started"] and not assist.nav.active:
@@ -56,7 +56,11 @@ def drive(world_name, goal, t_max=40.0, seed=0):
     if planned is not None:                      # the planned path in the world frame, for the figure
         c, s = math.cos(sth), math.sin(sth)
         planned = np.column_stack([sx + c * planned[:, 0] - s * planned[:, 1], sy + s * planned[:, 0] + c * planned[:, 1]])
-    return {"ok": nav.msg == "arrived" and err < 0.2 and not r["collided"], "why": nav.msg,
+    head_err = None if heading_deg is None else         abs(math.degrees((r["th"] - sth - math.radians(heading_deg) + math.pi) % (2 * math.pi) - math.pi))
+    reversed_m = 0.0 if planned is None else float(sum(
+        math.hypot(*(planned[i + 1] - planned[i])) for i in range(len(planned) - 1) if st["planned"][i + 1, 3] < 0))
+    return {"ok": nav.msg.startswith("arrived") and err < 0.2 and not r["collided"], "why": nav.msg,
+            "heading_err_deg": head_err, "reversed_m": reversed_m,
             "t": round(r["t_end"], 1), "err": err, "plan_ms": st["plan_ms"], "replans": nav.replans,
             "crashed": r["collided"], "min_clear": r["min_clear"],
             "gate_ticks": sum(1 for row in r["trace"] if row[9] is not None),

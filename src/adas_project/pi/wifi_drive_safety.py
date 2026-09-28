@@ -669,9 +669,10 @@ def start_gui_server(clr):
             if cmd is None and parts[:2] == ["api", "goto"]:     # /api/goto/<x>/<y> (m, vehicle frame) or /api/goto/cancel
                 if len(parts) == 3 and parts[2] == "cancel":
                     cmd = b"GOTO CANCEL"
-                elif len(parts) == 4:
+                elif len(parts) in (4, 5):                   # /api/goto/<x>/<y>[/<heading deg>]
                     try:
-                        cmd = f"GOTO {float(parts[2]):.3f} {float(parts[3]):.3f}".encode()
+                        cmd = (f"GOTO {float(parts[2]):.3f} {float(parts[3]):.3f}" +
+                               (f" {float(parts[4]):.1f}" if len(parts) == 5 else "")).encode()
                     except ValueError:
                         pass
             if cmd is not None:
@@ -872,15 +873,16 @@ def main():
                 sock.sendto(b"OK", addr)
                 continue
 
-            if len(parts) >= 2 and parts[0] == "GOTO":      # click-to-go: "GOTO <x> <y>" (m, vehicle frame) / "GOTO CANCEL"
-                if parts[1] == "CANCEL":
+            if len(parts) >= 2 and parts[0] == "GOTO":      # click-to-go: "GOTO <x> <y> [heading deg]" (m, vehicle
+                if parts[1] == "CANCEL":                     # frame; heading 0 = ahead, + = left) / "GOTO CANCEL"
                     assist.nav.cancel("cancelled from the GUI")
-                elif len(parts) == 3:
+                elif len(parts) in (3, 4):
                     try:
                         gx, gy = float(parts[1]), float(parts[2])
+                        gh = float(parts[3]) if len(parts) == 4 else None
                         gpts, _ = clr.read_points_seq()
-                        assist.goto(gx, gy, gpts)
-                        dlog.event("goto", x=gx, y=gy, state=assist.nav.state, result=assist.nav.msg)
+                        assist.goto(gx, gy, gpts, heading_deg=gh)
+                        dlog.event("goto", x=gx, y=gy, heading_deg=gh, state=assist.nav.state, result=assist.nav.msg)
                     except ValueError:
                         pass
                 sock.sendto(b"OK", addr)

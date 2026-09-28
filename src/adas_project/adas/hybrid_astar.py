@@ -141,17 +141,66 @@ class HybridAStar:
                             lambda e: math.hypot(max(0.0, x_goal - e[0]), e[1]), allow_reverse, max_nodes, self.w_offset,
                             budget_s)
 
-    def plan_to_point(self, points, start, goal, allow_reverse=False, max_nodes=4000, pad=1.5, budget_s=None):
-        """Path to a goal POSITION (any final heading), e.g. a point picked on the map. The analytic expansion is the
-        single circular arc from a node that passes through the goal (what pure pursuit would drive)."""
+    def plan_to_point(self, points, start, goal, allow_reverse=False, max_nodes=4000, pad=1.5, budget_s=None,
+                      goal_heading=None, w_reverse=None, coarse=None):
+        """Path to a goal POSITION, e.g. a point picked on the map. goal_heading None: any final heading - the
+        analytic expansion is the single circular arc from a node through the goal (what pure pursuit would drive).
+        goal_heading (rad): the car must also arrive pointing that way - the analytic expansion is the Dubins path
+        to the goal pose (forward, or driven backwards when reversing is allowed), as Dolgov et al. use
+        Reeds-Shepp curves. w_reverse: cost factor for reversing (click-to-go prefers driving forward).
+        coarse: search on the coarser lattice (15 deg, 0.25 m steps, weighted heuristic) - default with reversing."""
+        coarse = allow_reverse if coarse is None else coarse
         gx, gy = goal
         grid = Grid(points, min(start[0], gx) - pad, max(start[0], gx) + pad, min(start[1], gy) - pad,
                     max(start[1], gy) + pad)
         m = self.margin
         if float(grid.lookup(gx, gy)) < self.p.width / 2 + m:
             self.grid = grid
-            return None                                   # the goal itself is too close to an obstacle
+            self.gave_up = "goal unreachable"             # the goal itself is too close to an obstacle
+            return None
         seeds = [(int((gx - grid.x0) / grid.res), int((gy - grid.y0) / grid.res))]
+        saved_w = self.w_reverse
+        if w_reverse is not None:
+            self.w_reverse = w_reverse
+        try:
+            if goal_heading is not None:
+                return self._plan_to_pose(grid, start, (gx, gy, goal_heading), seeds, allow_reverse, max_nodes,
+                                          budget_s, coarse)
+            return self._plan_to_position(grid, start, (gx, gy), seeds, allow_reverse, max_nodes, budget_s, coarse)
+        finally:
+            self.w_reverse = saved_w
+
+    def _plan_to_pose(self, grid, start, goal, seeds, allow_reverse, max_nodes, budget_s, coarse):
+        from . import dubins
+        gx, gy, gth = goal
+        m = self.margin
+        radius = 1.0 / self.kappa_max
+
+        def analytic(pose, d_prev):
+            if math.hypot(gx - pose[0], gy - pose[1]) > 3.0:
+                return None
+            best = None
+            for d, fn in ((1, dubins.sample), (-1, dubins.sample_reverse)):
+                if d < 0 and not allow_reverse:
+                    continue
+                P = fn(pose, goal, radius)
+                if P is None or len(P) * 0.04 > 4.0:
+                    continue
+                if self.clearance(grid, P[::2]) >= m and self.clearance(grid, P[-1:]) >= m:
+                    cost = len(P) * (1.0 if d > 0 else 1.0 + self.w_reverse)
+                    if best is None or cost < best[0]:
+                        best = (cost, P, d)
+            return None if best is None else (best[1], best[2])
+
+        def h(e):
+            # (the obstacle-free Dubins length was tried as a tighter heuristic: 25 % slower overall - dropped)
+            return math.hypot(gx - e[0], gy - e[1])
+
+        return self._search(grid, start, seeds, analytic, h, allow_reverse, max_nodes, 0.0, budget_s, coarse)
+
+    def _plan_to_position(self, grid, start, goal, seeds, allow_reverse, max_nodes, budget_s, coarse):
+        gx, gy = goal
+        m = self.margin
 
         def analytic(pose, d_prev):
             x, y, th = pose
@@ -174,10 +223,12 @@ class HybridAStar:
             return (arc, d) if self.clearance(grid, arc[::2]) >= m else None
 
         return self._search(grid, start, seeds, analytic, lambda e: math.hypot(gx - e[0], gy - e[1]),
-                            allow_reverse, max_nodes, 0.0, budget_s)
+                            allow_reverse, max_nodes, 0.0, budget_s, coarse)
 
-    def _search(self, grid, start, seeds, analytic, h_euclid, allow_reverse, max_nodes, w_offset, budget_s=None):
-        """budget_s: give up after this much computing time (the relay's planner must answer in time on the Pi)."""
+    def _search(self, grid, start, seeds, analytic, h_euclid, allow_reverse, max_nodes, w_offset, budget_s=None,
+                coarse=None):
+        """budget_s: give up after this much computing time (the relay's planner must answer in time on the Pi).
+        coarse: the coarse lattice (default: with reversing)."""
         import time
         t_start = time.perf_counter()
         self.grid = grid
@@ -200,10 +251,13 @@ class HybridAStar:
             return None
         kappas = np.linspace(-self.kappa_max, self.kappa_max, REVERSE_N_KAPPA if allow_reverse else 7)
         dirs = (1, -1) if allow_reverse else (1,)
-        hbin = math.radians(REVERSE_HEADING_BIN_DEG if allow_reverse else HEADING_BIN_DEG)
-        eps = REVERSE_EPS if allow_reverse else 1.2
+        coarse = allow_reverse if coarse is None else coarse
+        if coarse and not allow_reverse:
+            kappas = np.linspace(-self.kappa_max, self.kappa_max, REVERSE_N_KAPPA)
+        hbin = math.radians(REVERSE_HEADING_BIN_DEG if coarse else HEADING_BIN_DEG)
+        eps = REVERSE_EPS if coarse else 1.2
         step_saved = self.step
-        if allow_reverse:
+        if coarse:
             self.step = REVERSE_STEP_M
         try:
             return self._search_loop(grid, start, h2d, analytic, h_euclid, max_nodes, w_offset, budget_s, t_start,

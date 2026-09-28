@@ -279,7 +279,8 @@ class View3D(gl.GLViewWidget):
 
 # ------------------------------------------------------------------ the 2D map with click-to-go
 class MapView(pg.PlotWidget):
-    """Top view in the vehicle frame (the car points up). Click to send a click-to-go goal."""
+    """Top view in the vehicle frame (the car points up). Click to send a click-to-go goal; press, drag towards the
+    direction the car should face and release to give it an arrival heading too (like a goal pose in RViz)."""
 
     def __init__(self, link, on_goal):
         super().__init__(background=COL["bg"])
@@ -300,21 +301,62 @@ class MapView(pg.PlotWidget):
                          [-hw, GEO["rear"]]])
         self.body = pg.PlotCurveItem(body[:, 0], body[:, 1], pen=pg.mkPen(COL["text"], width=2),
                                      fillLevel=None, brush=pg.mkBrush(229, 236, 255, 90))
-        for it in (self.walls, self.scatter, self.line, self.pred, self.man, self.goal, self.body):
+        self.arrow = pg.PlotCurveItem(pen=pg.mkPen(COL["violet"], width=3))     # heading being dragged / chosen
+        for it in (self.walls, self.scatter, self.line, self.pred, self.man, self.goal, self.arrow, self.body):
             self.addItem(it)
-        self.scene().sigMouseClicked.connect(self._click)
+        self.getPlotItem().vb.setMouseEnabled(x=False, y=False)                 # left drag = heading, not panning
+        self._press = None
 
     @staticmethod
     def _sc(xy):
         return (-xy[:, 1], xy[:, 0]) if len(xy) else ([], [])
 
-    def _click(self, ev):
-        if ev.button() != QtCore.Qt.LeftButton:
+    def _to_vehicle(self, ev):
+        p = self.getPlotItem().vb.mapSceneToView(self.mapToScene(ev.position().toPoint()))
+        return float(p.y()), float(-p.x())                  # screen up = ahead, screen right = the car's right
+
+    def _draw_arrow(self, x, y, heading):
+        L = 0.35
+        hx, hy = x + L * math.cos(heading), y + L * math.sin(heading)
+        pts = []
+        for a in (2.6, -2.6):                                # arrow head
+            pts.append((hx + 0.12 * math.cos(heading + a), hy + 0.12 * math.sin(heading + a)))
+        xy = np.array([(x, y), (hx, hy), pts[0], (hx, hy), pts[1]])
+        self.arrow.setData(*self._sc(xy))
+
+    def mousePressEvent(self, ev):
+        if ev.button() == QtCore.Qt.LeftButton:
+            self._press = self._to_vehicle(ev)
+            self.arrow.setData([], [])
+            ev.accept()
             return
-        p = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
-        x, y = float(p.y()), float(-p.x())                  # screen up = ahead, screen right = the car's right
-        self.link.send(f"GOTO {x:.3f} {y:.3f}")
-        self.on_goal(x, y)
+        super().mousePressEvent(ev)
+
+    def mouseMoveEvent(self, ev):
+        if self._press is not None:
+            x, y = self._to_vehicle(ev)
+            if math.hypot(x - self._press[0], y - self._press[1]) > 0.08:
+                self._draw_arrow(*self._press, math.atan2(y - self._press[1], x - self._press[0]))
+            ev.accept()
+            return
+        super().mouseMoveEvent(ev)
+
+    def mouseReleaseEvent(self, ev):
+        if ev.button() == QtCore.Qt.LeftButton and self._press is not None:
+            (x0, y0), (x1, y1) = self._press, self._to_vehicle(ev)
+            self._press = None
+            if math.hypot(x1 - x0, y1 - y0) > 0.08:          # dragged: arrive pointing this way
+                hd = math.degrees(math.atan2(y1 - y0, x1 - x0))
+                self._draw_arrow(x0, y0, math.radians(hd))
+                self.link.send(f"GOTO {x0:.3f} {y0:.3f} {hd:.1f}")
+                self.on_goal(x0, y0, hd)
+            else:                                            # a plain click: any heading
+                self.arrow.setData([], [])
+                self.link.send(f"GOTO {x0:.3f} {y0:.3f}")
+                self.on_goal(x0, y0, None)
+            ev.accept()
+            return
+        super().mouseReleaseEvent(ev)
 
     def show(self, st):
         pts = polar_xy(st.get("_pts"))
@@ -494,7 +536,8 @@ class Dashboard(QtWidgets.QMainWindow):
         w = QtWidgets.QWidget()
         lay = QtWidgets.QVBoxLayout(w)
         row = QtWidgets.QHBoxLayout()
-        self.nav_status = QtWidgets.QLabel("Click on the map to drive there autonomously - hold the throttle on the "
+        self.nav_status = QtWidgets.QLabel("Click on the map to drive there autonomously (press, drag and release "
+                                           "to choose the direction to arrive in) - hold the throttle on the "
                                            "controller as the dead-man switch; steer or brake to take over.")
         self.nav_status.setWordWrap(True)
         row.addWidget(self.nav_status, 1)
@@ -502,8 +545,9 @@ class Dashboard(QtWidgets.QMainWindow):
         cancel.clicked.connect(lambda: self.link.send("GOTO CANCEL"))
         row.addWidget(cancel)
         lay.addLayout(row)
-        self.map = MapView(self.link, lambda x, y: self._event(f"click-to-go goal sent: {x:.2f} m ahead, "
-                                                               f"{y:+.2f} m left"))
+        self.map = MapView(self.link, lambda x, y, hd: self._event(
+            f"click-to-go goal sent: {x:.2f} m ahead, {y:+.2f} m left" +
+            (f", arrive facing {hd:+.0f} deg" if hd is not None else ", any heading")))
         lay.addWidget(self.map, 1)
         return w
 

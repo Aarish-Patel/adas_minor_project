@@ -47,7 +47,14 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   - [ ] Evasive steer at the obstacle
   - [x] Hybrid A* click-to-go to a goal behind/across the obstacle (works on the car, 28 Sep)
   - [ ] Evasive steer at the obstacle (user testing now - do not restart / deploy to the Pi meanwhile)
-- [ ] A3. Click-to-go: choose the arrival heading (click = position, drag = heading, like parking goals in
+- [x] A3. (done on the laptop 28 Sep, NOT on the Pi yet: adas/dubins.py (Dubins 1957 / Shkel & Lumelsky 2001) as
+  the analytic expansion for goal poses, forward or driven backwards; plan_point_job tries forward-only first
+  for every goal - also behind the car (forward U-turn) - then a search that may reverse with reversing 7x the
+  cost of forward (GOTO_W_REVERSE 6); goal poses use the coarse lattice in the forward stage (doorway-then-turn
+  712 -> 40 ms); arrival within 8 cm and 20 deg; GOTO x y [heading] in the relay and /api/goto; the map tab:
+  press-drag-release = heading arrow, click = any heading. Bug fixed: a goal against an obstacle crashed the job
+  (gave_up unset). 4 new tests; 87 tests + 12/12 scenarios pass; 7 planning cases 474 ms on the laptop,
+  worst ~1.2 s on the Pi) Click-to-go: choose the arrival heading (click = position, drag = heading, like parking goals in
   RViz / Nav2), and prefer driving forward - reverse only when the goal heading or the room needs it.
   Laptop + simulator only until the user finishes the evasive tests; deploy with their OK.
 

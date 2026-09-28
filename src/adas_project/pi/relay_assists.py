@@ -345,14 +345,16 @@ class RelayAssists:
             a.pose_fix = fix
 
     # --- click-to-go autonomy
-    def goto(self, x, y, points=None):
-        """Start driving to (x, y) m in the vehicle frame now (x forward from the rear axle, y left).
+    def goto(self, x, y, points=None, heading_deg=None):
+        """Start driving to (x, y) m in the vehicle frame now (x forward from the rear axle, y left), arriving
+        pointing heading_deg (0 = the car's heading now, + = left) or any way if None.
         points: the latest scan (relay format); defaults to the last one seen by process()."""
         if self.assists.phase is not None:
             self.assists._stop_evading("autonomy started")
         self.odo, self.nav_pose = None, (0.0, 0.0, 0.0)
         raw = points if points else self._last_raw
-        return self.nav.start((float(x), float(y)), self.points_vehicle_frame(raw, self.p.lidar_x))
+        return self.nav.start((float(x), float(y)), self.points_vehicle_frame(raw, self.p.lidar_x),
+                              None if heading_deg is None else math.radians(float(heading_deg)))
 
     def _navigate(self, dt, pts, stick, physical, points, seq, now):
         """One tick of autonomy. Like Smart Summon, the operator holds the throttle as a dead-man switch: held =
