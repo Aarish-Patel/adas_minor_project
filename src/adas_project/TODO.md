@@ -106,7 +106,17 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
   but cuts missed crash drives 7 % -> 3 %; crash drives missed 54 % -> 3 %,
   median warning 0 s -> 1.2 s before contact, but safe drives with a >= 0.25 s false alarm 4 % -> 16 % (watch in
   the Monte Carlo). Bug found + fixed: trees fitted on float32 features must see float32 on the car (14/400 ticks
-  took the other branch). Full training running; then Monte Carlo with v3, Pi benchmark, copy to pi/.
+  took the other branch).
+  Full GPU run: trees3 chosen (val AP 0.862; MLPs 0.847-0.851, GRUs 0.845-0.846 - data-limited, early stopping at
+  ~30 epochs), held-out AP 0.42 -> 0.86, AUC 0.73 -> 0.96, calibration error 0.12 -> 0.004, numpy exact,
+  0.22 ms/tick laptop. Monte Carlo (models/mc_intent_v2_v3.json, 96 paired drives, lapsing + late): 0 crashes for
+  all; needless takeovers ADAS 53 -> v2 25 / v3 26; overridden needlessly 128 -> 65 (v2) / 86 s (v3); trust sweep
+  0.7 / 0.85 did not help v3 (84-91 s). -> DECISION: v2 keeps deciding takeovers (v2 was trained on exactly these
+  Monte Carlo drivers), v3 (pi/intent_v3.json) supplies the P(crash) the driver sees and the warnings
+  (RelayIntent.risk_net; GUI shows both). 83 tests + 12/12 scenarios pass.
+  Next: retrain the takeover decision itself on a mixed set (v3 data + Monte Carlo drivers) or learn the decision
+  (would the intervention be needless?) directly; weak slices: turning AP 0.65, false alarms at 0-0.5 m (19 %) and
+  reversing (10 %); Pi benchmark in ~/rc_bench; randomisation ablation (sim.twin_intent_data ablation).
 - [ ] M2. **Monte Carlo visualiser in the simulator GUI** (`gui/dashboard.py`, new tab): pick Driver only / ADAS /
   ADAS + intent (and driver style, world, number of runs), run `sim/relay_mc.py` in a background process, show
   live results: trajectories on the map, crashes, needless interventions, burden, paired stats (Wilcoxon), and a

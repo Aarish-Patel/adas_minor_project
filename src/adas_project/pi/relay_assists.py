@@ -137,14 +137,19 @@ class RelayIntent:
     `intent_k_rate` on the assists); braking stays pure physics. One class, used by the relay, the Monte Carlo and
     the scenario checks, so the simulator runs exactly the car's logic."""
 
-    def __init__(self, assist, path=None, trust=0.5):
+    def __init__(self, assist, path=None, trust=0.5, risk_path=None):
         import os
         from adas.intent_net import DriverProfile, IntentNet
         here = os.path.dirname(os.path.abspath(__file__))
-        # the v3 model (sim/train_intent_torch.py) once it exists next to the relay, else the v2 one
-        path = path or next((q for q in (os.path.join(here, "intent_v3.json"), os.path.join(here, "intent_net.json"))
-                             if os.path.exists(q)), os.path.join(here, "intent_net.json"))
+        path = path or os.path.join(here, "intent_net.json")
         self.net = IntentNet(path) if os.path.exists(path) else None
+        # Two jobs, two models (Monte Carlo 28 Sep, models/mc_intent_v2_v3.json): the model at `path` (v2) decides
+        # whether the evasive steer may take over - it gave the least needless overriding with 0 crashes; the
+        # twin-trained v3 (pi/intent_v3.json, sim/train_intent_torch.py) is far more accurate and calibrated
+        # (held-out AP 0.42 -> 0.86) and supplies the risk the driver sees and the warnings.
+        rp = risk_path or os.path.join(here, "intent_v3.json")
+        self.risk_net = IntentNet(rp) if os.path.exists(rp) else None
+        self.p_risk = None
         self.profile = DriverProfile()
         self.assist, self.trust_threshold = assist, trust
         self.hist, self.pwm_hist, self.last_t = [], [], None
@@ -162,16 +167,21 @@ class RelayIntent:
         self.hist = (self.hist + [servo])[-80:]
         self.pwm_hist = (self.pwm_hist + [physical])[-40:]
         self.p_crash, self.trusted = None, False
-        if self.net is not None and self.net.version == 3:
+        pts_v = a.points_vehicle_frame(points, a.p.lidar_x)
+        decides_v3 = self.net is not None and self.net.version == 3
+        v3 = self.net if decides_v3 else self.risk_net
+        if v3 is not None:
             from adas.intent_net import HORIZON3, WINDOW, Z_FREE_NOW, tick_vector, window_of
-            z = tick_vector(servo, physical, v, a.points_vehicle_frame(points, a.p.lidar_x), a.p, a.centre,
-                            K_CURV_PER_SERVO_DEG, react=self.profile.reaction_distance)
-            self.profile.update(self.hist, z[Z_FREE_NOW] * HORIZON3)
+            z = tick_vector(servo, physical, v, pts_v, a.p, a.centre, K_CURV_PER_SERVO_DEG,
+                            react=self.profile.reaction_distance)
             self.zhist = (self.zhist + [z])[-WINDOW:]
-            self.p_crash = self.net.risk(window_of(self.zhist))
-            self.trusted = self.p_crash < self.trust_threshold
-        elif self.net is not None:
-            f = features(self.hist, physical, v, a.points_vehicle_frame(points, a.p.lidar_x), a.p, a.centre,
+            self.p_risk = v3.risk(window_of(self.zhist))
+            if decides_v3:
+                self.profile.update(self.hist, z[Z_FREE_NOW] * HORIZON3)
+                self.p_crash = self.p_risk
+                self.trusted = self.p_crash < self.trust_threshold
+        if self.net is not None and not decides_v3:
+            f = features(self.hist, physical, v, pts_v, a.p, a.centre,
                          K_CURV_PER_SERVO_DEG, profile=self.profile, pwm_hist=self.pwm_hist)
             if f is not None:
                 self.profile.update(self.hist, free_now(f))
@@ -194,7 +204,10 @@ class RelayIntent:
         return self.assist.assists.intent_k_rate if self.gate_trust else None
 
     def gui(self):
-        return {"p_crash": None if self.p_crash is None else round(self.p_crash, 3), "trusted": self.trusted,
+        """p_crash: the risk the driver sees (v3 when available); p_decision: the model deciding takeovers."""
+        shown = self.p_risk if self.p_risk is not None else self.p_crash
+        return {"p_crash": None if shown is None else round(shown, 3),
+                "p_decision": None if self.p_crash is None else round(self.p_crash, 3), "trusted": self.trusted,
                 "attentive": self.attentive, "reaction_m": round(self.profile.reaction_distance, 2)}
 
 

@@ -705,7 +705,9 @@ class Dashboard(QtWidgets.QMainWindow):
         self.might.setText("\n".join(lines))
         p = intent.get("p_crash")
         self.risk.setValue(int(round(100 * p)) if p is not None else 0)
-        self.intent.setText(("trusted - the driver is handling it" if intent.get("trusted") else "not trusted") +
+        pd = intent.get("p_decision")
+        self.intent.setText((f"takeover model P {pd:.2f}: " if pd is not None and pd != p else "") +
+                            ("trusted - the driver is handling it" if intent.get("trusted") else "not trusted") +
                             (", stick active" if intent.get("attentive") else ", stick idle") +
                             f"\nusual reaction distance {intent.get('reaction_m', 0):.2f} m")
         self.speed_est.setText(f"EKF (car model + LiDAR range flow) {v:+.2f} m/s\nthrottle model "
