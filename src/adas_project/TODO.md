@@ -523,54 +523,54 @@ Real-EV style software:
   by side at a wall/box gap). Expected: with intent the evasive steer / Hybrid A* must still get out (intent may only hold back
   needless takeovers, never leave the car stuck). Find the failure in models/mc_live runs, fix generally (a stuck car under
   intent-hold must release the evasive planner), add a scenario + a Monte Carlo check of goals reached (ADAS 31, +intent 28 of 36).
-- [ ] S2. Colour scheme: drop pitch black. Dark mode = Huawei ADS slate blue-grey (see the user's screenshots), light mode = pale
+- [x] S2. (dark + light palettes, switch) Colour scheme: drop pitch black. Dark mode = Huawei ADS slate blue-grey (see the user's screenshots), light mode = pale
   blue-grey with white cards; blue for path ribbon/active lines; Tesla grey/blue tones. **A switch between dark and light**, applied to
   the main window, drawers and both labs; 3D scene background/lights follow the mode.
-- [ ] S3. Map & zones drawer redesigned in the style of the Assists drawer (approved): tools as tiles/segmented control, zone list as cards,
+- [x] S3. (done, see T5) Map & zones drawer redesigned in the style of the Assists drawer (approved): tools as tiles/segmented control, zone list as cards,
   no cut-off text or empty boxes, the map with proper styling.
-- [ ] S4. Car setup drawer redesigned the same way (calibration tiles, results cards, STOP as a proper safety control; graceful
+- [x] S4. (done, see T6) Car setup drawer redesigned the same way (calibration tiles, results cards, STOP as a proper safety control; graceful
   'panel not reachable' state).
 - [ ] S5. Events drawer and the other drawers (Diagnostics, Rear camera) get the same treatment; the 3D scene closer to the Huawei /
   Tesla reference (blue path ribbon, glow ring under the car, soft floor, grey car models for objects).
 - [~] N3. Robust adaptive speed EKF: implemented as `SpeedEKF(robust=True)` (Huber weights + innovation-based noise scaling) and
   evaluated in sim/ekf_robust_eval.py - first result: no difference under injected bad measurements (the existing Mahalanobis gate
   already rejects them, or the injection is caught earlier). Inconclusive; do not enable on the car until shown to help.
-- [ ] S6. (user) The "path clear" pill at the bottom of the 3D view looks bad - redesign as a Huawei/Tesla-style status pill (icon, coloured state dot, larger type, glass background) incl. RSS/free-distance readout.
+- [x] S6. (done, see T7) (user) The "path clear" pill at the bottom of the 3D view looks bad - redesign as a Huawei/Tesla-style status pill (icon, coloured state dot, larger type, glass background) incl. RSS/free-distance readout.
 
 ## T. UI complaints ledger (user, 29 Sep) - everything that looks bad, with the user's problem; tick only when the user would accept it
 References the user gave: Huawei ADS screenshots (dark slate-blue and light modes, blue path ribbon, glow ring, grey car models,
 split ADS-3D / map, valet-parking view with floor selector), Tesla instrument cluster (grey/blue, speed limit sign, lane ribbons,
 power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/yellow edges). The user likes the Assists drawer.
-- [ ] T1. "The pitch black looks bad" - backgrounds, drawers, cards, scene floor all near #000. -> S2 (slate blue-grey dark, light mode, switch).
+- [x] T1. (slate blue-grey dark theme, 29 Sep) "The pitch black looks bad" - backgrounds, drawers, cards, scene floor all near #000. -> S2 (slate blue-grey dark, light mode, switch).
 - [ ] T2. "Font size changes, colour code and overall design still not good enough" - inconsistent type scale across drawers/labs (some
   11 px dim text, some 15 px), mixed fonts, inconsistent colour meaning. -> one type scale + colour tokens applied everywhere.
 - [ ] T3. "The buttons also look bad... think of a better layout for these selections, take inspiration from real companies" - plain rows
   of wide buttons in drawers. Assists drawer fixed and APPROVED (tiles + segmented); still to convert: Map & zones, Car setup,
   Diagnostics, Rear camera buttons (REVERSE GUIDELINES / GHOST CAR), lab RUN tabs, lab window buttons (PAUSE / 1x / RESTART).
-- [ ] T4. "The button bg is blue which looks bad" - checked/active buttons had a flat bright-blue fill (Rear camera panel, some default Qt
+- [x] T4. (active = thin border + tint; no flat blue fills; Rear camera toggles are tiles) "The button bg is blue which looks bad" - checked/active buttons had a flat bright-blue fill (Rear camera panel, some default Qt
   controls). Active state = thin border + faint tint only; no flat blue fills anywhere (check every QPushButton:checked, QComboBox, QSlider).
-- [ ] T5. Map & zones drawer "is still shit": toolbar buttons overflow and are cut off (the last button shows only "E"), the help text is
+- [x] T5. (Map & zones rebuilt: tool tiles, limit card, framed map, action tiles, zone cards; drawer text wraps) Map & zones drawer "is still shit": toolbar buttons overflow and are cut off (the last button shows only "E"), the help text is
   cut off at the right edge ("...to choose the direction t"), the map is cropped with no border/frame and no legend, zone shapes only
   outlined, the Events drawer stacked under it has a huge empty box. -> S3.
-- [ ] T6. Car setup drawer "is also shit": a wall of identical wide buttons, "Control panel not reachable" as plain text, an empty results box,
+- [x] T6. (Car setup rebuilt: status card with dot, drive tiles, STOP tile, result card, apply tiles, activity log, designed 'not reachable' state) Car setup drawer "is also shit": a wall of identical wide buttons, "Control panel not reachable" as plain text, an empty results box,
   a row of four Apply buttons, STOP styled like a normal button. -> S4 (calibration tiles, status card, result cards, proper STOP).
-- [ ] T7. "This path clear also looks shit": the bottom pill in the 3D view is a plain rounded rectangle with plain text, no icon or state
+- [x] T7. (status pill with icon disc, headline and metrics) "This path clear also looks shit": the bottom pill in the 3D view is a plain rounded rectangle with plain text, no icon or state
   colour. -> S6.
-- [ ] T8. Main window: the "DRIVER RISK" card shows an empty dark bar that looks broken when there is no data; the mini-map at the bottom right is an
+- [~] T8. (driver-risk card has a dash instead of a broken bar when there is no data; mini-map/scene empty states still to do)  Main window: the "DRIVER RISK" card shows an empty dark bar that looks broken when there is no data; the mini-map at the bottom right is an
   empty dark rounded box when there is no data; the top "NO DATA" chip is a red outlined box; the gear strip P R N D is tiny and floats beside the
   gauge; the 3D scene is an empty dark grid with a white block car; the ground ring is a plain outline. Empty states must look designed
   (skeleton / message), and the scene must look like the references (glow ring, soft floor, blue path ribbon, grey object cars).
-- [ ] T9. Monte Carlo lab: objects are flat grey slabs; all cars start on top of each other so the first seconds look like one blob;
+- [~] T9. (light/dark, status cards, stats card, table corner done; slab objects, plain legend, tiny bar chart still open)  Monte Carlo lab: objects are flat grey slabs; all cars start on top of each other so the first seconds look like one blob;
   the legend pill is plain; the results table has an empty dark corner header; the Wilcoxon statistics are unstyled plain text; the bar chart
   at the bottom is tiny with unreadable labels; ADAS + intent cars should show their status. (Layout and status cards done; look not done.)
 - [ ] T10. ML training lab: chart legends overlap the curves ("mlp3-128x128" over the lines), axis text small, the top area still reads as
   one big black stage; twin cards are plain text; the pipeline stepper could show progress detail. Charts must use the theme fonts/colours.
-- [ ] T11. Rear camera drawer: big empty rounded box with text when no camera; the two toggle buttons were bright blue. Needs an
+- [x] T11. (Rear camera: framed empty state, tile toggles) Rear camera drawer: big empty rounded box with text when no camera; the two toggle buttons were bright blue. Needs an
   illustrated empty state and tile toggles.
 - [ ] T12. Text that is cut off or clipped anywhere (bottom bar labels at narrow widths, drawer help text, table headers) - audit all widgets at
   1100x700, 1366x768, 1920x1080, 2560x1440 in BOTH themes with a screenshot test.
-- [ ] T13. Dark/light switch must exist in the top bar and persist (QSettings), and the labs follow it. -> S2.
+- [x] T13. (dark/light switch in the top bar, persisted with QSettings, window rebuilt on switch) Dark/light switch must exist in the top bar and persist (QSettings), and the labs follow it. -> S2.
 - [ ] T14. Behaviour the user reported next to the looks: ADAS + intent stuck in a corner while ADAS drove on. -> S1 (in progress: progress-based
   release of intent trust added, see below).
-- [ ] T15. (user, 29 Sep, later) The Assists drawer as it is now is APPROVED - "looks good, you can change colour around it, build on it". It is the template: tiles with icon + name + ON/OFF, segmented control, small-caps section labels, hint line. Keep layout/type; only recolour with the new dark/light themes (drawer background and tile background must match - currently the drawer is lighter grey than the tiles). All other drawers are rebuilt from these controls.
-- [ ] T16. (user, 29 Sep) "The car also looks bad": redraw as a hot rod (low body, long hood, fenders, exposed wheels, exhausts, stripe) with the LiDAR puck on top (spinning marker), still inside the real footprint (rear -0.08..front 0.28 m, width 0.20 m, wheelbase 0.20 m) so the render never passes through objects; test that all geometry stays inside the footprint.
+- [x] T15. (Assists layout kept, recoloured by the themes; drawer and tile backgrounds now match)  (user, 29 Sep, later) The Assists drawer as it is now is APPROVED - "looks good, you can change colour around it, build on it". It is the template: tiles with icon + name + ON/OFF, segmented control, small-caps section labels, hint line. Keep layout/type; only recolour with the new dark/light themes (drawer background and tile background must match - currently the drawer is lighter grey than the tiles). All other drawers are rebuilt from these controls.
+- [x] T16. (hot-rod body, fenders/wheels/exhausts/scoop, spinning LiDAR puck, geometry inside the footprint - tested) (user, 29 Sep) "The car also looks bad": redraw as a hot rod (low body, long hood, fenders, exposed wheels, exhausts, stripe) with the LiDAR puck on top (spinning marker), still inside the real footprint (rear -0.08..front 0.28 m, width 0.20 m, wheelbase 0.20 m) so the render never passes through objects; test that all geometry stays inside the footprint.

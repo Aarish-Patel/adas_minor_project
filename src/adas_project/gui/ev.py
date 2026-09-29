@@ -1045,32 +1045,37 @@ class RearCameraPanel(QtWidgets.QWidget):
         self.kappa, self.running, self.have = 0.0, False, False
         self.hazards, self.speed = None, 0.0
         lay = QtWidgets.QVBoxLayout(self)
+        lay.setContentsMargins(14, 8, 14, 14)
+        lay.setSpacing(8)
+        self.card = Card(padding=6)
         self.view = QtWidgets.QLabel()
         self.view.setMinimumSize(320, 240)
         self.view.setAlignment(QtCore.Qt.AlignCenter)
-        self.view.setStyleSheet(f"background: {C['bg1']}; border: 1px solid {C['hair']}; border-radius: 12px;")
+        self.view.setStyleSheet(f"background: {C['bg']}; border-radius: 10px; color: {C['dim']};")
         self.placeholder()
-        lay.addWidget(self.view, 1)
+        self.card.body.addWidget(self.view)
+        lay.addWidget(self.card, 1)
         self.status = QtWidgets.QLabel("")
         self.status.setWordWrap(True)
+        self.status.setFont(theme.font(12))
         self.status.setStyleSheet(f"color: {C['text2']};")
         lay.addWidget(self.status)
-        row = QtWidgets.QHBoxLayout()
-        self.guides = QtWidgets.QPushButton("REVERSE GUIDELINES")
-        self.guides.setCheckable(True)
+        lay.addWidget(section_label("View"))
+        row = QtWidgets.QGridLayout()
+        row.setSpacing(8)
+        self.guides = FeatureTile("\u2261", "Reverse guidelines", "steering-dependent wheel tracks and distance bars", compact=True)
         self.guides.setChecked(True)
-        row.addWidget(self.guides)
-        self.ghost = QtWidgets.QPushButton("GHOST CAR && ASSIST")
-        self.ghost.setCheckable(True)
+        self.ghost = FeatureTile("\u25a3", "Ghost car and assist", "where the car will be if you keep reversing; objects and puddles in the path",
+                                 compact=True)
         self.ghost.setChecked(True)
-        row.addWidget(self.ghost)
-        row.addStretch(1)
+        row.addWidget(self.guides, 0, 0)
+        row.addWidget(self.ghost, 0, 1)
         lay.addLayout(row)
         self.frame_ready.connect(self._on_frame)
         self.state_ready.connect(self._on_state)
 
     def placeholder(self):
-        self.view.setText("NO REAR CAMERA\n\nConnect the webcam to the Pi and start\npi/rear_camera.py  (or  --sim  to try it)")
+        self.view.setText("\u25c9\n\nNO REAR CAMERA\n\nConnect the webcam to the Pi and start\npi/rear_camera.py  (or  --sim  to try it)")
         self.view.setFont(theme.font(13, spacing=1.0))
 
     def set_steering(self, kappa):
@@ -1588,7 +1593,7 @@ class EVWindow(QtWidgets.QMainWindow):
         """Narrow windows: the bottom bar shows icons only (tooltips carry the names) instead of forcing the window wider."""
         super().resizeEvent(ev)
         QtCore.QTimer.singleShot(0, self._place)
-        compact = self.centralWidget().width() < 1280 if self.centralWidget() is not None else self.width() < 1500
+        compact = self.centralWidget().width() < 1420 if self.centralWidget() is not None else self.width() < 1500
         for b in self.app_btns.values():
             full = b.property("full")
             if full:
@@ -1743,8 +1748,8 @@ class EVWindow(QtWidgets.QMainWindow):
                     txt += " (inside)"
             self.pill.set(txt, col)
         p = intent.get("p_crash")
-        self.intent_txt.setText(f"driver risk {100 * p:.0f} %  -  " + ("attentive" if intent.get("attentive") else "stick idle")
-                                if p is not None else "driver risk -")
+        self.intent_txt.setText(f"DRIVER RISK   {100 * p:.0f} %   \u00b7   " + ("attentive" if intent.get("attentive") else "stick idle")
+                                if p is not None else "DRIVER RISK   \u2014")
         self.intent_bar.setValue(int(100 * (p or 0)))
         self.scene.car.pulse(now, "bad" if mode == "EMERGENCY BRAKE" else "warn" if hl.get("state") == "limp" else "accent")
         self.scene.show(st)
