@@ -108,10 +108,26 @@ class RelaySpeed:
         self.lidar_x = lidar_x
         self.pose = (0.0, 0.0, 0.0)
         self._kf, self._odo = (0.0, 0.0, 0.0), None
+        self.slam = None                          # SlamService (adas/submaps.py) once enable_slam() is called
 
     KF_M, KF_DEG = 1.0, 30.0
 
+    def enable_slam(self):
+        """Loop closure for the world pose: submaps + pose graph in a worker thread (adas/submaps.py)."""
+        if self.slam is None:
+            from adas.submaps import SlamService
+            self.slam = SlamService()
+
+    @property
+    def pose_corrected(self):
+        """The world pose after loop closure (the front-end pose while there is none): what zones, the map and 'return to start' use."""
+        if self.slam is None:
+            return self.pose
+        return tuple(float(v) for v in self.slam.corrected(self.pose))
+
     def reset_pose(self):
+        if self.slam is not None:
+            self.slam.reset()
         self.pose, self._kf, self._odo = (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), None
 
     def _scan_pose(self, points, t):
@@ -130,6 +146,10 @@ class RelaySpeed:
         kx, ky, kth = self._kf
         c, sn = math.cos(kth), math.sin(kth)
         self.pose = (kx + c * dx - sn * dy, ky + sn * dx + c * dy, kth + thl)
+        if self.slam is not None:
+            a = np.radians(np.array([q[0] for q in points]))
+            d = np.array([q[1] for q in points])
+            self.slam.submit(self.pose, np.column_stack([self.lidar_x + d * np.cos(a), -d * np.sin(a)]))
         if math.hypot(dx, dy) > self.KF_M or abs(thl) > math.radians(self.KF_DEG):
             self._odo = None                      # new keyframe from the next scan
 
@@ -815,7 +835,7 @@ class RelayAssists:
         if not self.zones.zones or self.speed is None:
             return out
         from pi.zones import kph_to_car
-        kph = self.zones.limit_ahead(self.speed.pose, self.v)
+        kph = self.zones.limit_ahead(self.speed.pose_corrected, self.v)
         self.zone_kph = kph
         if kph is None:
             return out

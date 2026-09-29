@@ -765,6 +765,7 @@ def main():
     assist.memory = pgate.memory                        # the planners avoid what the gate remembers
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(TUNING.speed_model, assist.p.lidar_x)   # throttle model + EKF with LiDAR range flow
+    vest.enable_slam()                                         # loop closure for the world pose / return to start
     pgate.delay_source = vest.latency                          # brake margin grows when the scans are late
     pgate.uncertainty_source = vest
     assist.speed = vest                                        # the assists use the same speed as the brake
@@ -877,7 +878,7 @@ def main():
 
             if text.strip() == "HOME":                              # return to the world origin, original heading
                 from pi.relay_assists import home_goal
-                hx, hy, hh = home_goal(vest.pose)
+                hx, hy, hh = home_goal(vest.pose_corrected)
                 gpts, _ = clr.read_points_seq()
                 assist.goto(hx, hy, gpts, heading_deg=hh)
                 dlog.event("return to start", x=round(hx, 3), y=round(hy, 3), heading_deg=round(hh, 1),
@@ -1222,7 +1223,7 @@ def main():
                                               "steer_max_deg": round(assist.steer_limit_kappa(vest.v) / assist.k, 1),
                                               "steer_cal": assist.steer_est.status()}
                 from adas.rss import longitudinal_min_distance
-                GUI_STATE["data"]["world"] = {"pose": [round(c, 3) for c in vest.pose], "zones": assist.zones.zones,
+                GUI_STATE["data"]["world"] = {"pose": [round(c, 3) for c in vest.pose_corrected], "loops": (vest.slam.loops if vest.slam else 0), "zones": assist.zones.zones,
                                               "zone_kph": assist.zone_kph, "mode": assist.drive_mode,
                                               "rss_min_m": round(longitudinal_min_distance(abs(vest.v)), 3)}
             stages.mark("GUI path + state (after write)")

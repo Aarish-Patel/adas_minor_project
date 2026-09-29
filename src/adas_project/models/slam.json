@@ -1,0 +1,26 @@
+{
+ "real_like": {
+  "final_err_odometry_cm": 3.0550751437624926,
+  "final_err_corrected_cm": 0.41489959097708373,
+  "mean_err_odometry_cm": 5.182163170751519,
+  "mean_err_corrected_cm": 3.8564892818274528,
+  "final_heading_err_odometry_deg": 1.5467082736014188,
+  "final_heading_err_corrected_deg": 0.24158041669935232,
+  "loops": 25,
+  "nodes": 53,
+  "submaps": 4,
+  "corrections": 25
+ },
+ "harsh": {
+  "final_err_odometry_cm": 7.999152370044126,
+  "final_err_corrected_cm": 0.7924582398036389,
+  "mean_err_odometry_cm": 7.946757701868612,
+  "mean_err_corrected_cm": 5.3843258854801155,
+  "final_heading_err_odometry_deg": 5.27666351990329,
+  "final_heading_err_corrected_deg": 0.9103076718286285,
+  "loops": 27,
+  "nodes": 54,
+  "submaps": 4,
+  "corrections": 26
+ }
+}

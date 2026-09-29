@@ -108,7 +108,19 @@ def parking():
     return _finish(w), (0.0, 0.0, 0.0)
 
 
-WORLDS = {"parking": parking, "doorway": doorway, "room": room, "corridor": corridor, "gap": gap, "open": open_room}
+def lounge():
+    """An open room with asymmetric furniture off the driving line: a good place for loop closure (features to match, room to loop)."""
+    w = World()
+    room_walls(w, -2.0, 4.0, -2.0, 2.0)
+    w.add(Box(3.4, 1.4, 0.4, 0.3, 0.4))
+    w.add(Box(-1.4, 1.5, 0.5, 0.25, 0.0))
+    w.add(Box(3.5, -1.5, 0.3, 0.5, 0.2))
+    w.add(Box(-1.5, -1.3, 0.35, 0.35, 0.7))
+    w.add(Box(0.5, 1.75, 0.6, 0.1, 0.0))
+    return _finish(w), (0.0, 0.0, 0.0)
+
+
+WORLDS = {"lounge": lounge, "parking": parking, "doorway": doorway, "room": room, "corridor": corridor, "gap": gap, "open": open_room}
 
 
 def build(name):
