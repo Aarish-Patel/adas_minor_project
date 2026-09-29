@@ -108,6 +108,7 @@ def main():
     assist.memory = gate.memory
     vest = RelaySpeed(tun.speed_model, assist.p.lidar_x)
     gate.delay_source = vest.latency
+    gate.uncertainty_source = vest
     assist.speed = vest
     tracker = Tracker()
     smoother = ThrottleSmoother()

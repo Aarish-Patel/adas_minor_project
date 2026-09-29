@@ -74,6 +74,7 @@ NUDGE_GAIN_M = 0.5         # m: a correction must add at least this much free wa
 class PathGate:
     def __init__(self, params, speed_model):
         self.p, self.model = params, speed_model
+        self.uncertainty_source = None   # an object with .sigma_v (m/s, the speed estimate's standard deviation): margins follow it
         self.delay_source = None        # an object with .excess (s): extra scan latency measured online (adas/latency.py)
         self.memory = ObstacleMemory(params, blind_radius=0.27, keep_radius=1.2, max_age=60.0, max_points=700,
                                      max_travel=1.5)
@@ -272,6 +273,18 @@ class PathGate:
                     return math.atan(k * wb)
         return None
 
+    SIGMA_NOMINAL = 0.03     # m/s: the speed uncertainty the design margins already contain (EKF median in the twin: 0.02)
+    Z95 = 1.645              # one-sided 95 %
+
+    def v_effective(self, v):
+        """The speed to plan the stopping distance for: the estimate plus the 95th-percentile excess of its uncertainty over the
+        nominal (adas/speed_ekf P, e.g. after a run of rejected LiDAR matches). Equal to v when the estimate is sharp, so
+        normal driving is not slowed."""
+        if self.uncertainty_source is None:
+            return v
+        extra = self.Z95 * max(0.0, float(self.uncertainty_source.sigma_v) - self.SIGMA_NOMINAL)
+        return math.copysign(abs(v) + extra, v) if v else (extra if extra > 0 else v)
+
     def reaction_s(self):
         """The delay the stopping distance budgets: the design value plus the extra scan latency measured online."""
         return REACTION_S + (self.delay_source.excess if self.delay_source is not None else 0.0)
@@ -292,6 +305,7 @@ class PathGate:
         click-to-go) - then the free distance is measured ALONG that path: a path that is clear at a slower speed is
         driven at that speed instead of the car being held because its current arc points at the obstacle.
         Returns (physical to send, braking?)."""
+        v_est = self.v_effective(v_est)          # margins scaled by the measured uncertainty (TODO N4)
         fos = FOS_TRUSTED if trusted else FOS
         self.memory.advance(dt, v_est, delta)
         self.info = {}

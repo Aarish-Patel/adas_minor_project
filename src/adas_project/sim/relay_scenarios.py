@@ -75,6 +75,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(tun.speed_model, p.lidar_x)
     gate.delay_source = vest.latency
+    gate.uncertainty_source = vest
     assist.speed = vest                          # as in the relay: the assists use the brake's speed
     t, next_scan, seq, pts = 0.0, 0.0, 0, []
     lossrng = np.random.default_rng(seed + 77)

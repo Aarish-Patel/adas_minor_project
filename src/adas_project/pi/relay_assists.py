@@ -164,6 +164,11 @@ class RelaySpeed:
         return self.ekf.v
 
     @property
+    def sigma_v(self):
+        """Standard deviation of the speed estimate (m/s) from the EKF covariance."""
+        return float(math.sqrt(max(self.ekf.P[0, 0], 0.0)))
+
+    @property
     def w(self):
         return self.ekf.w
 

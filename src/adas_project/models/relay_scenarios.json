@@ -22,7 +22,7 @@
  {
   "name": "Full speed at a wall: stops close, not early (B11)",
   "pass": true,
-  "detail": "full throttle at a wall 4 m ahead: stopped with 8 cm to spare"
+  "detail": "full throttle at a wall 4 m ahead: stopped with 7 cm to spare"
  },
  {
   "name": "Corridor centring",
@@ -42,7 +42,7 @@
  {
   "name": "Narrow gap: won't fit",
   "pass": true,
-  "detail": "19 cm gap for a 20 cm car: stopped before it (x 1.92 m), no contact, warning level 2"
+  "detail": "19 cm gap for a 20 cm car: stopped before it (x 1.91 m), no contact, warning level 2"
  },
  {
   "name": "Narrow gap: tight but fits",
@@ -87,7 +87,7 @@
  {
   "name": "Fault: scans arrive 0.1 s late (design envelope)",
   "pass": true,
-  "detail": "scans 0.1 s late at full throttle: closest 5 cm, stopped at x 3.06 m (wall at 3.4 m)"
+  "detail": "scans 0.1 s late at full throttle: closest 6 cm, stopped at x 3.05 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: scans 0.25 s late, latency measured online",

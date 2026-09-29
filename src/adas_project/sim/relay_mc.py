@@ -300,6 +300,7 @@ def run(args):
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(tun.speed_model, p.lidar_x)       # the relay's speed: throttle model + LiDAR EKF
     gate.delay_source = vest.latency
+    gate.uncertainty_source = vest
     assist.speed = vest
     if variant in ("adas", "adas+intent", "adas+oracle"):
         assist.set("evasive", True)
