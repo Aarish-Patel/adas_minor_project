@@ -574,3 +574,15 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
   release of intent trust added, see below).
 - [x] T15. (Assists layout kept, recoloured by the themes; drawer and tile backgrounds now match)  (user, 29 Sep, later) The Assists drawer as it is now is APPROVED - "looks good, you can change colour around it, build on it". It is the template: tiles with icon + name + ON/OFF, segmented control, small-caps section labels, hint line. Keep layout/type; only recolour with the new dark/light themes (drawer background and tile background must match - currently the drawer is lighter grey than the tiles). All other drawers are rebuilt from these controls.
 - [x] T16. (hot-rod body, fenders/wheels/exhausts/scoop, spinning LiDAR puck, geometry inside the footprint - tested) (user, 29 Sep) "The car also looks bad": redraw as a hot rod (low body, long hood, fenders, exposed wheels, exhausts, stripe) with the LiDAR puck on top (spinning marker), still inside the real footprint (rear -0.08..front 0.28 m, width 0.20 m, wheelbase 0.20 m) so the render never passes through objects; test that all geometry stays inside the footprint.
+
+## U. Session of 29 Sep (evening): restyle, optimise ADAS + intent and the ML model, other TODO items (user)
+- [ ] U1. Restyle what is left: Diagnostics + Events drawers, lab charts (legend overlap, fonts, theme colours), empty states of the mini-map and
+  the 3D scene, Monte Carlo objects (flat grey slabs), legend pill, bar chart; tile/card style everywhere (T2, T3, T8, T9, T10, T12).
+- [ ] U2. Optimise ADAS + intent: fewer needless interventions than plain ADAS AND brake-only at equal or better goals reached, no stuck drives (the two
+  seed-0 drives), tested on more seeds/styles (Monte Carlo 12 seeds x 3 styles = baseline: needless 43, takeovers 30, goals 32/36).
+- [ ] U3. Optimise the ML model: try (a) v3 trees as the takeover decider with the conformal threshold, (b) a model trained directly on 'would this
+  intervention be needless' from Monte Carlo counterfactual labels, (c) distillation / feature ideas; compare on held-out twin drives and in the Monte Carlo;
+  keep it Pi-light; retrain on the GPU if useful.
+- [ ] U4. Other TODO items that need neither the car nor the Pi (N1 closed-loop speed control in the twin, N4 uncertainty-aware margins, N11 architecture
+  doc, D6 flicker check, F1 autonomy list in the GUI, J3 figures restyle, H1 idea list).
+- [ ] U5. Keep docs/REPORT.md, RESEARCH.md and TODO.md current; commit per milestone.
