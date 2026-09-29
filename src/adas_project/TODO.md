@@ -299,7 +299,7 @@ Real-EV style software:
   SOTIF (ISO 21448) scenario testing; ASAM OpenSCENARIO-like scenario files; CI running scenarios + tests.
 - [ ] N10. Driver-facing EV features: adaptive cruise / follow distance setting, speed-limit zones on the map,
   park assist with distance bars, drive modes (Eco/Normal/Sport = throttle maps + margins), trip/energy log.
-- [ ] N11. Architecture: ROS 2-style layering (perception / prediction / planning / control / HMI) with logged,
+- [x] N11. (docs/ARCHITECTURE.md, 29 Sep)  Architecture: ROS 2-style layering (perception / prediction / planning / control / HMI) with logged,
   replayable message streams (rosbag-like), A/B deploy with rollback on the Pi (OTA-style).
 
 ## K. User requests (28 Sep, second round)
@@ -583,7 +583,7 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
 - [~] U3. (a) v3 as decider tested - no gain over v2 (see U2); (b) direct 'needless' classifier and (c) more twin data / retraining not started)  Optimise the ML model: try (a) v3 trees as the takeover decider with the conformal threshold, (b) a model trained directly on 'would this
   intervention be needless' from Monte Carlo counterfactual labels, (c) distillation / feature ideas; compare on held-out twin drives and in the Monte Carlo;
   keep it Pi-light; retrain on the GPU if useful.
-- [ ] U4. Other TODO items that need neither the car nor the Pi (N1 closed-loop speed control in the twin, N4 uncertainty-aware margins, N11 architecture
+- [~] U4. (N11 architecture doc done; N1, N4 rest, D6, F1 rest (explore / auto-park), J3 figures still open)  Other TODO items that need neither the car nor the Pi (N1 closed-loop speed control in the twin, N4 uncertainty-aware margins, N11 architecture
   doc, D6 flicker check, F1 autonomy list in the GUI, J3 figures restyle, H1 idea list).
 - [ ] U5. Keep docs/REPORT.md, RESEARCH.md and TODO.md current; commit per milestone.
 - [x] U6. (Ctrl + wheel zoom, middle/Shift-drag pan, zoom in/out, fit, follow car - tested) (user, 29 Sep) The map cannot be scrolled / zoomed - fixed size is not practical: wheel zoom at cursor, middle-drag / Shift-drag pan, Zoom in/out, Fit all, Follow car toggle (default on), zones/map keep working with clicks. Same for the mini-map if useful.
