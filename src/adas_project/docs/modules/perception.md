@@ -72,3 +72,15 @@ Frames: vehicle (rear axle, x ahead, y left); relay scans are clockwise - conver
 `adas/online_steering.py`, `adas/lidar_mount.py`, `adas/lidar_utils.py`, `adas/vehicle_params.py`, `adas/markers.py`, `adas/vision/*`,
 `pi/scanmatch.py`, `RelaySpeed` in `pi/relay_assists.py`, `pi/rear_camera.py` (camera service), `tools/camera_calibrate.py`,
 `tools/validate_camera.py`.
+
+## Key parameters and car facts
+| Item | Value |
+|---|---|
+| Body (vehicle frame) | front +0.28 m, rear −0.05 m (the gate model; body length ~0.33 m), width 0.20 m, wheelbase 0.20 m |
+| LiDAR | RPLIDAR A3, ~10 Hz on the car (health: < 6 Hz = limp, no scan 1 s = fault), 0.12 m ahead of the rear axle; yaw offset from the tuning file (45.7° since 28 Sep after the ESP32 swap - the mount turned) |
+| Steering model | curvature = −0.0656 1/m per servo degree from centre (fitted); centre ~87° (online estimate may adjust) |
+| Speed model | v_max 0.896 m/s, dead-band 48.5 PWM (tuning); twin fitted v_max 0.83, dead-band 11 PWM |
+| Blind-zone memory | blind radius 0.27 m, keep radius 1.2 m, max age 60 s, ≤ 700 points, ≤ 1.5 m travel, 2 cm voxel |
+| Scan matching | keyframes every 1 m / 30°; ICP residual < 5 cm and ≥ 45 inliers else prediction; corridor ambiguity -> predicted along-track distance |
+| SLAM | submap 14 nodes, node every 0.20 m / 12°, loop search ±0.45 m / ±14°, score ≥ 0.62 with margin over runner-up, soft-L1 optimiser |
+| Car behaviour | vibrates strongly (inconsistent scans); stops almost instantly when the throttle is cut |

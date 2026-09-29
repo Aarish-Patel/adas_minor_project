@@ -37,6 +37,11 @@ are recorded too, so they are not tried again without new evidence.
 | ADR-022 | Online recalibration of the displayed risk, not of the decision | Accepted |
 | ADR-023 | Rejected: robust adaptive EKF | Rejected |
 | ADR-024 | Rejected: v3 model or a stricter defer rule as the takeover decider | Rejected |
+| ADR-025 | Working agreements for development sessions | Accepted |
+| ADR-026 | Rear camera: comfort functions only, warnings never brake | Accepted |
+| ADR-027 | Fix failures generally, never for the one reported case | Accepted |
+| ADR-028 | Repository publishing: branch `real-car-adas`, project under `src/adas_project/` | Accepted |
+| ADR-029 | Scale conventions: 1:14, full-size km/h in the HMI | Accepted |
 
 ---
 
@@ -403,3 +408,70 @@ reduce interventions at all. Instead, the arbitration changes of ADR-015 (commit
 **Consequences.** Recorded result: interventions -37 %, episodes -43 %, needless -41 % against plain ADAS with equal goals and 0
 crashes; a 90 % reduction is not reachable in this scenario set because the remaining interventions free cars the driver cannot free.
 A direct "is this takeover needed" classifier is the next candidate and must beat these numbers on untouched seeds to be adopted.
+
+# ADR-025 Working agreements for development sessions
+
+**Status:** Accepted
+
+**Context.** Sessions are often interrupted (usage limits, hardware breaking); work was lost or repeated when it lived only in chat.
+
+**Decision.**
+1. Every task (asked or noticed) is logged in `docs/TODO.md` before work starts and ticked when done; partial work stays listed with its state.
+2. When the car is available, features go on the real car for the user to drive and try to break; otherwise the twin.
+3. Algorithms are chosen from published / established methods and cited; tools follow what the field normally uses.
+4. ML is trained on the laptop GPU for many epochs but must stay light enough for the Pi (NumPy inference).
+5. Never deploy to the Pi, restart its services or move the car without the user's OK; Pi benchmarks go in `~/rc_bench`.
+6. No package or weight downloads without permission.
+7. Documentation (`docs/requirements.md`, `architecture.md`, `decisions.md`, `modules/*`, `interfaces.md`) is updated with every
+   milestone; `docs/REPORT.md` at session ends.
+
+**Consequences.** Any new session can continue from the documents alone; progress is slower per step but never lost.
+
+# ADR-026 Rear camera: comfort functions only, warnings never brake
+
+**Status:** Accepted
+
+**Context.** A rear Lenovo webcam will be added. Camera algorithms (visual odometry, looming, floor patches) are tested only on a synthetic
+camera; the floor-patch detector is a brightness / texture heuristic.
+
+**Decision.** The camera adds reversing guidelines, a ghost footprint (car position after 0.3 / 0.6 / 1.0 m of reversing), hazards in the
+swept path with a STOP strip below 35 cm, floor-patch warnings, image-quality / vibration measurement and late fusion labels. It runs as a
+separate service (MJPEG + JSON), never in the control loop, and none of its outputs brakes the car - the LiDAR gate does.
+
+**Consequences.** The safety case does not depend on the camera; a missing or degraded camera is a designed empty state, not a fault.
+
+# ADR-027 Fix failures generally, never for the one reported case
+
+**Status:** Accepted
+
+**Context.** The user reports failures as examples (e.g. a poor crash probability when driving at a wall, a car stuck in a corner).
+Patching the example leaves the weakness elsewhere.
+
+**Decision.** Every reported failure is analysed for its general cause (sliced evaluation, Monte Carlo breakdowns, log replay), fixed
+generally, and verified on a broad set (all slices, untouched seeds), not just the reported scenario.
+
+**Consequences.** Slower fixes; evaluation tooling (slices, bounds, oracle) is part of the project.
+
+# ADR-028 Repository publishing: branch `real-car-adas`, project under `src/adas_project/`
+
+**Status:** Accepted
+
+**Context.** The GitHub repository `Aarish-Patel/adas_minor_project` already held an earlier ROS 2 / Gazebo version on `main` at
+`src/adas_project/`. The working copy (`RC_Car/`) is a separate local repository without a remote.
+
+**Decision.** The project is published on branch `real-car-adas` with its history rewritten into `src/adas_project/` (large drive logs
+removed from history); the ROS 2 version is kept unchanged in `archive/ros2_gazebo/`. `main` is untouched until the user decides to merge.
+Changed files are copied into the published layout and committed there. No README for now (user request).
+
+**Consequences.** Two repositories to keep in step; drive logs, `data/` and user state (`gui/zones.json`) are never published.
+
+# ADR-029 Scale conventions: 1:14, full-size km/h in the HMI
+
+**Status:** Accepted
+
+**Context.** The ADAS is meant to behave like a full-size EV; the car is 1:14.
+
+**Decision.** Internally SI in car units. The HMI shows full-size-equivalent speed (m/s × 14 × 3.6); speed-limit zones are entered in
+full-size km/h and converted; the steering envelope limits lateral acceleration to a full-size-equivalent ~0.6 g. Time is not scaled.
+
+**Consequences.** Numbers on screen read like a real car; test thresholds in code stay in car units.

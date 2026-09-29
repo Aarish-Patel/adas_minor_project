@@ -613,3 +613,4 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
 
 ## X. Requirements
 - [x] X1. (user, 29 Sep) docs/requirements.md - master SRS (goals, ODD, FR/NFR with acceptance criteria and status, HW, stack, I/O, success metrics). Keep its status columns current at milestones.
+- [x] X2. (29 Sep) Knowledge extraction into requirements / architecture / decisions / modules; docs/interfaces.md (shared data types).

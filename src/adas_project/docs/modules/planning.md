@@ -60,3 +60,18 @@ NumPy, SciPy. Consumes perception outputs. Used by safety_decision (evasive, aut
 ## Files
 `adas/hybrid_astar.py`, `adas/dubins.py`, `adas/mppi.py`, `adas/plan_service.py`, `adas/autonav.py`, `adas/explore.py`, `adas/park.py`,
 `adas/speed_control.py`; autonomy glue (`goto`, `explore`, `park`, `_navigate`) in `pi/relay_assists.py`.
+
+## Key parameters
+| Parameter | Value |
+|---|---|
+| Grid resolution / heading bins | 0.05 m; 7.5° (15° when reversing) |
+| Planner steering limit | κ ≤ 1.5 1/m (tightest reliable turn ~0.65 m radius) |
+| Budgets | evasive 0.20 s, back-off 2.0 s, click-to-go 2.0 s, parking 4× click-to-go; simulated Pi slowdown `PI_COMPUTE_FACTOR` |
+| Reverse cost | `GOTO_W_REVERSE` 6 -> 1 m backwards costs 7 m forwards |
+| Arrival | 8 cm; heading tolerance 20° (parking 8°); straightening strokes 7 cm at 0.10 m/s, ≤ 10 |
+| Cruise / tracking | 0.30 m/s cruise, pure-pursuit look-ahead 0.30 m, lateral-acceleration speed limit ~0.12 g |
+| Re-plan | every 0.5 s if the rest of the path is blocked; stall 0.8 s -> re-plan, ≤ 3 |
+| Speed PI | kp 90 PWM per m/s, ki 140, integrator ±45 PWM, conditional integration, reset on zero target / direction change |
+| Exploration | grid 0.05 m, max range 4 m, robot radius 0.16 m, frontier ≥ 4 cells, min goal distance 0.5 m, blacklist 60 s, re-plan 1 s |
+| Parking | bay: width ≥ car + 2×6 cm, depth ≥ 0.40 m, reverse-in nose out; parallel: length ≥ car + 2×9 cm (in practice ≥ ~3.4 car lengths = 1.1 m for the 0.4 m turning radius) |
+| Loops | Dubins paths turning > 270° refused (a looping approach was seen on the car) |

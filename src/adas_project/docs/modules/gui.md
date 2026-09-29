@@ -57,3 +57,16 @@ in both themes.
 ## Files
 `gui/dashboard.py`, `gui/ev.py`, `gui/theme.py`, `gui/controls.py`, `gui/widgets.py`, `gui/lab_windows.py`, `gui/lab_tabs.py`;
 user state `gui/zones.json` (git-ignored). Older browser dashboards: `pi/dash/`, `pi/lidar_gui.html`, `web/`.
+
+## Design references and user feedback (keep)
+- References given by the user: Huawei ADS screens (3D view with blue path ribbon and glow ring under the car, grey object cars, split 3D /
+  map view, valet-parking view) and Tesla's cluster / FSD view (grey and blue tones, speed-limit sign, lane ribbons, PRND).
+- Approved: the Assists drawer (icon tiles lit when on, segmented drive mode, small-caps section headings) - template for all panels.
+- Rejected: pitch-black backgrounds, rows of wide plain buttons, flat bright-blue button fills, empty grey boxes, cut-off text,
+  the plain "path clear" pill, a white-block car.
+- Car model: hot rod with fenders, exposed wheels, side exhausts, hood scoop and a spinning LiDAR puck, kept inside the real footprint.
+- Rear camera: guidelines + ghost car (footprint where the car will be after 0.3 / 0.6 / 1.0 m of reversing), hazards in the swept path,
+  STOP strip under 35 cm, floor-patch (puddle / hole) warning - warning only.
+- Labs: research consoles - several cars actually moving in 3D, per-system status cards, replay timeline, results below.
+- Palettes: dark bg #232D3D / surface #2B3648 / accent #3D8BFF; light bg #E9EEF4 / surface #FFFFFF / accent #1E6BFF;
+  ok / warn / bad green / orange / red. Fonts: Bahnschrift (numerals, labels), Segoe UI Variable (text).

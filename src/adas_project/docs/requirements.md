@@ -234,6 +234,9 @@ Status: **Met** (verified), **Met-S** (verified in the twin, not yet on the car)
 3. Needless / needed is defined by the counterfactual: the same driver, left alone for 2 s, comes within 2 cm of an obstacle or not.
 4. The twin's driver models (lapsing, late, good, distracted, aggressive) stand in for human drivers until real-driver data is collected.
 5. Results marked Met-S are verified in the digital twin only; they become Met after a real-car test.
+6. Hardware state on 29 Sep 2026: car out of service (rear shaft broken), ESP32 replaced, Pi runs the 28 Sep 22:15 software; newer
+   features are twin-only until deployed with the operator's OK (see `docs/modules/integration.md`).
+7. Shared data types and their units / frames are defined only in `docs/interfaces.md`.
 
 ## 11. Change Control
 

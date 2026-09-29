@@ -69,3 +69,23 @@ Current twin and validation: `sim/hw_sim.py`, `sim/hw_worlds.py`, `sim/world.py`
 `tools/replay_log.py`, `tools/scripted_driver.py`. First simulator (browser viewer, kept for its scenarios): `sim/simulator.py`,
 `sim/car_sim.py`, `sim/lidar_sim.py`, `sim/scenarios.py`, `sim/run_scenarios.py`, `sim/monte_carlo.py`, `sim/session.py`,
 `sim/viewer.py`, `server.py`, `web/`.
+
+## Methodology details
+| Item | Value |
+|---|---|
+| Time step / scan period | 0.05 s control, 0.1 s LiDAR (720 beams, 8 mm noise, 4 % dropout) |
+| Drive length | ≤ 30 s; goal reached within 0.35 m |
+| Counterfactual | fork the simulation at the intervention onset, same driver (incl. lapses) continues 2 s with no ADAS; crash or clearance < 2 cm = needed |
+| Intervention kinds | `evasive`, `steer` (nudge / centring), `gate:limited`, `gate:braking`, `gate:holding`, `progress` (freeing a held car) |
+| Episode | interventions < 2.5 s apart |
+| Burden | seconds overridden, seconds the wheel was taken, share of throttle removed - needless vs needed |
+| Driver styles (Monte Carlo) | lapsing (lapses every ~5 s for 1-2 s), late (reacts at 0.7-0.9 m, decisive), good (avoids early), distracted (lapses every ~3 s for 1.5-3 s), aggressive (PWM 200-250, reacts at 0.8-1.0 m); all stop and re-steer at 0.22 m |
+| Oracle | intent that knows the counterfactual every 0.2 s - the upper bound for any intent model |
+| Seeds | 0-23 tuning, 24-47 confirmation; decision data 100-499 |
+| Non-determinism | planner compute time enters the simulated Pi delay: re-runs differ by a few drives; use ≥ 72 paired drives |
+| Randomisation for repeatability | same 15 parameters as the ML data (level 1 = full ranges); contrast checks against "no assist" skipped under randomisation |
+
+## Latest results (untouched seeds 24-47, 72 drives)
+driver alone 6 crashes / 60 goals · brake only 0 / 59 · ADAS 0 / 70, 132 interventions, 87 episodes, 127 needless · ADAS + intent 0 / 70,
+83 interventions (−37 %), 50 episodes (−43 %), 75 needless (−41 %), median time 11.6 vs 12.1 s · oracle 0 / 62, 131 interventions.
+A 90 % reduction is not reachable in this scenario set (remaining interventions free cars the driver cannot free).

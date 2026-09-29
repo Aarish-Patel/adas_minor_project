@@ -71,3 +71,24 @@ is the limit) - `docs/decisions.md` ADR-010, ADR-024.
 `sim/twin_intent_data.py`, `sim/intent_data.py`, `sim/train_intent_torch.py`, `sim/train_intent_net.py`, `sim/intent_ablation.py`,
 `sim/conformal_intent.py`, `sim/online_adapt_eval.py`, `sim/intent_optimise.py`, `sim/needless_data.py`, `sim/train_needless.py`,
 model files in `pi/` and `models/`.
+
+## Dataset and training details
+| Item | Value |
+|---|---|
+| Label | 1 if the drive, continued with no ADAS, touches or passes within 2 cm of an obstacle within the next 2 s (surrogate safety measure) |
+| Tick / window | 50 ms tick; 32-tick window (1.6 s); flat lags (0, 1, 2, 4, 8, 12, 16, 24, 31) + stick activity, time since the stick moved, throttle easing, speed change, reaction overdue |
+| Tick vector (12 dims) | stick/30, throttle/255, speed, free distance on arcs −20/−10/0/+10/+20 servo ° (/2.5 m), reverse free distance, TTC, free way in stopping distances, reaction distance |
+| Randomisation (per drive, 15 params) | v_max ×0.85-1.15, dead-band 6-18 PWM, motor τ 0.02-0.08 s, coast decel 2.5-5, brake decel 5-10 m/s², delay 0.06-0.20 s, steering gain ×0.85-1.15, servo offset ±3°, LiDAR noise 4-20 mm, dropout 0-12 %, yaw error ±2°, jitter 0-1.2°, speed-estimate lag 0-0.1 s, noise 1-5 cm/s, scale ×0.9-1.1 |
+| Ablation "wide" set | the same ranges ×1.6 (cars never seen in training) |
+| Situations | rooms, straight / curve approaches at walls and boxes, alongside a wall, reversing, gaps; reactions brake / coast / steer / stop / none at random distances (dangerous moments over-sampled) |
+| Driver styles | lapsing, late, good, distracted, aggressive, plus reckless, keyboard, aim, brake, coast, steer, stop, none in data generation |
+| Split | by drive (never by tick); validation 15 % of drives; test sets `test` (nominal) and `test_wide` |
+| Candidates | trees3 (HistGradientBoosting, depth 6, ≤ 400 iterations, early stopping), MLPs 128×128 / 256×128 / 256×256×128, GRU; chosen by validation AP |
+| Calibration | temperature scaling on validation logits |
+| Hardware | laptop RTX 4060 (CUDA) for training; car inference NumPy |
+| Large data | `data/` is git-ignored: regenerate with the scripts (twin data ~minutes-hours on 8 workers) |
+
+## Pending: takeover-needed classifier (W5)
+Dataset of takeover decisions (plain ADAS drives, features at takeover onset, counterfactual label needed / needless) generated
+locally in `data/needless/decisions_100.npz` (seeds 100-349) and `decisions_400.npz` (seeds 400-499, test); not trained yet. Adopt it as
+decider (`RC_NEED_PATH=pi/needless_v1.json`, threshold `RC_NEED_TAU`) only if it beats v2 on untouched Monte Carlo seeds.
