@@ -291,7 +291,11 @@ Real-EV style software:
   scans for 1 s, ESP32 silent/lost), 2 s hysteresis; dashboard chip HEALTH OK / LIMP MODE / FAULT. On the saturated
   laptop it correctly went LIMP "control loop slow (95th 152 ms)". Not yet on the Pi.) Functional-safety style supervision (ISO 26262 ideas): health monitor for LiDAR rate, loop latency, link,
   CPU temperature; degraded modes (limp mode = speed capped, ADAS off -> warn) with a state machine shown in the GUI.
-- [ ] N9. Fault-injection tests in the twin (LiDAR dropout/freeze, latency spikes, packet loss, stuck throttle) as
+- [x] N9. (done 29 Sep: scenario harness fault= / cmd_loss= hooks; 5 scenarios - LiDAR dropout 0.6 s, frozen scan 0.6 s,
+  scans 0.1 s late, 30 % ESP32 command loss, 12 spurious points/scan: all stop without contact. FINDING: the brake gate
+  is safe up to ~0.1 s of extra scan latency at full throttle and touches the wall from ~0.15 s (stopping model assumes
+  ~0.2 s scan-to-motor). To close it: estimate scan latency online (lag between the LiDAR speed and the throttle-model
+  speed) and stretch the reaction time - open, under N4.) Fault-injection tests in the twin (LiDAR dropout/freeze, latency spikes, packet loss, stuck throttle) as
   SOTIF (ISO 21448) scenario testing; ASAM OpenSCENARIO-like scenario files; CI running scenarios + tests.
 - [ ] N10. Driver-facing EV features: adaptive cruise / follow distance setting, speed-limit zones on the map,
   park assist with distance bars, drive modes (Eco/Normal/Sport = throttle maps + margins), trip/energy log.

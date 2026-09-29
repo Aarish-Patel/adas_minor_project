@@ -35,8 +35,12 @@ def randomised():
 RANDOMISE = {"level": None, "seed": 0}          # sim/repeat_scenarios.py sets this: a different car every run
 
 
-def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_when=None, hook=None):
-    """driver(t, x, y, th, v) -> (stick -1..1, + = left, physical PWM, + = forward). hook(t, assist, pts, seq), if
+def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_when=None, hook=None, fault=None,
+        cmd_loss=0.0):
+    """fault(t, pts) -> pts: called with every fresh LiDAR scan (relay format) and returns what the relay is given -
+    empty, stale, delayed, corrupted (fault injection, ISO 21448-style); cmd_loss: probability that a command line
+    to the ESP32 is lost (WiFi / serial loss).
+    driver(t, x, y, th, v) -> (stick -1..1, + = left, physical PWM, + = forward). hook(t, assist, pts, seq), if
     given, runs each tick before the relay logic (e.g. to send a click-to-go goal). Returns a record with a per-tick
     trace: t, x, y, th, v, pwm_in, pwm_out, stick_in, stick_out, gate action, evading."""
     from pi.path_gate import PathGate
@@ -72,6 +76,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     vest = RelaySpeed(tun.speed_model, p.lidar_x)
     assist.speed = vest                          # as in the relay: the assists use the brake's speed
     t, next_scan, seq, pts = 0.0, 0.0, 0, []
+    lossrng = np.random.default_rng(seed + 77)
     from adas.tracking import Tracker
     tracker = Tracker()                          # the relay's moving-object tracker, fed as in the relay
     rec = {"trace": [], "infos": set(), "max_level": 0, "min_clear": 9.0}
@@ -90,6 +95,8 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
             cw = (-np.degrees(lidar.ccw)) % 360
             cw = np.where(cw > 180, cw - 360, cw)
             pts = [(round(float(a), 1), round(float(d), 3)) for a, d, o in zip(cw, r, ok) if o]
+            if fault is not None:
+                pts = fault(t, pts)
             seq += 1
             vxy = RelayAssists.points_vehicle_frame(pts, p.lidar_x)
             gate.on_scan(vxy, seq)
@@ -121,8 +128,10 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
         rec["max_level"] = max(rec["max_level"], assist.level)
         rec["trace"].append((t, x, y, th, v, pwm, g_phys, stick, assist.servo_to_stick(servo_out),
                              gate.info.get("action"), assist.assists.evading))
-        car.command(f"A {servo_out:.1f} {servo_out:.1f}", now=t)
-        car.command(f"M {-int(g_phys)}", now=t)
+        if cmd_loss <= 0 or lossrng.random() > cmd_loss:
+            car.command(f"A {servo_out:.1f} {servo_out:.1f}", now=t)
+        if cmd_loss <= 0 or lossrng.random() > cmd_loss:
+            car.command(f"M {-int(g_phys)}", now=t)
         t += DT
         car.step_to(t)
         world.update(DT)                         # moving obstacles walk on
@@ -371,6 +380,69 @@ def moving_head_on():
     return ok, f"person walking straight at the car: no contact (closest {r['min_clear'] * 100:.0f} cm), car ended at x {r['x']:.2f} m"
 
 
+# ------------------------------------------------------------------ fault injection (TODO N9)
+def _fault_scene(fault, cmd_loss=0.0, pwm=200, seconds=9):
+    """Full throttle at a wall 3.4 m ahead, with a fault injected: the car must still stop without touching it."""
+    from sim.world import Wall
+    w = _world()
+    w.add(Wall(3.4, -1.5, 3.4, 1.5))
+    return run(w, steady(pwm), seconds, (), fault=fault, cmd_loss=cmd_loss)
+
+
+def _tail(r):
+    return f"closest {r['min_clear'] * 100:.0f} cm, stopped at x {r['x']:.2f} m (wall at 3.4 m)"
+
+
+def fault_dropout():
+    """The LiDAR returns nothing for 0.6 s while the car is closing on the wall (a USB stall, as on the car)."""
+    r = _fault_scene(lambda t, pts: [] if 1.6 < t < 2.2 else pts)
+    return (not r["collided"]), "LiDAR dropout 0.6 s at full throttle: " + _tail(r)
+
+
+def fault_frozen():
+    """A frozen (stale) scan is delivered for 0.6 s: the same picture again while the car keeps moving."""
+    keep = {}
+
+    def f(t, pts):
+        if 1.6 < t < 2.2:
+            return keep.get("scan", pts)
+        keep["scan"] = pts
+        return pts
+    r = _fault_scene(f)
+    return (not r["collided"]), "frozen scan 0.6 s at full throttle: " + _tail(r)
+
+
+def fault_latency():
+    """Every scan arrives 0.1 s late - the design envelope. Measured limit of the brake gate (twin, full throttle): safe up
+    to ~0.1 s of EXTRA scan latency, contact from ~0.15 s (its stopping model assumes ~0.2 s scan-to-motor). Beyond
+    that the car would have to measure its own latency online (TODO N4) - see RESEARCH.md."""
+    q = []
+
+    def f(t, pts):
+        q.append((t, pts))
+        old = [p for tt, p in q if tt <= t - 0.1]
+        return old[-1] if old else []
+    r = _fault_scene(f, pwm=255)
+    return (not r["collided"]), "scans 0.1 s late at full throttle: " + _tail(r)
+
+
+def fault_command_loss():
+    """30 % of the commands to the ESP32 are lost (the ESP32's own 0.5 s failsafe is the last line)."""
+    r = _fault_scene(None, cmd_loss=0.3)
+    return (not r["collided"]), "30 % of ESP32 commands lost: " + _tail(r)
+
+
+def fault_outliers():
+    """Spurious returns (dust, reflections, another LiDAR): 12 random points per scan between 0.25 and 1.2 m."""
+    rng = np.random.default_rng(5)
+
+    def f(t, pts):
+        junk = [(float(rng.uniform(-180, 180)), float(rng.uniform(0.25, 1.2))) for _ in range(12)]
+        return pts + junk
+    r = _fault_scene(f)
+    return (not r["collided"]), "12 random spurious points per scan: " + _tail(r)
+
+
 SCENARIOS = [("Evasive steer around a block", evasive_box),
              ("Steering correction instead of braking (nudge)", nudge_clips_box),
              ("Doorway at full throttle: no throttle cut mid-manoeuvre (B4)", doorway_full_throttle),
@@ -385,7 +457,12 @@ SCENARIOS = [("Evasive steer around a block", evasive_box),
              ("No needless slowing beside a wall", passing_beside_a_wall),
              ("Moving obstacle: yield to a crossing person", moving_yield),
              ("Moving obstacle: no needless waiting for a late crosser", moving_pass),
-             ("Moving obstacle: head-on, stop or back away", moving_head_on)]
+             ("Moving obstacle: head-on, stop or back away", moving_head_on),
+             ("Fault: LiDAR dropout burst", fault_dropout),
+             ("Fault: frozen (stale) scan", fault_frozen),
+             ("Fault: scans arrive 0.1 s late (design envelope)", fault_latency),
+             ("Fault: 30 % of ESP32 commands lost", fault_command_loss),
+             ("Fault: spurious LiDAR points", fault_outliers)]
 
 
 def main(names=None):
