@@ -199,6 +199,7 @@ class MonteCarloTab(QtWidgets.QWidget):
         tcard.body.addWidget(self.tests)
         ll.addWidget(tcard)
         self.bars = plot("crashes (red) and needless interventions (orange) per system")
+        self.bars.setMinimumHeight(190)
         ll.addWidget(self.bars, 1)
         right = QtWidgets.QWidget()
         rl = QtWidgets.QVBoxLayout(right)

@@ -1800,7 +1800,7 @@ class EVWindow(QtWidgets.QMainWindow):
         self.clock.setText(time.strftime("%H:%M"))
         st, t_rx, arrivals = self.link.snapshot()
         now = time.time()
-        if st is None or now - t_rx > 1.5:
+        if st is None or now - t_rx > 2.5:      # (2.5 s: a busy planner or a WiFi hiccup must not flash 'NO DATA', TODO D6)
             self.mode.setText("NO DATA - is the relay / simulator running?")
             self.mode.setStyleSheet(self._chip(EV["bad"]))
             self.chips["link"].setText(f"waiting for {self.link.host}:{CTRL_PORT}")
