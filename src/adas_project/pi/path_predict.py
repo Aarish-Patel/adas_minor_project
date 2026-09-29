@@ -5,7 +5,7 @@ real hardware. Reuses adas/geometry.py's already-tested arc-sweep footprint math
 vehicle footprint swept along the arc, not just a cone) by picking the `delta` value that
 reproduces the MEASURED radius, rather than adas/geometry's own theoretical delta mapping.
 
-Measured turn_table (pi/steering_diag_report_v7.json, converged, strict pass-to-pass
+Measured turn_table (pi/legacy/reports/steering_diag_report_v7.json, converged, strict pass-to-pass
 stability): offset -35deg -> 1.351m, +20deg -> 2.184m, +35deg -> 0.633m. The -20deg point
 was flagged unreliable (a near-zero outlier breaking an otherwise clean monotonic pattern)
 and is excluded here. Left/right radii at +-35deg differ by more than 2x (1.351 vs 0.633) -

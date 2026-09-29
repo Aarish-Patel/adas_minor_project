@@ -17,5 +17,6 @@ pi/drive_logs/
 pi/drive_logs_*.csv
 logs_latency_test/
 *.bak*
-models/mc_live/
 models/mc_live_v2v3_backup/
+gui/zones.json
+data/

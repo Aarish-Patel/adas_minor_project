@@ -87,7 +87,7 @@ def main():
         lines.append(f"- Warnings: {res['warning']['summary']}")
     lines.append("\n## Not yet measured on the real car\n")
     lines.append("- Stopping distance above 0.36 m/s, turn gain at the new servo centre, full-lock radius, and every simulated result "
-                 "above until it is repeated on the car. See STATUS.md.")
+                 "above until it is repeated on the car. See docs/STATUS.md.")
     with open(os.path.join(OUT, "summary.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print(f"wrote {n} figures and summary.md to reports/slides/")

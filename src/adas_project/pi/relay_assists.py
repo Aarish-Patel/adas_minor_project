@@ -869,7 +869,7 @@ class RelayAssists:
         if not self.zones.zones or self.speed is None:
             return out
         from pi.zones import kph_to_car
-        kph = self.zones.limit_ahead(self.speed.pose_corrected, self.v)
+        kph = self.zones.limit_ahead(getattr(self.speed, "pose_corrected", self.speed.pose), self.v)
         self.zone_kph = kph
         if kph is None:
             return out
