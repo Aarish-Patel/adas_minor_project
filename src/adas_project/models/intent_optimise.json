@@ -1,0 +1,211 @@
+{
+ "tune": {
+  "adas": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 31,
+   "needless": 57,
+   "takeovers": 47,
+   "overridden_s": 151.7,
+   "median_time_s": 13.70000000000006
+  },
+  "v2 trust 0.3": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 31,
+   "needless": 49,
+   "takeovers": 33,
+   "overridden_s": 123.2,
+   "median_time_s": 11.900000000000034
+  },
+  "v2 trust 0.5": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 31,
+   "needless": 44,
+   "takeovers": 34,
+   "overridden_s": 125.5,
+   "median_time_s": 11.900000000000034
+  },
+  "v2 trust 0.7": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 29,
+   "needless": 50,
+   "takeovers": 37,
+   "overridden_s": 133.8,
+   "median_time_s": 11.60000000000003
+  },
+  "v3 trust 0.05": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 34,
+   "needless": 58,
+   "takeovers": 49,
+   "overridden_s": 158.7,
+   "median_time_s": 13.825000000000061
+  },
+  "v3 trust 0.1": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 32,
+   "needless": 49,
+   "takeovers": 43,
+   "overridden_s": 133.6,
+   "median_time_s": 11.950000000000035
+  },
+  "v3 trust 0.2": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 33,
+   "needless": 39,
+   "takeovers": 33,
+   "overridden_s": 145.8,
+   "median_time_s": 12.000000000000036
+  },
+  "v3 trust 0.33": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 34,
+   "needless": 45,
+   "takeovers": 35,
+   "overridden_s": 127.7,
+   "median_time_s": 13.00000000000005
+  },
+  "v3 trust 0.5": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 31,
+   "needless": 49,
+   "takeovers": 32,
+   "overridden_s": 129.6,
+   "median_time_s": 11.900000000000034
+  }
+ },
+ "confirm": {
+  "scores": {
+   "adas": {
+    "runs": 96,
+    "crashes": 0,
+    "goals": 92,
+    "needless": 174,
+    "takeovers": 150,
+    "overridden_s": 473.1,
+    "retreat_m": 26.5,
+    "median_time_s": 11.975000000000035
+   },
+   "v2 trust 0.5 (current)": {
+    "runs": 96,
+    "crashes": 0,
+    "goals": 88,
+    "needless": 155,
+    "takeovers": 95,
+    "overridden_s": 374.5,
+    "retreat_m": 32.9,
+    "median_time_s": 11.100000000000023
+   },
+   "v3 trust 0.2": {
+    "runs": 96,
+    "crashes": 0,
+    "goals": 90,
+    "needless": 147,
+    "takeovers": 113,
+    "overridden_s": 424.1,
+    "retreat_m": 28.1,
+    "median_time_s": 11.100000000000023
+   },
+   "v3 trust 0.33": {
+    "runs": 96,
+    "crashes": 0,
+    "goals": 87,
+    "needless": 158,
+    "takeovers": 120,
+    "overridden_s": 397.4,
+    "retreat_m": 34.4,
+    "median_time_s": 11.150000000000023
+   }
+  },
+  "paired": {
+   "adas vs v2 trust 0.5 (current): needless": {
+    "mean_a": 1.8125,
+    "mean_b": 1.6145833333333333,
+    "p_a_greater": 0.0005825770441251582
+   },
+   "adas vs v2 trust 0.5 (current): takeovers": {
+    "mean_a": 1.5625,
+    "mean_b": 0.9895833333333334,
+    "p_a_greater": 2.8338624968724753e-06
+   },
+   "adas vs v2 trust 0.5 (current): overridden_s": {
+    "mean_a": 4.9281250000000005,
+    "mean_b": 3.9010416666666665,
+    "p_a_greater": 0.003416933432493935
+   },
+   "adas vs v2 trust 0.5 (current): retreat": {
+    "mean_a": 0.27576224639926405,
+    "mean_b": 0.34290128861718333,
+    "p_a_greater": 0.8903582777192466
+   },
+   "adas vs v3 trust 0.33: needless": {
+    "mean_a": 1.8125,
+    "mean_b": 1.6458333333333333,
+    "p_a_greater": 0.011837999130609548
+   },
+   "adas vs v3 trust 0.33: takeovers": {
+    "mean_a": 1.5625,
+    "mean_b": 1.25,
+    "p_a_greater": 0.0028490020878610277
+   },
+   "adas vs v3 trust 0.33: overridden_s": {
+    "mean_a": 4.9281250000000005,
+    "mean_b": 4.1390625000000005,
+    "p_a_greater": 0.0036005569310694776
+   },
+   "adas vs v3 trust 0.33: retreat": {
+    "mean_a": 0.27576224639926405,
+    "mean_b": 0.35783522983741256,
+    "p_a_greater": 0.9618556921319439
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.33: needless": {
+    "mean_a": 1.6145833333333333,
+    "mean_b": 1.6458333333333333,
+    "p_a_greater": 0.9439594642073094
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.33: takeovers": {
+    "mean_a": 0.9895833333333334,
+    "mean_b": 1.25,
+    "p_a_greater": 0.9987696519793228
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.33: overridden_s": {
+    "mean_a": 3.9010416666666665,
+    "mean_b": 4.1390625000000005,
+    "p_a_greater": 0.9747145371653798
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.33: retreat": {
+    "mean_a": 0.34290128861718333,
+    "mean_b": 0.35783522983741256,
+    "p_a_greater": 0.7097227597918023
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.2: needless": {
+    "mean_a": 1.6145833333333333,
+    "mean_b": 1.53125,
+    "p_a_greater": 0.9672161930492187
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.2: takeovers": {
+    "mean_a": 0.9895833333333334,
+    "mean_b": 1.1770833333333333,
+    "p_a_greater": 0.9930459212823698
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.2: overridden_s": {
+    "mean_a": 3.9010416666666665,
+    "mean_b": 4.4171875,
+    "p_a_greater": 0.9921015120919033
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.2: retreat": {
+    "mean_a": 0.34290128861718333,
+    "mean_b": 0.292390619231105,
+    "p_a_greater": 0.266100406438223
+   }
+  }
+ }
+}

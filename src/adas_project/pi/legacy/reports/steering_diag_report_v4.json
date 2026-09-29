@@ -1,0 +1,972 @@
+{
+  "started": 1790109238.9731956,
+  "center0": 90.0,
+  "speed_table": [
+    {
+      "pwm": 110,
+      "speed_m_s": 0.30861817142348236,
+      "trials": [
+        0.3187665252311144,
+        0.29826479863692645,
+        0.30861817142348236
+      ]
+    },
+    {
+      "pwm": 140,
+      "speed_m_s": 0.38352262081025523,
+      "trials": [
+        0.3333553914516329,
+        0.38352262081025523,
+        0.546904275617408
+      ]
+    },
+    {
+      "pwm": 170,
+      "speed_m_s": 0.2510202819706689,
+      "trials": [
+        0.41909884942844877,
+        0.2510202819706689,
+        0.25083422533522787
+      ]
+    },
+    {
+      "pwm": 200,
+      "speed_m_s": null,
+      "trials": []
+    },
+    {
+      "pwm": 230,
+      "speed_m_s": null,
+      "trials": []
+    }
+  ],
+  "speed_model_fit": {
+    "slope_m_s_per_pwm": -0.0009599648242135568,
+    "deadband_pwm": 467.49848411618734,
+    "v_max_at_255": 0.20399106995024308
+  },
+  "center_skipped": "no reference wall",
+  "turn_table": [
+    {
+      "offset_from_center": -35,
+      "raw_angle": 55.0,
+      "n_trials": 2,
+      "n_kept": 0,
+      "turn_rate_deg_s_median": null,
+      "trials": [
+        {
+          "raw_angle": 55.0,
+          "bearing_before": 39.728125000000006,
+          "bearing_after": 16.384375000000006,
+          "turn_rate_deg_s": -33.295966156796865,
+          "duration_s": 0.7010984420776367
+        },
+        {
+          "raw_angle": 55.0,
+          "bearing_before": -39.60000000000002,
+          "bearing_after": -39.39687500000002,
+          "turn_rate_deg_s": 0.2896194386814886,
+          "duration_s": 0.7013514041900635
+        }
+      ]
+    },
+    {
+      "offset_from_center": -20,
+      "raw_angle": 70.0,
+      "n_trials": 2,
+      "n_kept": 2,
+      "turn_rate_deg_s_median": 11.21920779080228,
+      "trials": [
+        {
+          "raw_angle": 70.0,
+          "bearing_before": -39.99062500000002,
+          "bearing_after": -34.17812500000002,
+          "turn_rate_deg_s": 8.28915243172669,
+          "duration_s": 0.7012176513671875
+        },
+        {
+          "raw_angle": 70.0,
+          "bearing_before": -36.63125000000002,
+          "bearing_after": -26.709375000000023,
+          "turn_rate_deg_s": 14.149263149877871,
+          "duration_s": 0.7012290954589844
+        }
+      ],
+      "turn_radius_m": 1.958625595948759
+    },
+    {
+      "offset_from_center": 20,
+      "raw_angle": 110.0,
+      "n_trials": 2,
+      "n_kept": 2,
+      "turn_rate_deg_s_median": -6.117059796758609,
+      "trials": [
+        {
+          "raw_angle": 110.0,
+          "bearing_before": -34.83437500000002,
+          "bearing_after": -38.44375000000002,
+          "turn_rate_deg_s": -5.147980653776665,
+          "duration_s": 0.7011244297027588
+        },
+        {
+          "raw_angle": 110.0,
+          "bearing_before": -34.28750000000002,
+          "bearing_after": -39.25625000000002,
+          "turn_rate_deg_s": -7.086138939740552,
+          "duration_s": 0.7011928558349609
+        }
+      ],
+      "turn_radius_m": 3.5922858816873235
+    },
+    {
+      "offset_from_center": 35,
+      "raw_angle": 125.0,
+      "n_trials": 1,
+      "n_kept": 1,
+      "turn_rate_deg_s_median": -0.0445575183333356,
+      "trials": [
+        {
+          "raw_angle": 125.0,
+          "bearing_before": -39.24062500000002,
+          "bearing_after": -39.27187500000002,
+          "turn_rate_deg_s": -0.0445575183333356,
+          "duration_s": 0.7013406753540039
+        }
+      ],
+      "turn_radius_m": 493.1654267848466
+    }
+  ],
+  "v_at_test_pwm": 0.38352262081025523,
+  "asymmetry_ratio_20deg": 0.588609741776778,
+  "log": [
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 0,
+      "speed_m_s": 0.3187665252311144
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 1,
+      "speed_m_s": 0.29826479863692645
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 2,
+      "speed_m_s": 0.30861817142348236
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 0,
+      "speed_m_s": 0.3333553914516329
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 1,
+      "speed_m_s": 0.38352262081025523
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 2,
+      "speed_m_s": 0.546904275617408
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 0,
+      "speed_m_s": 0.41909884942844877
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 1,
+      "speed_m_s": 0.2510202819706689
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 2,
+      "speed_m_s": 0.25083422533522787
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.34424999999999994,
+      "floor_bearing": 81.415625,
+      "front": 0.52425,
+      "rear": 1.67675
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_settle",
+      "pwm": 200,
+      "floor": 0.34975,
+      "bearing": 76.15
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 0,
+      "speed_m_s": null
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_settle",
+      "pwm": 200,
+      "floor": 0.34975,
+      "bearing": 75.55625
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 1,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.348,
+      "floor_bearing": 78.99375,
+      "front": 0.56075,
+      "rear": 1.62625
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_settle",
+      "pwm": 200,
+      "floor": 0.34824999999999995,
+      "bearing": 76.446875
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 2,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.345,
+      "floor_bearing": 80.790625,
+      "front": 0.5345,
+      "rear": 1.6635
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_settle",
+      "pwm": 230,
+      "floor": 0.347,
+      "bearing": 75.853125
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 0,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.34724999999999995,
+      "floor_bearing": 80.30625,
+      "front": 0.54125,
+      "rear": 1.65775
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_settle",
+      "pwm": 230,
+      "floor": 0.34924999999999995,
+      "bearing": 76.93125
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 1,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.348,
+      "floor_bearing": 81.24375,
+      "front": 0.523,
+      "rear": 1.6635
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_settle",
+      "pwm": 230,
+      "floor": 0.349,
+      "bearing": 76.884375
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 2,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.3484999999999999,
+      "floor_bearing": 79.99375,
+      "front": 0.5455,
+      "rear": 1.649
+    },
+    {
+      "event": "abort_floor",
+      "phase": "turn",
+      "raw_angle": 115.0,
+      "floor": 0.34424999999999994,
+      "bearing": 74.4625
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.33125000000000004,
+      "floor_bearing": 75.275,
+      "front": 0.5107499999999999,
+      "rear": 0.88525
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "move": [
+        0,
+        "forward"
+      ],
+      "floor": 0.34124999999999994,
+      "floor_bearing": 69.15,
+      "front": 0.5105,
+      "rear": 0.8372499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "move": [
+        25,
+        "reverse"
+      ],
+      "floor": 0.33325000000000005,
+      "floor_bearing": 73.040625,
+      "front": 0.5299999999999999,
+      "rear": 0.86925
+    },
+    {
+      "event": "abort_floor",
+      "phase": "turn",
+      "raw_angle": 55.0,
+      "floor": 0.34875,
+      "bearing": 73.353125
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 0,
+      "turn": null
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 39.728125000000006,
+        "bearing_after": 16.384375000000006,
+        "turn_rate_deg_s": -33.295966156796865,
+        "duration_s": 0.7010984420776367
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": -39.60000000000002,
+        "bearing_after": -39.39687500000002,
+        "turn_rate_deg_s": 0.2896194386814886,
+        "duration_s": 0.7013514041900635
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": -39.99062500000002,
+        "bearing_after": -34.17812500000002,
+        "turn_rate_deg_s": 8.28915243172669,
+        "duration_s": 0.7012176513671875
+      }
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.32075,
+      "floor_bearing": 113.853125,
+      "front": 0.7975,
+      "rear": 0.65825
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "move": [
+        0,
+        "forward"
+      ],
+      "floor": 0.3055,
+      "floor_bearing": 112.9,
+      "front": 0.8142499999999999,
+      "rear": 0.5702499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "move": [
+        25,
+        "reverse"
+      ],
+      "floor": 0.3414999999999999,
+      "floor_bearing": 116.978125,
+      "front": 0.7597499999999999,
+      "rear": 0.636
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "move": [
+        -25,
+        "reverse"
+      ],
+      "floor": 0.32725000000000004,
+      "floor_bearing": 116.43125,
+      "front": 0.7797499999999999,
+      "rear": 0.595
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "move": [
+        25,
+        "forward"
+      ],
+      "floor": 0.30000000000000004,
+      "floor_bearing": 110.165625,
+      "front": 0.83975,
+      "rear": 0.584
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "move": [
+        -25,
+        "forward"
+      ],
+      "floor": 0.32175,
+      "floor_bearing": 110.4,
+      "front": 0.82075,
+      "rear": 0.75225
+    },
+    {
+      "event": "abort_floor",
+      "phase": "turn",
+      "raw_angle": 70.0,
+      "floor": 0.34924999999999995,
+      "bearing": 118.446875
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 1,
+      "turn": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.32299999999999995,
+      "floor_bearing": 115.0875,
+      "front": 0.7949999999999999,
+      "rear": 0.66825
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "move": [
+        0,
+        "forward"
+      ],
+      "floor": 0.31399999999999995,
+      "floor_bearing": 113.634375,
+      "front": 0.7969999999999999,
+      "rear": 0.602
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "move": [
+        25,
+        "reverse"
+      ],
+      "floor": 0.34875,
+      "floor_bearing": 117.86875,
+      "front": 0.7527499999999999,
+      "rear": 0.6515
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "move": [
+        -25,
+        "reverse"
+      ],
+      "floor": 0.32175,
+      "floor_bearing": 117.665625,
+      "front": 0.7965,
+      "rear": 0.73175
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "move": [
+        25,
+        "forward"
+      ],
+      "floor": 0.30899999999999994,
+      "floor_bearing": 112.74375,
+      "front": 0.8195,
+      "rear": 0.58775
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "move": [
+        -25,
+        "forward"
+      ],
+      "floor": 0.32799999999999996,
+      "floor_bearing": 111.65,
+      "front": 0.8045,
+      "rear": 0.7615
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": -36.63125000000002,
+        "bearing_after": -26.709375000000023,
+        "turn_rate_deg_s": 14.149263149877871,
+        "duration_s": 0.7012290954589844
+      }
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.2945,
+      "floor_bearing": 131.4,
+      "front": 0.7965,
+      "rear": 0.7204999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "move": [
+        0,
+        "forward"
+      ],
+      "floor": 0.28074999999999994,
+      "floor_bearing": 130.353125,
+      "front": 0.8109999999999999,
+      "rear": 0.59
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "move": [
+        25,
+        "reverse"
+      ],
+      "floor": 0.32175,
+      "floor_bearing": 132.4625,
+      "front": 0.752,
+      "rear": 0.66225
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "move": [
+        -25,
+        "reverse"
+      ],
+      "floor": 0.2905,
+      "floor_bearing": 132.853125,
+      "front": 0.81175,
+      "rear": 0.7045
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "move": [
+        25,
+        "forward"
+      ],
+      "floor": 0.27225,
+      "floor_bearing": 129.4625,
+      "front": 0.834,
+      "rear": 0.54475
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "move": [
+        -25,
+        "forward"
+      ],
+      "floor": 0.3015,
+      "floor_bearing": 128.915625,
+      "front": 0.7765,
+      "rear": 0.62625
+    },
+    {
+      "event": "abort_floor",
+      "phase": "turn",
+      "raw_angle": 110.0,
+      "floor": 0.3444999999999999,
+      "bearing": 134.790625
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 0,
+      "turn": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.347,
+      "floor_bearing": 135.30625,
+      "front": 0.72025,
+      "rear": 0.7865
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "move": [
+        0,
+        "forward"
+      ],
+      "floor": 0.32075,
+      "floor_bearing": 133.259375,
+      "front": 0.756,
+      "rear": 0.7547499999999999
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": -34.83437500000002,
+        "bearing_after": -38.44375000000002,
+        "turn_rate_deg_s": -5.147980653776665,
+        "duration_s": 0.7011244297027588
+      }
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.3105,
+      "floor_bearing": 116.040625,
+      "front": 0.7855,
+      "rear": 0.72275
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "move": [
+        0,
+        "forward"
+      ],
+      "floor": 0.29925,
+      "floor_bearing": 114.790625,
+      "front": 0.8182499999999999,
+      "rear": 0.5914999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "move": [
+        25,
+        "reverse"
+      ],
+      "floor": 0.3375,
+      "floor_bearing": 119.540625,
+      "front": 0.7597499999999999,
+      "rear": 0.7567499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "move": [
+        -25,
+        "reverse"
+      ],
+      "floor": 0.31499999999999995,
+      "floor_bearing": 118.634375,
+      "front": 0.77825,
+      "rear": 0.6084999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "move": [
+        25,
+        "forward"
+      ],
+      "floor": 0.29725,
+      "floor_bearing": 113.540625,
+      "front": 0.83375,
+      "rear": 0.582
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "move": [
+        -25,
+        "forward"
+      ],
+      "floor": 0.3185,
+      "floor_bearing": 113.978125,
+      "front": 0.79475,
+      "rear": 0.7377499999999999
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": -34.28750000000002,
+        "bearing_after": -39.25625000000002,
+        "turn_rate_deg_s": -7.086138939740552,
+        "duration_s": 0.7011928558349609
+      }
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.3225,
+      "floor_bearing": 100.68125,
+      "front": 0.8655,
+      "rear": 0.79325
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "move": [
+        0,
+        "forward"
+      ],
+      "floor": 0.32099999999999995,
+      "floor_bearing": 99.353125,
+      "front": 0.9009999999999999,
+      "rear": 0.7755
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "move": [
+        25,
+        "reverse"
+      ],
+      "floor": 0.33875,
+      "floor_bearing": 104.603125,
+      "front": 0.8424999999999999,
+      "rear": 0.8417499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "move": [
+        -25,
+        "reverse"
+      ],
+      "floor": 0.3295,
+      "floor_bearing": 104.009375,
+      "front": 0.8615,
+      "rear": 0.7757499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "move": [
+        25,
+        "forward"
+      ],
+      "floor": 0.31225,
+      "floor_bearing": 98.415625,
+      "front": 0.9025,
+      "rear": 0.7615
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "move": [
+        -25,
+        "forward"
+      ],
+      "floor": 0.32099999999999995,
+      "floor_bearing": 98.18125,
+      "front": 0.88925,
+      "rear": 0.85075
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.3484999999999999,
+      "floor_bearing": 108.99375,
+      "front": 0.8019999999999999,
+      "rear": 0.862
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "move": [
+        0,
+        "forward"
+      ],
+      "floor": 0.33025000000000004,
+      "floor_bearing": 104.18125,
+      "front": 0.8469999999999999,
+      "rear": 0.82075
+    },
+    {
+      "event": "abort_floor",
+      "phase": "turn",
+      "raw_angle": 125.0,
+      "floor": 0.34824999999999995,
+      "bearing": 108.571875
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 0,
+      "turn": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "move": [
+        0,
+        "reverse"
+      ],
+      "floor": 0.344,
+      "floor_bearing": 108.353125,
+      "front": 0.8025,
+      "rear": 0.86475
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "move": [
+        0,
+        "forward"
+      ],
+      "floor": 0.33525000000000005,
+      "floor_bearing": 105.478125,
+      "front": 0.8352499999999999,
+      "rear": 0.83675
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": -39.24062500000002,
+        "bearing_after": -39.27187500000002,
+        "turn_rate_deg_s": -0.0445575183333356,
+        "duration_s": 0.7013406753540039
+      }
+    },
+    {
+      "event": "abort_floor",
+      "phase": "turn",
+      "raw_angle": 125.0,
+      "floor": 0.34624999999999995,
+      "bearing": 75.884375
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 2,
+      "turn": null
+    }
+  ],
+  "finished": 1790109336.1384494
+}

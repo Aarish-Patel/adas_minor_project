@@ -1,0 +1,24 @@
+[
+ {
+  "world": "open",
+  "coverage": 0.9996396396396396,
+  "t": 8.6,
+  "distance_m": 2.4,
+  "crashed": false,
+  "min_clear_cm": 114.5,
+  "goals": 2,
+  "finished": true,
+  "msg": "explored: no reachable frontier left"
+ },
+ {
+  "world": "room",
+  "coverage": 0.9769729488039347,
+  "t": 17.0,
+  "distance_m": 3.1,
+  "crashed": false,
+  "min_clear_cm": 7.8,
+  "goals": 5,
+  "finished": true,
+  "msg": "explored: no reachable frontier left"
+ }
+]

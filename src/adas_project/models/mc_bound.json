@@ -1,0 +1,8483 @@
+{
+ "summary": {
+  "drives": 72,
+  "driver_alone_ok": 59,
+  "driver_alone_fails": 13,
+  "systems": {
+   "off": {
+    "crashes": 6,
+    "goals": 60,
+    "interventions": 0,
+    "needless": 0,
+    "episodes": 0,
+    "progress_assists": 0,
+    "safety_interventions": 0,
+    "interventions_in_driver_ok_drives": 0,
+    "interventions_in_driver_fail_drives": 0,
+    "goals_in_driver_fail_drives": 1,
+    "retreat_m": 45.1,
+    "median_time_s": 10.15000000000001
+   },
+   "brake-only": {
+    "crashes": 0,
+    "goals": 59,
+    "interventions": 102,
+    "needless": 81,
+    "episodes": 49,
+    "progress_assists": 0,
+    "safety_interventions": 102,
+    "interventions_in_driver_ok_drives": 46,
+    "interventions_in_driver_fail_drives": 56,
+    "goals_in_driver_fail_drives": 5,
+    "retreat_m": 49.8,
+    "median_time_s": 10.600000000000016
+   },
+   "adas": {
+    "crashes": 0,
+    "goals": 70,
+    "interventions": 132,
+    "needless": 127,
+    "episodes": 87,
+    "progress_assists": 2,
+    "safety_interventions": 130,
+    "interventions_in_driver_ok_drives": 83,
+    "interventions_in_driver_fail_drives": 49,
+    "goals_in_driver_fail_drives": 11,
+    "retreat_m": 17.7,
+    "median_time_s": 12.100000000000037
+   },
+   "adas+intent": {
+    "crashes": 0,
+    "goals": 70,
+    "interventions": 83,
+    "needless": 75,
+    "episodes": 50,
+    "progress_assists": 18,
+    "safety_interventions": 65,
+    "interventions_in_driver_ok_drives": 65,
+    "interventions_in_driver_fail_drives": 18,
+    "goals_in_driver_fail_drives": 13,
+    "retreat_m": 15.0,
+    "median_time_s": 11.55000000000003
+   },
+   "adas+oracle": {
+    "crashes": 0,
+    "goals": 62,
+    "interventions": 131,
+    "needless": 112,
+    "episodes": 54,
+    "progress_assists": 58,
+    "safety_interventions": 73,
+    "interventions_in_driver_ok_drives": 56,
+    "interventions_in_driver_fail_drives": 75,
+    "goals_in_driver_fail_drives": 7,
+    "retreat_m": 40.9,
+    "median_time_s": 10.675000000000017
+   }
+  },
+  "paired": [
+   {
+    "a": "adas",
+    "b": "adas+intent",
+    "key": "interventions",
+    "sum_a": 132.0,
+    "sum_b": 83.0,
+    "reduction_pct": 37.121212121212125,
+    "p": 0.00036186074494747814
+   },
+   {
+    "a": "adas",
+    "b": "adas+intent",
+    "key": "episodes",
+    "sum_a": 87.0,
+    "sum_b": 50.0,
+    "reduction_pct": 42.52873563218391,
+    "p": 3.58540990429719e-07
+   },
+   {
+    "a": "adas",
+    "b": "adas+intent",
+    "key": "needless",
+    "sum_a": 127.0,
+    "sum_b": 75.0,
+    "reduction_pct": 40.944881889763785,
+    "p": 8.618815756628884e-05
+   },
+   {
+    "a": "adas",
+    "b": "adas+intent",
+    "key": "retreat",
+    "sum_a": 17.74767115447257,
+    "sum_b": 14.992215594391208,
+    "reduction_pct": 15.525730311872287,
+    "p": 0.6310231805831954
+   },
+   {
+    "a": "adas",
+    "b": "adas+oracle",
+    "key": "interventions",
+    "sum_a": 132.0,
+    "sum_b": 131.0,
+    "reduction_pct": 0.7575757575757569,
+    "p": 0.0645070117990922
+   },
+   {
+    "a": "adas",
+    "b": "adas+oracle",
+    "key": "episodes",
+    "sum_a": 87.0,
+    "sum_b": 54.0,
+    "reduction_pct": 37.93103448275862,
+    "p": 1.1724298952340512e-05
+   }
+  ]
+ },
+ "rows": [
+  {
+   "seed": 24,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": true,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 1.8029032109635834,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0024553061800000053
+  },
+  {
+   "seed": 24,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 2.4783561859399015,
+   "burden": {
+    "needless_s": 0.25,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.04,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04069674913694902
+  },
+  {
+   "seed": 24,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 13.500000000000057,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 9.1,
+    "needless_steer_s": 9.0,
+    "needless_throttle_s": 0.8,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.09560446871751323
+  },
+  {
+   "seed": 24,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 29.650000000000286,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 1,
+   "progress": 2,
+   "kinds": {
+    "evasive:needless": 1,
+    "progress:needless": 2
+   },
+   "retreat": 1.0139498554824427,
+   "burden": {
+    "needless_s": 11.45,
+    "needless_steer_s": 9.5,
+    "needless_throttle_s": 1.17,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13581568913040534
+  },
+  {
+   "seed": 24,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 24.550000000000214,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "progress:needless": 1,
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.8219218135513383,
+   "burden": {
+    "needless_s": 6.95,
+    "needless_steer_s": 6.65,
+    "needless_throttle_s": 0.85,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08455766307504388
+  },
+  {
+   "seed": 24,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 4.316422473253109,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.019196386570711918
+  },
+  {
+   "seed": 24,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 14.45000000000007,
+   "interventions": 5,
+   "needless": 3,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 3,
+    "gate:limited:needed": 2
+   },
+   "retreat": 0.7085331206495458,
+   "burden": {
+    "needless_s": 0.45,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.37,
+    "needed_s": 0.7,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.57
+   },
+   "min_clear": 0.0406212727579815
+  },
+  {
+   "seed": 24,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 10.20000000000001,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 4.85,
+    "needless_steer_s": 4.5,
+    "needless_throttle_s": 1.81,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06634110038139023
+  },
+  {
+   "seed": 24,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.65000000000003,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.0,
+    "needless_steer_s": 7.5,
+    "needless_throttle_s": 3.13,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10522328952734566
+  },
+  {
+   "seed": 24,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 25.60000000000023,
+   "interventions": 13,
+   "needless": 13,
+   "episodes": 2,
+   "progress": 2,
+   "kinds": {
+    "gate:limited:needless": 8,
+    "evasive:needless": 1,
+    "gate:braking:needless": 2,
+    "progress:needless": 2
+   },
+   "retreat": 1.5903102900700041,
+   "burden": {
+    "needless_s": 12.3,
+    "needless_steer_s": 6.75,
+    "needless_throttle_s": 5.38,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0406212727579815
+  },
+  {
+   "seed": 24,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 3.34223475387709,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.041144291047575526
+  },
+  {
+   "seed": 24,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 2.844797880200517,
+   "burden": {
+    "needless_s": 1.35,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.65,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.026702950883450344
+  },
+  {
+   "seed": 24,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 20.950000000000163,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 3
+   },
+   "retreat": 1.0605059743816385,
+   "burden": {
+    "needless_s": 5.3,
+    "needless_steer_s": 5.2,
+    "needless_throttle_s": 0.49,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10733542432873322
+  },
+  {
+   "seed": 24,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 26.050000000000235,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "progress:needless": 1
+   },
+   "retreat": 1.1479358295394382,
+   "burden": {
+    "needless_s": 9.3,
+    "needless_steer_s": 8.2,
+    "needless_throttle_s": 1.12,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10334052478726555
+  },
+  {
+   "seed": 24,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "progress:needless": 1,
+    "gate:limited:needless": 1
+   },
+   "retreat": 3.3153715315758623,
+   "burden": {
+    "needless_s": 13.75,
+    "needless_steer_s": 11.4,
+    "needless_throttle_s": 1.59,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10334052478726555
+  },
+  {
+   "seed": 25,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 17.800000000000118,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.6985479580067206,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.032421475056165903
+  },
+  {
+   "seed": 25,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 16.200000000000095,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.46879237492316994,
+   "burden": {
+    "needless_s": 0.4,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.18,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05746853540033528
+  },
+  {
+   "seed": 25,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 13.650000000000059,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "evasive:needless": 2
+   },
+   "retreat": 0.2777149923493787,
+   "burden": {
+    "needless_s": 1.7,
+    "needless_steer_s": 1.5,
+    "needless_throttle_s": 0.28,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06664136481294279
+  },
+  {
+   "seed": 25,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": null,
+   "interventions": 4,
+   "needless": 4,
+   "episodes": 1,
+   "progress": 2,
+   "kinds": {
+    "gate:limited:needless": 2,
+    "progress:needless": 2
+   },
+   "retreat": 3.248011885191344,
+   "burden": {
+    "needless_s": 21.3,
+    "needless_steer_s": 21.0,
+    "needless_throttle_s": 9.61,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06664136481294279
+  },
+  {
+   "seed": 25,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 24.25000000000021,
+   "interventions": 4,
+   "needless": 4,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "gate:limited:needless": 2,
+    "progress:needless": 1,
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.7970144885500479,
+   "burden": {
+    "needless_s": 7.2,
+    "needless_steer_s": 6.5,
+    "needless_throttle_s": 3.2,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.040742654817997694
+  },
+  {
+   "seed": 25,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": true,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.5235485952336116,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.011050004534187419
+  },
+  {
+   "seed": 25,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 19.750000000000146,
+   "interventions": 8,
+   "needless": 6,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needed": 2,
+    "gate:limited:needless": 4,
+    "gate:braking:needless": 2
+   },
+   "retreat": 1.031018900829428,
+   "burden": {
+    "needless_s": 1.25,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 1.02,
+    "needed_s": 0.8,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.7
+   },
+   "min_clear": 0.07316967344575956
+  },
+  {
+   "seed": 25,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 19.050000000000136,
+   "interventions": 4,
+   "needless": 4,
+   "episodes": 3,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 3,
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.8102536723128733,
+   "burden": {
+    "needless_s": 7.8,
+    "needless_steer_s": 6.95,
+    "needless_throttle_s": 5.8,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07724312135136835
+  },
+  {
+   "seed": 25,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.100000000000023,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.15,
+    "needless_steer_s": 7.8,
+    "needless_throttle_s": 3.8,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10495245245554571
+  },
+  {
+   "seed": 25,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 25.00000000000022,
+   "interventions": 9,
+   "needless": 4,
+   "episodes": 1,
+   "progress": 3,
+   "kinds": {
+    "evasive:needed": 1,
+    "gate:limited:needed": 3,
+    "gate:braking:needed": 1,
+    "progress:needless": 3,
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.5540649106941291,
+   "burden": {
+    "needless_s": 8.8,
+    "needless_steer_s": 6.7,
+    "needless_throttle_s": 4.93,
+    "needed_s": 3.25,
+    "needed_steer_s": 0.55,
+    "needed_throttle_s": 2.33
+   },
+   "min_clear": 0.06415436052793891
+  },
+  {
+   "seed": 25,
+   "style": "late",
+   "variant": "off",
+   "crashed": true,
+   "reached": 16.4500000000001,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.7057504485116555,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 1.852568425276105e-05
+  },
+  {
+   "seed": 25,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 24.25000000000021,
+   "interventions": 11,
+   "needless": 3,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needed": 8,
+    "gate:limited:needless": 2,
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.7480128653191009,
+   "burden": {
+    "needless_s": 1.05,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.59,
+    "needed_s": 4.65,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 4.56
+   },
+   "min_clear": 0.031415512123748185
+  },
+  {
+   "seed": 25,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.900000000000048,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 3
+   },
+   "retreat": 0.3045185800721084,
+   "burden": {
+    "needless_s": 4.0,
+    "needless_steer_s": 3.95,
+    "needless_throttle_s": 1.37,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06751823219826951
+  },
+  {
+   "seed": 25,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.350000000000026,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.9,
+    "needless_steer_s": 6.45,
+    "needless_throttle_s": 2.39,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07261151066653601
+  },
+  {
+   "seed": 25,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 26.200000000000237,
+   "interventions": 7,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "evasive:needed": 1,
+    "gate:limited:needed": 5,
+    "progress:needless": 1
+   },
+   "retreat": 0.886577195094246,
+   "burden": {
+    "needless_s": 6.15,
+    "needless_steer_s": 5.95,
+    "needless_throttle_s": 1.31,
+    "needed_s": 2.7,
+    "needed_steer_s": 0.45,
+    "needed_throttle_s": 2.19
+   },
+   "min_clear": 0.06883976881164396
+  },
+  {
+   "seed": 26,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": true,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.8926078205196757,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 2.9229071771963434e-05
+  },
+  {
+   "seed": 26,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 3,
+   "needless": 1,
+   "episodes": 3,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "gate:limited:needed": 2
+   },
+   "retreat": 2.031228564556587,
+   "burden": {
+    "needless_s": 0.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.02,
+    "needed_s": 1.6,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 1.04
+   },
+   "min_clear": 0.05259119060697609
+  },
+  {
+   "seed": 26,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 14.250000000000068,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.1,
+    "needless_steer_s": 7.95,
+    "needless_throttle_s": 0.19,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08027620678622066
+  },
+  {
+   "seed": 26,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 25.950000000000234,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "evasive:needless": 1,
+    "progress:needless": 1
+   },
+   "retreat": 0.9401233968656317,
+   "burden": {
+    "needless_s": 13.9,
+    "needless_steer_s": 12.05,
+    "needless_throttle_s": 2.72,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08075831744105522
+  },
+  {
+   "seed": 26,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 6,
+   "needless": 4,
+   "episodes": 2,
+   "progress": 4,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "progress:needless": 3,
+    "progress:needed": 1,
+    "gate:limited:needed": 1
+   },
+   "retreat": 1.1646412050281632,
+   "burden": {
+    "needless_s": 9.45,
+    "needless_steer_s": 7.35,
+    "needless_throttle_s": 0.53,
+    "needed_s": 6.4,
+    "needed_steer_s": 5.65,
+    "needed_throttle_s": 0.61
+   },
+   "min_clear": 0.04887386430333304
+  },
+  {
+   "seed": 26,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 4.7708121211809935,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.09004676045109555
+  },
+  {
+   "seed": 26,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 10,
+   "needless": 10,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2,
+    "gate:braking:needless": 8
+   },
+   "retreat": 3.2854433186574363,
+   "burden": {
+    "needless_s": 1.35,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 1.2,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.045893504996024265
+  },
+  {
+   "seed": 26,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 28.300000000000267,
+   "interventions": 12,
+   "needless": 12,
+   "episodes": 3,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 8,
+    "gate:limited:needless": 3,
+    "gate:braking:needless": 1
+   },
+   "retreat": 2.5370346844547127,
+   "burden": {
+    "needless_s": 5.4,
+    "needless_steer_s": 4.45,
+    "needless_throttle_s": 1.84,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05236091759170727
+  },
+  {
+   "seed": 26,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.800000000000033,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.32035931069700485,
+   "burden": {
+    "needless_s": 4.05,
+    "needless_steer_s": 3.05,
+    "needless_throttle_s": 1.16,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04865465346504014
+  },
+  {
+   "seed": 26,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 10,
+   "needless": 10,
+   "episodes": 2,
+   "progress": 7,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "gate:braking:needless": 2,
+    "progress:needless": 7
+   },
+   "retreat": 3.1104662539586583,
+   "burden": {
+    "needless_s": 11.8,
+    "needless_steer_s": 5.9,
+    "needless_throttle_s": 3.97,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06662835078974645
+  },
+  {
+   "seed": 26,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 20.450000000000156,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 1.1172604184132693,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03375125139927468
+  },
+  {
+   "seed": 26,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 3.2451073593668935,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08017184513840873
+  },
+  {
+   "seed": 26,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 16.150000000000095,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.3320075903260702,
+   "burden": {
+    "needless_s": 9.6,
+    "needless_steer_s": 8.95,
+    "needless_throttle_s": 0.33,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08673243296370303
+  },
+  {
+   "seed": 26,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 16.050000000000093,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.3593223940040673,
+   "burden": {
+    "needless_s": 9.3,
+    "needless_steer_s": 8.4,
+    "needless_throttle_s": 0.36,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.056173732493196155
+  },
+  {
+   "seed": 26,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 25.05000000000022,
+   "interventions": 4,
+   "needless": 4,
+   "episodes": 2,
+   "progress": 3,
+   "kinds": {
+    "progress:needless": 3,
+    "gate:limited:needless": 1
+   },
+   "retreat": 1.4294812607204035,
+   "burden": {
+    "needless_s": 8.6,
+    "needless_steer_s": 6.15,
+    "needless_throttle_s": 1.07,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03811776106760492
+  },
+  {
+   "seed": 27,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 14.600000000000072,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1464966470666924
+  },
+  {
+   "seed": 27,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 14.650000000000073,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.15372290470385075
+  },
+  {
+   "seed": 27,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 15.300000000000082,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 10.8,
+    "needless_steer_s": 9.0,
+    "needless_throttle_s": 0.02,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07963162180856792
+  },
+  {
+   "seed": 27,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 14.650000000000073,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.15372290470385075
+  },
+  {
+   "seed": 27,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 14.650000000000073,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.15372290470385075
+  },
+  {
+   "seed": 27,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 10.750000000000018,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.34919307439794256,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05869404378726978
+  },
+  {
+   "seed": 27,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 11.250000000000025,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3375491853525405,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.054318534472140356
+  },
+  {
+   "seed": 27,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.600000000000044,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 9.7,
+    "needless_steer_s": 6.1,
+    "needless_throttle_s": 3.52,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08657307713514706
+  },
+  {
+   "seed": 27,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.950000000000035,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.85,
+    "needless_steer_s": 7.4,
+    "needless_throttle_s": 2.86,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.15815620073838096
+  },
+  {
+   "seed": 27,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 11.250000000000025,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3375491853525405,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.054318534472140356
+  },
+  {
+   "seed": 27,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 16.950000000000106,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.33697405264302427,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.040441221055981025
+  },
+  {
+   "seed": 27,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 17.400000000000112,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.3241410941524565,
+   "burden": {
+    "needless_s": 0.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.03,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.026939805910434572
+  },
+  {
+   "seed": 27,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 14.45000000000007,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.5,
+    "needless_steer_s": 6.8,
+    "needless_throttle_s": 0.01,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11985100490971044
+  },
+  {
+   "seed": 27,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 14.350000000000069,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 6.2,
+    "needless_steer_s": 5.85,
+    "needless_throttle_s": 0.01,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12416933632978136
+  },
+  {
+   "seed": 27,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 17.90000000000012,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 2,
+   "kinds": {
+    "progress:needless": 2
+   },
+   "retreat": 0.3241410941524565,
+   "burden": {
+    "needless_s": 4.95,
+    "needless_steer_s": 4.85,
+    "needless_throttle_s": 0.01,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07593281198351565
+  },
+  {
+   "seed": 28,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 9.55,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07806659658944334
+  },
+  {
+   "seed": 28,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 9.650000000000002,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07814033906120738
+  },
+  {
+   "seed": 28,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 9.650000000000002,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07814033906120738
+  },
+  {
+   "seed": 28,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 9.650000000000002,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07814033906120738
+  },
+  {
+   "seed": 28,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 9.650000000000002,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07814033906120738
+  },
+  {
+   "seed": 28,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.399999999999982,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07804516996424544
+  },
+  {
+   "seed": 28,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.499999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07808649262368636
+  },
+  {
+   "seed": 28,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 11.300000000000026,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.2,
+    "needless_steer_s": 2.75,
+    "needless_throttle_s": 3.37,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07808649262368636
+  },
+  {
+   "seed": 28,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 7.499999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07808649262368636
+  },
+  {
+   "seed": 28,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.499999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07808649262368636
+  },
+  {
+   "seed": 28,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 9.55,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07806659658944334
+  },
+  {
+   "seed": 28,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 9.600000000000001,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07814033906120738
+  },
+  {
+   "seed": 28,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 10.450000000000014,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 2.3,
+    "needless_steer_s": 1.5,
+    "needless_throttle_s": 0.71,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07814033906120738
+  },
+  {
+   "seed": 28,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 9.600000000000001,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07814033906120738
+  },
+  {
+   "seed": 28,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 9.600000000000001,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07814033906120738
+  },
+  {
+   "seed": 29,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.499999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05171686516243476
+  },
+  {
+   "seed": 29,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.649999999999981,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.4,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.09,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03610891661676008
+  },
+  {
+   "seed": 29,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 7.649999999999981,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.4,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.09,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03610891661676008
+  },
+  {
+   "seed": 29,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 7.649999999999981,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.4,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.09,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03610891661676008
+  },
+  {
+   "seed": 29,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.649999999999981,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.4,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.09,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03610891661676008
+  },
+  {
+   "seed": 29,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 5.849999999999987,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10068213325413194
+  },
+  {
+   "seed": 29,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 5.949999999999987,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08086298228213529
+  },
+  {
+   "seed": 29,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 9.249999999999996,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 5.65,
+    "needless_steer_s": 5.0,
+    "needless_throttle_s": 2.66,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.09659953645609118
+  },
+  {
+   "seed": 29,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 5.949999999999987,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08086298228213529
+  },
+  {
+   "seed": 29,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 5.949999999999987,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08086298228213529
+  },
+  {
+   "seed": 29,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.499999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07229704945237209
+  },
+  {
+   "seed": 29,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.549999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05174427032057338
+  },
+  {
+   "seed": 29,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 9.900000000000006,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 5.8,
+    "needless_steer_s": 5.15,
+    "needless_throttle_s": 1.83,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.14135608944265912
+  },
+  {
+   "seed": 29,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 7.649999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05174427032057338
+  },
+  {
+   "seed": 29,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.549999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05174427032057338
+  },
+  {
+   "seed": 30,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 12.850000000000048,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.02595983959173581
+  },
+  {
+   "seed": 30,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 13.150000000000052,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 1.4,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.24,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.025209160296402994
+  },
+  {
+   "seed": 30,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 19.550000000000143,
+   "interventions": 4,
+   "needless": 4,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "evasive:needless": 3
+   },
+   "retreat": 0.3463448412420944,
+   "burden": {
+    "needless_s": 7.4,
+    "needless_steer_s": 6.6,
+    "needless_throttle_s": 0.5,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.053497810080712915
+  },
+  {
+   "seed": 30,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 23.6500000000002,
+   "interventions": 5,
+   "needless": 5,
+   "episodes": 1,
+   "progress": 2,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "evasive:needless": 2,
+    "progress:needless": 2
+   },
+   "retreat": 0.5223560472789244,
+   "burden": {
+    "needless_s": 10.95,
+    "needless_steer_s": 9.3,
+    "needless_throttle_s": 3.07,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.053497810080712915
+  },
+  {
+   "seed": 30,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 13.150000000000052,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 1.4,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.24,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.025209160296402994
+  },
+  {
+   "seed": 30,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 9.45,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3557759965381764,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.025959489037399974
+  },
+  {
+   "seed": 30,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 10.650000000000016,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.34939478436015126,
+   "burden": {
+    "needless_s": 1.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.62,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.025959522403128904
+  },
+  {
+   "seed": 30,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 11.700000000000031,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2,
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.36314023272934604,
+   "burden": {
+    "needless_s": 4.55,
+    "needless_steer_s": 4.15,
+    "needless_throttle_s": 1.89,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06046427629293541
+  },
+  {
+   "seed": 30,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.450000000000028,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1,
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.361280120929639,
+   "burden": {
+    "needless_s": 3.85,
+    "needless_steer_s": 3.45,
+    "needless_throttle_s": 1.61,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.056200663580617205
+  },
+  {
+   "seed": 30,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 10.650000000000016,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.34939478436015126,
+   "burden": {
+    "needless_s": 1.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.62,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.025959522403128904
+  },
+  {
+   "seed": 30,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 14.050000000000065,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.36024675525298866,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.02595964865458389
+  },
+  {
+   "seed": 30,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 17.100000000000108,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.6599562194728255,
+   "burden": {
+    "needless_s": 0.8,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.14,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.025959810520784388
+  },
+  {
+   "seed": 30,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 14.650000000000073,
+   "interventions": 4,
+   "needless": 4,
+   "episodes": 3,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2,
+    "evasive:needless": 2
+   },
+   "retreat": 0.33040271085640915,
+   "burden": {
+    "needless_s": 4.95,
+    "needless_steer_s": 4.1,
+    "needless_throttle_s": 0.39,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.028800557339160232
+  },
+  {
+   "seed": 30,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 14.650000000000073,
+   "interventions": 4,
+   "needless": 4,
+   "episodes": 3,
+   "progress": 1,
+   "kinds": {
+    "gate:limited:needless": 2,
+    "evasive:needless": 1,
+    "progress:needless": 1
+   },
+   "retreat": 0.33040271085640915,
+   "burden": {
+    "needless_s": 4.95,
+    "needless_steer_s": 4.1,
+    "needless_throttle_s": 0.39,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.028800557339160232
+  },
+  {
+   "seed": 30,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 20.75000000000016,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 1,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "progress:needless": 1
+   },
+   "retreat": 0.7063352582314817,
+   "burden": {
+    "needless_s": 3.15,
+    "needless_steer_s": 1.5,
+    "needless_throttle_s": 0.51,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.025959810520784388
+  },
+  {
+   "seed": 31,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 14.500000000000071,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3562032927272307,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.011221218078724197
+  },
+  {
+   "seed": 31,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 4,
+   "needless": 0,
+   "episodes": 4,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needed": 4
+   },
+   "retreat": 2.806562078363558,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 3.7,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 2.71
+   },
+   "min_clear": 0.061092957244723266
+  },
+  {
+   "seed": 31,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 23.800000000000203,
+   "interventions": 5,
+   "needless": 3,
+   "episodes": 3,
+   "progress": 1,
+   "kinds": {
+    "evasive:needed": 2,
+    "progress:needless": 1,
+    "evasive:needless": 2
+   },
+   "retreat": 0.9827400186026081,
+   "burden": {
+    "needless_s": 2.6,
+    "needless_steer_s": 2.05,
+    "needless_throttle_s": 0.46,
+    "needed_s": 7.65,
+    "needed_steer_s": 7.6,
+    "needed_throttle_s": 1.2
+   },
+   "min_clear": 0.05702460536698112
+  },
+  {
+   "seed": 31,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": null,
+   "interventions": 8,
+   "needless": 3,
+   "episodes": 1,
+   "progress": 4,
+   "kinds": {
+    "evasive:needed": 1,
+    "progress:needless": 3,
+    "gate:limited:needed": 3,
+    "progress:needed": 1
+   },
+   "retreat": 1.9292992245249825,
+   "burden": {
+    "needless_s": 7.55,
+    "needless_steer_s": 5.7,
+    "needless_throttle_s": 1.3,
+    "needed_s": 7.25,
+    "needed_steer_s": 3.3,
+    "needed_throttle_s": 3.07
+   },
+   "min_clear": 0.05429211847735613
+  },
+  {
+   "seed": 31,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 23.5500000000002,
+   "interventions": 4,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 2,
+   "kinds": {
+    "evasive:needed": 1,
+    "gate:limited:needless": 1,
+    "progress:needless": 1,
+    "progress:needed": 1
+   },
+   "retreat": 0.9844216346713033,
+   "burden": {
+    "needless_s": 2.3,
+    "needless_steer_s": 0.95,
+    "needless_throttle_s": 0.38,
+    "needed_s": 8.8,
+    "needed_steer_s": 7.65,
+    "needed_throttle_s": 1.47
+   },
+   "min_clear": 0.05702460536698112
+  },
+  {
+   "seed": 31,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 10.050000000000008,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3717330008404902,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.040585952059864955
+  },
+  {
+   "seed": 31,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.99999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08206962215143696
+  },
+  {
+   "seed": 31,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.35000000000004,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.8,
+    "needless_steer_s": 7.95,
+    "needless_throttle_s": 4.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.14630650555491417
+  },
+  {
+   "seed": 31,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 7.99999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08206962215143696
+  },
+  {
+   "seed": 31,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.99999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08206962215143696
+  },
+  {
+   "seed": 31,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 4.062019969973589,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12866131139748777
+  },
+  {
+   "seed": 31,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 2.849048366313127,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06495194388294703
+  },
+  {
+   "seed": 31,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.850000000000048,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.65,
+    "needless_steer_s": 6.65,
+    "needless_throttle_s": 2.04,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12913952551749608
+  },
+  {
+   "seed": 31,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 12.650000000000045,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.0,
+    "needless_steer_s": 6.3,
+    "needless_throttle_s": 1.83,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.09274241746454506
+  },
+  {
+   "seed": 31,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 29.700000000000287,
+   "interventions": 5,
+   "needless": 5,
+   "episodes": 4,
+   "progress": 4,
+   "kinds": {
+    "progress:needless": 4,
+    "gate:limited:needless": 1
+   },
+   "retreat": 2.466985803067689,
+   "burden": {
+    "needless_s": 4.95,
+    "needless_steer_s": 2.25,
+    "needless_throttle_s": 0.9,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.045932956096131065
+  },
+  {
+   "seed": 32,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.7499999999999805,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11146749848094625
+  },
+  {
+   "seed": 32,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.79999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12370051592934381
+  },
+  {
+   "seed": 32,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 10.100000000000009,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 5.25,
+    "needless_steer_s": 4.8,
+    "needless_throttle_s": 1.71,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10889444734683329
+  },
+  {
+   "seed": 32,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 7.84999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12370051592934381
+  },
+  {
+   "seed": 32,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.79999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12370051592934381
+  },
+  {
+   "seed": 32,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 6.099999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1321890820644219
+  },
+  {
+   "seed": 32,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 6.199999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06005375002910285
+  },
+  {
+   "seed": 32,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 6.199999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06005375002910285
+  },
+  {
+   "seed": 32,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 6.199999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06005375002910285
+  },
+  {
+   "seed": 32,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 6.199999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06005375002910285
+  },
+  {
+   "seed": 32,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.699999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.09637041069668774
+  },
+  {
+   "seed": 32,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.79999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13208478212332767
+  },
+  {
+   "seed": 32,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 8.04999999999998,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.7,
+    "needless_steer_s": 0.6,
+    "needless_throttle_s": 0.23,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13208478212332767
+  },
+  {
+   "seed": 32,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 7.79999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13208478212332767
+  },
+  {
+   "seed": 32,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.79999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13208478212332767
+  },
+  {
+   "seed": 33,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 8.499999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.21475859134954164
+  },
+  {
+   "seed": 33,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 8.599999999999987,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.20028142002080893
+  },
+  {
+   "seed": 33,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 8.599999999999987,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.20028142002080893
+  },
+  {
+   "seed": 33,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 8.599999999999987,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.20028142002080893
+  },
+  {
+   "seed": 33,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 8.599999999999987,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.20028142002080893
+  },
+  {
+   "seed": 33,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 6.5999999999999845,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.27941887844425983
+  },
+  {
+   "seed": 33,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 6.699999999999984,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.24467011917674966
+  },
+  {
+   "seed": 33,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 6.749999999999984,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.24467011917674966
+  },
+  {
+   "seed": 33,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 6.699999999999984,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.24467011917674966
+  },
+  {
+   "seed": 33,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 6.699999999999984,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.24467011917674966
+  },
+  {
+   "seed": 33,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 8.499999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.257323168237927
+  },
+  {
+   "seed": 33,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 8.549999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.23481102218847408
+  },
+  {
+   "seed": 33,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 8.84999999999999,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 1.0,
+    "needless_steer_s": 0.85,
+    "needless_throttle_s": 0.31,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.23481102218847408
+  },
+  {
+   "seed": 33,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 8.549999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.23481102218847408
+  },
+  {
+   "seed": 33,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 8.549999999999986,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.23481102218847408
+  },
+  {
+   "seed": 34,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 10.25000000000001,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.36282127747794846,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.02416889674434554
+  },
+  {
+   "seed": 34,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 10.700000000000017,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.3494378339256634,
+   "burden": {
+    "needless_s": 0.55,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.19,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03165883112490708
+  },
+  {
+   "seed": 34,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 9.5,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 6.25,
+    "needless_steer_s": 5.45,
+    "needless_throttle_s": 1.98,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.14444750515269805
+  },
+  {
+   "seed": 34,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 9.5,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.005378993281174749,
+   "burden": {
+    "needless_s": 6.0,
+    "needless_steer_s": 5.4,
+    "needless_throttle_s": 1.96,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06285450948187446
+  },
+  {
+   "seed": 34,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 10.700000000000017,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.3494378339256634,
+   "burden": {
+    "needless_s": 0.55,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.19,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03165883112490708
+  },
+  {
+   "seed": 34,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.99999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.352722571437055,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.047193571568816484
+  },
+  {
+   "seed": 34,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 8.79999999999999,
+   "interventions": 1,
+   "needless": 0,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needed": 1
+   },
+   "retreat": 0.3721513961588865,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.4,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.31
+   },
+   "min_clear": 0.07313218179039743
+  },
+  {
+   "seed": 34,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 8.949999999999992,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 6.25,
+    "needless_steer_s": 5.55,
+    "needless_throttle_s": 3.04,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12405344950439684
+  },
+  {
+   "seed": 34,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 8.949999999999992,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 6.15,
+    "needless_steer_s": 5.35,
+    "needless_throttle_s": 2.99,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.19639656089934052
+  },
+  {
+   "seed": 34,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 8.79999999999999,
+   "interventions": 1,
+   "needless": 0,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needed": 1
+   },
+   "retreat": 0.3721513961588865,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.4,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.31
+   },
+   "min_clear": 0.07313218179039743
+  },
+  {
+   "seed": 34,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 9.5,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.35372277297164545,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04792411469311286
+  },
+  {
+   "seed": 34,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 9.800000000000004,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3399613323044466,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05601758528687195
+  },
+  {
+   "seed": 34,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 8.649999999999988,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 3.85,
+    "needless_steer_s": 3.4,
+    "needless_throttle_s": 1.36,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.14424905871823387
+  },
+  {
+   "seed": 34,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 9.199999999999996,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 5.7,
+    "needless_steer_s": 5.55,
+    "needless_throttle_s": 1.91,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05413284475633251
+  },
+  {
+   "seed": 34,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 9.800000000000004,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3399613323044466,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05601758528687195
+  },
+  {
+   "seed": 35,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 10.500000000000014,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08644677004582338
+  },
+  {
+   "seed": 35,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 10.600000000000016,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08819933129843041
+  },
+  {
+   "seed": 35,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 10.600000000000016,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08819933129843041
+  },
+  {
+   "seed": 35,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 10.600000000000016,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08819933129843041
+  },
+  {
+   "seed": 35,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 10.600000000000016,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08819933129843041
+  },
+  {
+   "seed": 35,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.099999999999983,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07577479676349885
+  },
+  {
+   "seed": 35,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.199999999999982,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06657383675427267
+  },
+  {
+   "seed": 35,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 10.300000000000011,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 6.65,
+    "needless_steer_s": 5.95,
+    "needless_throttle_s": 2.71,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.16578388077022047
+  },
+  {
+   "seed": 35,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 9.650000000000002,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 5.55,
+    "needless_steer_s": 5.35,
+    "needless_throttle_s": 2.26,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08627753964905907
+  },
+  {
+   "seed": 35,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.199999999999982,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06657383675427267
+  },
+  {
+   "seed": 35,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 10.500000000000014,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07866028375701845
+  },
+  {
+   "seed": 35,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 10.550000000000015,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07442482916315679
+  },
+  {
+   "seed": 35,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 11.450000000000028,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 6.2,
+    "needless_steer_s": 4.8,
+    "needless_throttle_s": 0.69,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12227135408092338
+  },
+  {
+   "seed": 35,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.400000000000027,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 5.8,
+    "needless_steer_s": 4.65,
+    "needless_throttle_s": 0.7,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.16598491718273542
+  },
+  {
+   "seed": 35,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 10.550000000000015,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07442482916315679
+  },
+  {
+   "seed": 36,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 14.250000000000068,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3681471357115549,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.033810430265454175
+  },
+  {
+   "seed": 36,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 2,
+   "needless": 1,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "gate:limited:needed": 1
+   },
+   "retreat": 2.5034571283108407,
+   "burden": {
+    "needless_s": 0.2,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.09,
+    "needed_s": 0.75,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.55
+   },
+   "min_clear": 0.07584711889302938
+  },
+  {
+   "seed": 36,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 13.00000000000005,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.05,
+    "needless_steer_s": 7.45,
+    "needless_throttle_s": 0.69,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1365117572994556
+  },
+  {
+   "seed": 36,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 18.75000000000013,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "evasive:needless": 1,
+    "progress:needless": 1
+   },
+   "retreat": 0.32884511713579245,
+   "burden": {
+    "needless_s": 6.75,
+    "needless_steer_s": 5.7,
+    "needless_throttle_s": 0.74,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07355590210163881
+  },
+  {
+   "seed": 36,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 25.500000000000227,
+   "interventions": 4,
+   "needless": 3,
+   "episodes": 3,
+   "progress": 2,
+   "kinds": {
+    "gate:limited:needless": 2,
+    "progress:needless": 1,
+    "progress:needed": 1
+   },
+   "retreat": 1.116199971109563,
+   "burden": {
+    "needless_s": 2.2,
+    "needless_steer_s": 0.95,
+    "needless_throttle_s": 0.52,
+    "needed_s": 3.35,
+    "needed_steer_s": 3.35,
+    "needed_throttle_s": 0.98
+   },
+   "min_clear": 0.07491977801447894
+  },
+  {
+   "seed": 36,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 9.199999999999996,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3476924069607512,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.027500521809398354
+  },
+  {
+   "seed": 36,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.249999999999982,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.03,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04413062482564334
+  },
+  {
+   "seed": 36,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 9.049999999999994,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 3
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 4.2,
+    "needless_steer_s": 3.8,
+    "needless_throttle_s": 1.66,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13669997266506528
+  },
+  {
+   "seed": 36,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 10.100000000000009,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.0,
+    "needless_steer_s": 6.65,
+    "needless_throttle_s": 2.82,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13669997266506528
+  },
+  {
+   "seed": 36,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.249999999999982,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.03,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04413062482564334
+  },
+  {
+   "seed": 36,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 3.3120653755787304,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13669899779685668
+  },
+  {
+   "seed": 36,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 2.8569273301360085,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13669868483297032
+  },
+  {
+   "seed": 36,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 11.55000000000003,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.4,
+    "needless_steer_s": 6.8,
+    "needless_throttle_s": 0.75,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13669868483297032
+  },
+  {
+   "seed": 36,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.450000000000028,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 6.7,
+    "needless_steer_s": 6.5,
+    "needless_throttle_s": 0.72,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13669868483297032
+  },
+  {
+   "seed": 36,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 2,
+   "kinds": {
+    "progress:needless": 2
+   },
+   "retreat": 2.8463392277027997,
+   "burden": {
+    "needless_s": 3.1,
+    "needless_steer_s": 1.6,
+    "needless_throttle_s": 0.41,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13669868483297032
+  },
+  {
+   "seed": 37,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 11.750000000000032,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12951069456244288
+  },
+  {
+   "seed": 37,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 11.850000000000033,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1372678195965191
+  },
+  {
+   "seed": 37,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 11.850000000000033,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1372678195965191
+  },
+  {
+   "seed": 37,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.850000000000033,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1372678195965191
+  },
+  {
+   "seed": 37,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 11.850000000000033,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1372678195965191
+  },
+  {
+   "seed": 37,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.84999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07990888156985773
+  },
+  {
+   "seed": 37,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.94999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0846972739958359
+  },
+  {
+   "seed": 37,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 8.299999999999983,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.95,
+    "needless_steer_s": 0.95,
+    "needless_throttle_s": 0.39,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0846972739958359
+  },
+  {
+   "seed": 37,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 7.94999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0846972739958359
+  },
+  {
+   "seed": 37,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.94999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0846972739958359
+  },
+  {
+   "seed": 37,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 11.750000000000032,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10577190451787602
+  },
+  {
+   "seed": 37,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 11.800000000000033,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10403531090370154
+  },
+  {
+   "seed": 37,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.750000000000046,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 4.05,
+    "needless_steer_s": 3.1,
+    "needless_throttle_s": 0.49,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1037971679922934
+  },
+  {
+   "seed": 37,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.800000000000033,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10403531090370154
+  },
+  {
+   "seed": 37,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 11.800000000000033,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10403531090370154
+  },
+  {
+   "seed": 38,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 11.100000000000023,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0757900240848158
+  },
+  {
+   "seed": 38,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 11.150000000000023,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0839076427852832
+  },
+  {
+   "seed": 38,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 11.150000000000023,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0839076427852832
+  },
+  {
+   "seed": 38,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.150000000000023,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0839076427852832
+  },
+  {
+   "seed": 38,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 11.150000000000023,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0839076427852832
+  },
+  {
+   "seed": 38,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.499999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10348373702120779
+  },
+  {
+   "seed": 38,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.549999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1060482741612033
+  },
+  {
+   "seed": 38,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 7.89999999999998,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.15,
+    "needless_steer_s": 0.15,
+    "needless_throttle_s": 0.06,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1060482741612033
+  },
+  {
+   "seed": 38,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 7.549999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1060482741612033
+  },
+  {
+   "seed": 38,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.549999999999981,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1060482741612033
+  },
+  {
+   "seed": 38,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 11.050000000000022,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1387750717696493
+  },
+  {
+   "seed": 38,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 11.100000000000023,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11222290133700918
+  },
+  {
+   "seed": 38,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 11.250000000000025,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11222290133700918
+  },
+  {
+   "seed": 38,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.100000000000023,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11222290133700918
+  },
+  {
+   "seed": 38,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 11.100000000000023,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11222290133700918
+  },
+  {
+   "seed": 39,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": true,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 1.0744941776193944,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0015492915246930665
+  },
+  {
+   "seed": 39,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 20.75000000000016,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 3
+   },
+   "retreat": 0.9580795940385585,
+   "burden": {
+    "needless_s": 0.7,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.21,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.034433243717788053
+  },
+  {
+   "seed": 39,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 25.300000000000225,
+   "interventions": 3,
+   "needless": 1,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1,
+    "gate:limited:needed": 1,
+    "evasive:needed": 1
+   },
+   "retreat": 1.237139279831401,
+   "burden": {
+    "needless_s": 6.35,
+    "needless_steer_s": 5.8,
+    "needless_throttle_s": 1.68,
+    "needed_s": 1.8,
+    "needed_steer_s": 1.75,
+    "needed_throttle_s": 0.75
+   },
+   "min_clear": 0.07079922585840642
+  },
+  {
+   "seed": 39,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 23.000000000000192,
+   "interventions": 3,
+   "needless": 1,
+   "episodes": 2,
+   "progress": 1,
+   "kinds": {
+    "evasive:needless": 1,
+    "gate:limited:needed": 1,
+    "progress:needed": 1
+   },
+   "retreat": 0.9168980616166844,
+   "burden": {
+    "needless_s": 7.25,
+    "needless_steer_s": 5.8,
+    "needless_throttle_s": 1.93,
+    "needed_s": 6.25,
+    "needed_steer_s": 5.05,
+    "needed_throttle_s": 1.43
+   },
+   "min_clear": 0.074674681796246
+  },
+  {
+   "seed": 39,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 22.75000000000019,
+   "interventions": 5,
+   "needless": 5,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "gate:limited:needless": 3,
+    "progress:needless": 1,
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.4612413472935616,
+   "burden": {
+    "needless_s": 11.85,
+    "needless_steer_s": 10.4,
+    "needless_throttle_s": 3.55,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.034433243717788053
+  },
+  {
+   "seed": 39,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 12.100000000000037,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.6368815420176719,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04522210927443701
+  },
+  {
+   "seed": 39,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 13.550000000000058,
+   "interventions": 5,
+   "needless": 5,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2,
+    "gate:braking:needless": 3
+   },
+   "retreat": 0.7429039500081851,
+   "burden": {
+    "needless_s": 0.55,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.45,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04146201496865501
+  },
+  {
+   "seed": 39,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.200000000000038,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.3,
+    "needless_steer_s": 8.05,
+    "needless_throttle_s": 3.81,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05191734664514733
+  },
+  {
+   "seed": 39,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 23.250000000000195,
+   "interventions": 7,
+   "needless": 7,
+   "episodes": 2,
+   "progress": 1,
+   "kinds": {
+    "gate:limited:needless": 3,
+    "gate:braking:needless": 3,
+    "progress:needless": 1
+   },
+   "retreat": 1.2116270553585162,
+   "burden": {
+    "needless_s": 7.85,
+    "needless_steer_s": 6.15,
+    "needless_throttle_s": 4.02,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05191734664514733
+  },
+  {
+   "seed": 39,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 7,
+   "needless": 7,
+   "episodes": 1,
+   "progress": 3,
+   "kinds": {
+    "gate:limited:needless": 2,
+    "gate:braking:needless": 2,
+    "progress:needless": 3
+   },
+   "retreat": 2.631439427514532,
+   "burden": {
+    "needless_s": 18.45,
+    "needless_steer_s": 15.9,
+    "needless_throttle_s": 12.66,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05191734664514733
+  },
+  {
+   "seed": 39,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 14.800000000000075,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.5908700386526671,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03493279470739044
+  },
+  {
+   "seed": 39,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 15.80000000000009,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.596763570123013,
+   "burden": {
+    "needless_s": 0.6,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.19,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03186900307667781
+  },
+  {
+   "seed": 39,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 18.200000000000124,
+   "interventions": 5,
+   "needless": 5,
+   "episodes": 3,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "evasive:needless": 4
+   },
+   "retreat": 0.5354873898657737,
+   "burden": {
+    "needless_s": 7.35,
+    "needless_steer_s": 6.5,
+    "needless_throttle_s": 2.39,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07354005695841645
+  },
+  {
+   "seed": 39,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 24.35000000000021,
+   "interventions": 5,
+   "needless": 5,
+   "episodes": 2,
+   "progress": 2,
+   "kinds": {
+    "gate:limited:needless": 3,
+    "progress:needless": 2
+   },
+   "retreat": 1.1179127233889448,
+   "burden": {
+    "needless_s": 6.65,
+    "needless_steer_s": 5.2,
+    "needless_throttle_s": 1.77,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03180964430533195
+  },
+  {
+   "seed": 39,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 16.000000000000092,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 1,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "progress:needless": 1
+   },
+   "retreat": 0.596763570123013,
+   "burden": {
+    "needless_s": 1.35,
+    "needless_steer_s": 0.7,
+    "needless_throttle_s": 0.44,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03186900307667781
+  },
+  {
+   "seed": 40,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 9.299999999999997,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12857282052258456
+  },
+  {
+   "seed": 40,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 9.399999999999999,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1324169175218723
+  },
+  {
+   "seed": 40,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 9.399999999999999,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1324169175218723
+  },
+  {
+   "seed": 40,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 9.399999999999999,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1324169175218723
+  },
+  {
+   "seed": 40,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 9.399999999999999,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1324169175218723
+  },
+  {
+   "seed": 40,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.199999999999982,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.09112291969908012
+  },
+  {
+   "seed": 40,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.299999999999982,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12212909348174925
+  },
+  {
+   "seed": 40,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 13.250000000000053,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 10.55,
+    "needless_steer_s": 9.55,
+    "needless_throttle_s": 4.96,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1531400694205233
+  },
+  {
+   "seed": 40,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 16.950000000000106,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1,
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.2021623630883686,
+   "burden": {
+    "needless_s": 10.55,
+    "needless_steer_s": 9.85,
+    "needless_throttle_s": 4.99,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12221103743620775
+  },
+  {
+   "seed": 40,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.299999999999982,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12212909348174925
+  },
+  {
+   "seed": 40,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 9.299999999999997,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11086382685106391
+  },
+  {
+   "seed": 40,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 9.349999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13088527840740982
+  },
+  {
+   "seed": 40,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 13.300000000000054,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 10.55,
+    "needless_steer_s": 9.85,
+    "needless_throttle_s": 3.31,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1533377095832296
+  },
+  {
+   "seed": 40,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 14.100000000000065,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 10.5,
+    "needless_steer_s": 9.95,
+    "needless_throttle_s": 3.29,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1397454787734728
+  },
+  {
+   "seed": 40,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 9.349999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13088527840740982
+  },
+  {
+   "seed": 41,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": true,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3680095939843202,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.00018310982837110618
+  },
+  {
+   "seed": 41,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 2,
+   "needless": 1,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needed": 1,
+    "gate:limited:needless": 1
+   },
+   "retreat": 3.0968998907985066,
+   "burden": {
+    "needless_s": 0.2,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.12,
+    "needed_s": 0.9,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.63
+   },
+   "min_clear": 0.06376857490341242
+  },
+  {
+   "seed": 41,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 13.400000000000055,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 9.15,
+    "needless_steer_s": 8.35,
+    "needless_throttle_s": 2.65,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08870256329623358
+  },
+  {
+   "seed": 41,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 28.100000000000264,
+   "interventions": 1,
+   "needless": 0,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needed": 1
+   },
+   "retreat": 0.7606103429000429,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 14.3,
+    "needed_steer_s": 12.65,
+    "needed_throttle_s": 3.53
+   },
+   "min_clear": 0.08716685071354555
+  },
+  {
+   "seed": 41,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 18.450000000000127,
+   "interventions": 1,
+   "needless": 0,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needed": 1
+   },
+   "retreat": 0.3619351294412141,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 12.3,
+    "needed_steer_s": 11.9,
+    "needed_throttle_s": 3.1
+   },
+   "min_clear": 0.08873870847745507
+  },
+  {
+   "seed": 41,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 26.750000000000245,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 3.206432536659877,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.012456872206787201
+  },
+  {
+   "seed": 41,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 14,
+   "needless": 14,
+   "episodes": 4,
+   "progress": 0,
+   "kinds": {
+    "gate:braking:needless": 9,
+    "gate:limited:needless": 5
+   },
+   "retreat": 3.7132308715543196,
+   "burden": {
+    "needless_s": 3.15,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 2.51,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11638236418549908
+  },
+  {
+   "seed": 41,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 10.300000000000011,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 4.2,
+    "needless_steer_s": 4.05,
+    "needless_throttle_s": 2.08,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.15772338791900295
+  },
+  {
+   "seed": 41,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 10.450000000000014,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1,
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 4.9,
+    "needless_steer_s": 4.65,
+    "needless_throttle_s": 2.25,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06860839356234506
+  },
+  {
+   "seed": 41,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 8,
+   "needless": 8,
+   "episodes": 2,
+   "progress": 3,
+   "kinds": {
+    "gate:braking:needless": 2,
+    "gate:limited:needless": 3,
+    "progress:needless": 3
+   },
+   "retreat": 2.536320055119149,
+   "burden": {
+    "needless_s": 12.9,
+    "needless_steer_s": 9.6,
+    "needless_throttle_s": 9.45,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07485326816275112
+  },
+  {
+   "seed": 41,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 4.3536608844970015,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1216001649849169
+  },
+  {
+   "seed": 41,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 29.20000000000028,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 2.4396214741432254,
+   "burden": {
+    "needless_s": 0.6,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.3,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.026879634508582356
+  },
+  {
+   "seed": 41,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": null,
+   "interventions": 5,
+   "needless": 5,
+   "episodes": 5,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 5
+   },
+   "retreat": 3.5048266691832843,
+   "burden": {
+    "needless_s": 3.2,
+    "needless_steer_s": 2.95,
+    "needless_throttle_s": 0.54,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12247723606905613
+  },
+  {
+   "seed": 41,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 13.450000000000056,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 9.6,
+    "needless_steer_s": 9.15,
+    "needless_throttle_s": 3.19,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07230378614843821
+  },
+  {
+   "seed": 41,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 5,
+   "needless": 5,
+   "episodes": 2,
+   "progress": 5,
+   "kinds": {
+    "progress:needless": 5
+   },
+   "retreat": 2.773567308773628,
+   "burden": {
+    "needless_s": 12.0,
+    "needless_steer_s": 8.35,
+    "needless_throttle_s": 3.47,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04881199075123832
+  },
+  {
+   "seed": 42,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 12.950000000000049,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.029111826517494
+  },
+  {
+   "seed": 42,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 12.600000000000044,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04156805015099982
+  },
+  {
+   "seed": 42,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 15.000000000000078,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 11.45,
+    "needless_steer_s": 10.3,
+    "needless_throttle_s": 1.33,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12213463147426215
+  },
+  {
+   "seed": 42,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 12.600000000000044,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.05,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04156812652477851
+  },
+  {
+   "seed": 42,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 12.600000000000044,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04156805015099982
+  },
+  {
+   "seed": 42,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 4.667224453229613,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06688212067251748
+  },
+  {
+   "seed": 42,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 9,
+   "needless": 9,
+   "episodes": 4,
+   "progress": 0,
+   "kinds": {
+    "gate:braking:needless": 7,
+    "gate:limited:needless": 2
+   },
+   "retreat": 3.6993005121977567,
+   "burden": {
+    "needless_s": 1.8,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 1.61,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11555532544535838
+  },
+  {
+   "seed": 42,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": null,
+   "interventions": 12,
+   "needless": 12,
+   "episodes": 3,
+   "progress": 1,
+   "kinds": {
+    "evasive:needless": 5,
+    "gate:limited:needless": 3,
+    "gate:braking:needless": 3,
+    "progress:needless": 1
+   },
+   "retreat": 3.540999253405213,
+   "burden": {
+    "needless_s": 4.75,
+    "needless_steer_s": 3.0,
+    "needless_throttle_s": 2.12,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.11366616148461663
+  },
+  {
+   "seed": 42,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 12.450000000000042,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 9.0,
+    "needless_steer_s": 9.0,
+    "needless_throttle_s": 3.71,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10404647874824428
+  },
+  {
+   "seed": 42,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 8,
+   "needless": 8,
+   "episodes": 2,
+   "progress": 5,
+   "kinds": {
+    "gate:braking:needless": 2,
+    "progress:needless": 5,
+    "gate:limited:needless": 1
+   },
+   "retreat": 2.4906686050578717,
+   "burden": {
+    "needless_s": 14.35,
+    "needless_steer_s": 9.15,
+    "needless_throttle_s": 5.36,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1044672410696753
+  },
+  {
+   "seed": 42,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 14.700000000000074,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3651050617885665,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03701991260094353
+  },
+  {
+   "seed": 42,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": null,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 3.1865995476929663,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1239224608572918
+  },
+  {
+   "seed": 42,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 13.950000000000063,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 3
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 6.5,
+    "needless_steer_s": 6.25,
+    "needless_throttle_s": 0.84,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.1415153838635976
+  },
+  {
+   "seed": 42,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 12.850000000000048,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 3.3,
+    "needless_steer_s": 3.3,
+    "needless_throttle_s": 0.44,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06591116697583135
+  },
+  {
+   "seed": 42,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 2,
+   "kinds": {
+    "progress:needless": 2
+   },
+   "retreat": 2.835028690257216,
+   "burden": {
+    "needless_s": 10.4,
+    "needless_steer_s": 9.55,
+    "needless_throttle_s": 1.31,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.12125889595405144
+  },
+  {
+   "seed": 43,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 12.950000000000049,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0397187088105905
+  },
+  {
+   "seed": 43,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 13.00000000000005,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.045988348251069594
+  },
+  {
+   "seed": 43,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 13.00000000000005,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.045988348251069594
+  },
+  {
+   "seed": 43,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 13.00000000000005,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.045988348251069594
+  },
+  {
+   "seed": 43,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 13.00000000000005,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.045988348251069594
+  },
+  {
+   "seed": 43,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 8.299999999999983,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.030941474495386867
+  },
+  {
+   "seed": 43,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 10.800000000000018,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.37188433511818175,
+   "burden": {
+    "needless_s": 0.15,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.15,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05999278386216217
+  },
+  {
+   "seed": 43,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 14.350000000000069,
+   "interventions": 3,
+   "needless": 3,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1,
+    "gate:limited:needless": 1,
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.3623584420567292,
+   "burden": {
+    "needless_s": 7.8,
+    "needless_steer_s": 6.7,
+    "needless_throttle_s": 2.99,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06805225900348899
+  },
+  {
+   "seed": 43,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.100000000000023,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 6.8,
+    "needless_steer_s": 6.3,
+    "needless_throttle_s": 2.62,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07056387762901736
+  },
+  {
+   "seed": 43,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 10.800000000000018,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:braking:needless": 1
+   },
+   "retreat": 0.37188433511818175,
+   "burden": {
+    "needless_s": 0.15,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.15,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.05999278386216217
+  },
+  {
+   "seed": 43,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 15.700000000000088,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.3688596180028032,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.029997065830366848
+  },
+  {
+   "seed": 43,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 15.900000000000091,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 2
+   },
+   "retreat": 0.35707174268676045,
+   "burden": {
+    "needless_s": 0.5,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.02,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.032295036472990424
+  },
+  {
+   "seed": 43,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 13.350000000000055,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.2,
+    "needless_steer_s": 6.4,
+    "needless_throttle_s": 0.28,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0745762883075019
+  },
+  {
+   "seed": 43,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 13.400000000000055,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 7.2,
+    "needless_steer_s": 7.15,
+    "needless_throttle_s": 0.28,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03551762324000418
+  },
+  {
+   "seed": 43,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 16.300000000000097,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "progress:needless": 1
+   },
+   "retreat": 0.35707174268676045,
+   "burden": {
+    "needless_s": 6.15,
+    "needless_steer_s": 5.2,
+    "needless_throttle_s": 0.23,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04341162248964464
+  },
+  {
+   "seed": 44,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 12.000000000000036,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.031379857696696156
+  },
+  {
+   "seed": 44,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 12.050000000000036,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.01,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.026225037104183196
+  },
+  {
+   "seed": 44,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.35000000000004,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "evasive:needless": 1
+   },
+   "retreat": 0.0009884127660755304,
+   "burden": {
+    "needless_s": 3.15,
+    "needless_steer_s": 2.9,
+    "needless_throttle_s": 0.23,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.027317051579327487
+  },
+  {
+   "seed": 44,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 12.35000000000004,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1,
+    "evasive:needless": 1
+   },
+   "retreat": 0.0009884127660755304,
+   "burden": {
+    "needless_s": 3.25,
+    "needless_steer_s": 3.0,
+    "needless_throttle_s": 0.23,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.027317051579327487
+  },
+  {
+   "seed": 44,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 12.050000000000036,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.1,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.01,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.026225037104183196
+  },
+  {
+   "seed": 44,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.149999999999983,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.02496546894128937
+  },
+  {
+   "seed": 44,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.249999999999982,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.056652436038174714
+  },
+  {
+   "seed": 44,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 9.099999999999994,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 4.75,
+    "needless_steer_s": 4.2,
+    "needless_throttle_s": 1.72,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0823261585895522
+  },
+  {
+   "seed": 44,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 7.349999999999982,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.056652436038174714
+  },
+  {
+   "seed": 44,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.249999999999982,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.056652436038174714
+  },
+  {
+   "seed": 44,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 11.950000000000035,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.03789475675801607
+  },
+  {
+   "seed": 44,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 12.000000000000036,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.039744415746596234
+  },
+  {
+   "seed": 44,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.35000000000004,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.6,
+    "needless_steer_s": 5.3,
+    "needless_throttle_s": 0.07,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.061166375267691225
+  },
+  {
+   "seed": 44,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 12.000000000000036,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.039744415746596234
+  },
+  {
+   "seed": 44,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 12.000000000000036,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.039744415746596234
+  },
+  {
+   "seed": 45,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 9.049999999999994,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08031077159631853
+  },
+  {
+   "seed": 45,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 9.149999999999995,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10816850157690872
+  },
+  {
+   "seed": 45,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 9.249999999999996,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.2,
+    "needless_steer_s": 0.2,
+    "needless_throttle_s": 0.06,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10816850157690872
+  },
+  {
+   "seed": 45,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 9.149999999999995,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10816850157690872
+  },
+  {
+   "seed": 45,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 9.149999999999995,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10816850157690872
+  },
+  {
+   "seed": 45,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.049999999999983,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08094191603686313
+  },
+  {
+   "seed": 45,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.299999999999982,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.3,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.06,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04301717608091088
+  },
+  {
+   "seed": 45,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 11.65000000000003,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.35,
+    "needless_steer_s": 8.05,
+    "needless_throttle_s": 3.94,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.20842651796611242
+  },
+  {
+   "seed": 45,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 14.600000000000072,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.27475174948572434,
+   "burden": {
+    "needless_s": 8.85,
+    "needless_steer_s": 8.8,
+    "needless_throttle_s": 4.18,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10536912035949642
+  },
+  {
+   "seed": 45,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.299999999999982,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "gate:limited:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.3,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.06,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.04301717608091088
+  },
+  {
+   "seed": 45,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 9.199999999999996,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07285670316855045
+  },
+  {
+   "seed": 45,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 9.099999999999994,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0623855223132142
+  },
+  {
+   "seed": 45,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.450000000000042,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.9,
+    "needless_steer_s": 8.65,
+    "needless_throttle_s": 2.84,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.21571437813630698
+  },
+  {
+   "seed": 45,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 12.700000000000045,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 8.65,
+    "needless_steer_s": 8.65,
+    "needless_throttle_s": 2.76,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.21491651088329947
+  },
+  {
+   "seed": 45,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 9.099999999999994,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0623855223132142
+  },
+  {
+   "seed": 46,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 14.350000000000069,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.055930862103047256
+  },
+  {
+   "seed": 46,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 14.40000000000007,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07652253322614705
+  },
+  {
+   "seed": 46,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 14.40000000000007,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07652253322614705
+  },
+  {
+   "seed": 46,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 14.40000000000007,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07652253322614705
+  },
+  {
+   "seed": 46,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 14.40000000000007,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07652253322614705
+  },
+  {
+   "seed": 46,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 8.84999999999999,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07469934551526583
+  },
+  {
+   "seed": 46,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 8.899999999999991,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10412995729979671
+  },
+  {
+   "seed": 46,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 8.999999999999993,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.05,
+    "needless_steer_s": 0.05,
+    "needless_throttle_s": 0.02,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10412995729979671
+  },
+  {
+   "seed": 46,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 8.899999999999991,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10412995729979671
+  },
+  {
+   "seed": 46,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 8.899999999999991,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.10412995729979671
+  },
+  {
+   "seed": 46,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 14.350000000000069,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.02919231864004987
+  },
+  {
+   "seed": 46,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 14.350000000000069,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06585735576341833
+  },
+  {
+   "seed": 46,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 14.350000000000069,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.45,
+    "needless_steer_s": 0.4,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06585735576341833
+  },
+  {
+   "seed": 46,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 14.350000000000069,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06585735576341833
+  },
+  {
+   "seed": 46,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 14.350000000000069,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06585735576341833
+  },
+  {
+   "seed": 47,
+   "style": "lapsing",
+   "variant": "off",
+   "crashed": false,
+   "reached": 12.050000000000036,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.13629859361937788
+  },
+  {
+   "seed": 47,
+   "style": "lapsing",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 12.100000000000037,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08010869818876942
+  },
+  {
+   "seed": 47,
+   "style": "lapsing",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 27.00000000000025,
+   "interventions": 1,
+   "needless": 0,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needed": 1
+   },
+   "retreat": 1.2212084100368543,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 14.95,
+    "needed_steer_s": 14.45,
+    "needed_throttle_s": 11.01
+   },
+   "min_clear": 0.08010869818876942
+  },
+  {
+   "seed": 47,
+   "style": "lapsing",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 12.100000000000037,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08010869818876942
+  },
+  {
+   "seed": 47,
+   "style": "lapsing",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": null,
+   "interventions": 2,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 1,
+   "kinds": {
+    "evasive:needed": 1,
+    "progress:needless": 1
+   },
+   "retreat": 1.6696977860156146,
+   "burden": {
+    "needless_s": 2.8,
+    "needless_steer_s": 2.65,
+    "needless_throttle_s": 2.8,
+    "needed_s": 14.95,
+    "needed_steer_s": 14.2,
+    "needed_throttle_s": 12.06
+   },
+   "min_clear": 0.0756368619734207
+  },
+  {
+   "seed": 47,
+   "style": "aggressive",
+   "variant": "off",
+   "crashed": false,
+   "reached": 7.7499999999999805,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.06273827994090708
+  },
+  {
+   "seed": 47,
+   "style": "aggressive",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 7.84999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07873770867010535
+  },
+  {
+   "seed": 47,
+   "style": "aggressive",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 10.600000000000016,
+   "interventions": 2,
+   "needless": 2,
+   "episodes": 2,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 2
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 5.15,
+    "needless_steer_s": 4.15,
+    "needless_throttle_s": 2.25,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08762931898949816
+  },
+  {
+   "seed": 47,
+   "style": "aggressive",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 10.500000000000014,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 5.3,
+    "needless_steer_s": 5.05,
+    "needless_throttle_s": 2.32,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08295707175137707
+  },
+  {
+   "seed": 47,
+   "style": "aggressive",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 7.84999999999998,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07873770867010535
+  },
+  {
+   "seed": 47,
+   "style": "late",
+   "variant": "off",
+   "crashed": false,
+   "reached": 10.700000000000017,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.08304315761411887
+  },
+  {
+   "seed": 47,
+   "style": "late",
+   "variant": "brake-only",
+   "crashed": false,
+   "reached": 10.800000000000018,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0425491792354151
+  },
+  {
+   "seed": 47,
+   "style": "late",
+   "variant": "adas",
+   "crashed": false,
+   "reached": 12.000000000000036,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 4.35,
+    "needless_steer_s": 4.1,
+    "needless_throttle_s": 0.96,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07459687081704466
+  },
+  {
+   "seed": 47,
+   "style": "late",
+   "variant": "adas+intent",
+   "crashed": false,
+   "reached": 11.800000000000033,
+   "interventions": 1,
+   "needless": 1,
+   "episodes": 1,
+   "progress": 0,
+   "kinds": {
+    "evasive:needless": 1
+   },
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 4.35,
+    "needless_steer_s": 4.1,
+    "needless_throttle_s": 0.96,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.07459687081704466
+  },
+  {
+   "seed": 47,
+   "style": "late",
+   "variant": "adas+oracle",
+   "crashed": false,
+   "reached": 10.800000000000018,
+   "interventions": 0,
+   "needless": 0,
+   "episodes": 0,
+   "progress": 0,
+   "kinds": {},
+   "retreat": 0.0,
+   "burden": {
+    "needless_s": 0.0,
+    "needless_steer_s": 0.0,
+    "needless_throttle_s": 0.0,
+    "needed_s": 0.0,
+    "needed_steer_s": 0.0,
+    "needed_throttle_s": 0.0
+   },
+   "min_clear": 0.0425491792354151
+  }
+ ]
+}

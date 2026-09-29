@@ -1,0 +1,19 @@
+{
+ "log": "20260928_004952_log_drive.jsonl.gz",
+ "lidar": {
+  "beams_compared": 9928,
+  "median_abs_error_cm": 1.0636942331579968,
+  "p90_abs_error_cm": 8.103001730283426,
+  "within_5cm_pct": 86.13013698630137,
+  "bias_cm": -0.5737805151470432,
+  "map_cells": 1955,
+  "test_scans": 12
+ },
+ "motion": {
+  "windows": 48,
+  "horizon_s": 3.0,
+  "median_end_error_cm": 4.459815270792087,
+  "p90_end_error_cm": 9.637000908858557,
+  "distance_driven_m": 18.20395591868465
+ }
+}

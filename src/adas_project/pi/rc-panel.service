@@ -1,0 +1,16 @@
+[Unit]
+Description=RC car control panel (buttons for drive / obstacle avoidance / calibration)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/pi/rc_car
+ExecStart=/usr/bin/python3 -u /home/pi/rc_car/pi/control_panel.py
+Restart=always
+RestartSec=2
+StandardOutput=append:/home/pi/panel.log
+StandardError=append:/home/pi/panel.log
+
+[Install]
+WantedBy=multi-user.target

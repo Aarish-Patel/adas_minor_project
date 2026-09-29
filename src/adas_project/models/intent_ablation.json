@@ -1,0 +1,92 @@
+{
+ "nominal": {
+  "train_ticks": 252896,
+  "test_nominal": {
+   "ticks": {
+    "n": 65300,
+    "positives": 4923,
+    "auc": 0.9656761731573869,
+    "ap": 0.6769468578620301,
+    "brier": 0.03875955062303787,
+    "ece": 0.022372890901562595,
+    "recall": 0.6240097501523462,
+    "false_alarm": 0.024032330191960515
+   },
+   "runs": {
+    "crash_runs": 90,
+    "lead_median_s": 1.25,
+    "warned_0.5s_before": 0.8666666666666667,
+    "warned_1s_before": 0.6111111111111112,
+    "missed": 0.06666666666666667,
+    "safe_runs": 303,
+    "safe_runs_with_false_alarm": 0.1419141914191419
+   }
+  },
+  "test_wide": {
+   "ticks": {
+    "n": 75163,
+    "positives": 14522,
+    "auc": 0.8714747746746476,
+    "ap": 0.6344135810749497,
+    "brier": 0.13075085669848424,
+    "ece": 0.11982338307257408,
+    "recall": 0.32096130009640544,
+    "false_alarm": 0.02465328737982553
+   },
+   "runs": {
+    "crash_runs": 100,
+    "lead_median_s": 0.8250000000000001,
+    "warned_0.5s_before": 0.76,
+    "warned_1s_before": 0.43,
+    "missed": 0.08,
+    "safe_runs": 266,
+    "safe_runs_with_false_alarm": 0.14661654135338345
+   }
+  }
+ },
+ "randomised": {
+  "train_ticks": 252896,
+  "test_nominal": {
+   "ticks": {
+    "n": 65300,
+    "positives": 4923,
+    "auc": 0.9634978970967145,
+    "ap": 0.6800829430361431,
+    "brier": 0.03688616900035937,
+    "ece": 0.015322065902423266,
+    "recall": 0.6705261019703432,
+    "false_alarm": 0.027278599466684334
+   },
+   "runs": {
+    "crash_runs": 90,
+    "lead_median_s": 1.2000000000000002,
+    "warned_0.5s_before": 0.9,
+    "warned_1s_before": 0.6,
+    "missed": 0.05555555555555555,
+    "safe_runs": 303,
+    "safe_runs_with_false_alarm": 0.20132013201320131
+   }
+  },
+  "test_wide": {
+   "ticks": {
+    "n": 75163,
+    "positives": 14522,
+    "auc": 0.9618940425920892,
+    "ap": 0.8528120767915751,
+    "brier": 0.05864985867321713,
+    "ece": 0.017595348184911576,
+    "recall": 0.7737226277372263,
+    "false_alarm": 0.0430731683184644
+   },
+   "runs": {
+    "crash_runs": 100,
+    "lead_median_s": 1.1,
+    "warned_0.5s_before": 0.9,
+    "warned_1s_before": 0.6,
+    "missed": 0.02,
+    "safe_runs": 266,
+    "safe_runs_with_false_alarm": 0.14285714285714285
+   }
+  }
+ }
+}

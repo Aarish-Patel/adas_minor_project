@@ -1,0 +1,52 @@
+[
+ {
+  "name": "Evasive steer around a block",
+  "pass": true,
+  "detail": "with assist: steered around, passed the block (x 4.3 m), closest 9 cm, control handed back; without: emergency braking stopped at x 1.71 m"
+ },
+ {
+  "name": "Evasive steer stays out when the driver is already avoiding",
+  "pass": false,
+  "detail": "driver steered around it themselves: assist intervened for 198 ticks, no contact"
+ },
+ {
+  "name": "Evasive steer: no way around -> braking only",
+  "pass": true,
+  "detail": "wall across the whole room: no escape path, emergency braking stopped it 78 cm short"
+ },
+ {
+  "name": "Corridor centring",
+  "pass": true,
+  "detail": "driver's steering drifts left: with centring the car stays within 0 cm of the centre for 5.1 m; without it is stopped by braking at 1.2 m"
+ },
+ {
+  "name": "Centring yields to a deliberate turn",
+  "pass": false,
+  "detail": "driver turns out of the corridor on purpose: centring lets go (ends 0.10 m to the left)"
+ },
+ {
+  "name": "Speed-vs-steering limiter",
+  "pass": true,
+  "detail": "full throttle at full lock: lateral acceleration 1.20 m/s^2 with the limiter, 2.53 without"
+ },
+ {
+  "name": "Narrow gap: won't fit",
+  "pass": true,
+  "detail": "18 cm gap for a 20 cm car: 'won't fit' warning, stopped before it (x 1.47 m), no contact"
+ },
+ {
+  "name": "Narrow gap: tight but fits",
+  "pass": false,
+  "detail": "32 cm gap: slowed, passed through (x 2.1 m), closest 6 cm"
+ },
+ {
+  "name": "Side proximity alert",
+  "pass": true,
+  "detail": "object beside the car: side alert, raised to a warning when the driver steers toward it"
+ },
+ {
+  "name": "Dead-man smooth stop",
+  "pass": true,
+  "detail": "driver link lost at PWM 200: held 0.5 s, then ramped to 0 by 1.18 s (largest step 6 PWM)"
+ }
+]

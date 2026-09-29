@@ -1,0 +1,413 @@
+{
+  "train_episodes": 400,
+  "test_episodes": 100,
+  "curves": {
+    "physics": [
+      {
+        "threshold": 0.05,
+        "detection": 0.978021978021978,
+        "lead_time": 1.5898876404494433,
+        "false_alarms_per_min": 21.21929008850975,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.1,
+        "detection": 0.978021978021978,
+        "lead_time": 1.5570786516853985,
+        "false_alarms_per_min": 19.88947081865764,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.15,
+        "detection": 0.978021978021978,
+        "lead_time": 1.5203370786516905,
+        "false_alarms_per_min": 19.16674295460758,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.2,
+        "detection": 0.978021978021978,
+        "lead_time": 1.4247191011236,
+        "false_alarms_per_min": 18.06819660125149,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.25,
+        "detection": 0.978021978021978,
+        "lead_time": 1.409550561797758,
+        "false_alarms_per_min": 17.056377591581406,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.3,
+        "detection": 0.978021978021978,
+        "lead_time": 1.3797752808988824,
+        "false_alarms_per_min": 15.842194779977307,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.35,
+        "detection": 0.967032967032967,
+        "lead_time": 1.342613636363643,
+        "false_alarms_per_min": 14.714739312059214,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.4,
+        "detection": 0.967032967032967,
+        "lead_time": 1.3023863636363673,
+        "false_alarms_per_min": 13.934193218885149,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.45,
+        "detection": 0.9560439560439561,
+        "lead_time": 1.27747126436782,
+        "false_alarms_per_min": 13.153647125711085,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.5,
+        "detection": 0.9560439560439561,
+        "lead_time": 1.217701149425293,
+        "false_alarms_per_min": 11.939464314106985,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.55,
+        "detection": 0.9560439560439561,
+        "lead_time": 1.15275862068966,
+        "false_alarms_per_min": 11.15891822093292,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.6,
+        "detection": 0.9560439560439561,
+        "lead_time": 1.1236781609195463,
+        "false_alarms_per_min": 10.783099731626889,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.65,
+        "detection": 0.9560439560439561,
+        "lead_time": 1.106551724137937,
+        "false_alarms_per_min": 9.684553378270799,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.7,
+        "detection": 0.9560439560439561,
+        "lead_time": 1.0608045977011555,
+        "false_alarms_per_min": 8.701643483162718,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.75,
+        "detection": 0.9340659340659341,
+        "lead_time": 1.0384705882353005,
+        "false_alarms_per_min": 8.094552077360667,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.8,
+        "detection": 0.9340659340659341,
+        "lead_time": 1.0001176470588302,
+        "false_alarms_per_min": 7.429642442434613,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.85,
+        "detection": 0.9230769230769231,
+        "lead_time": 0.9442857142857184,
+        "false_alarms_per_min": 6.649096349260549,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.9,
+        "detection": 0.9010989010989011,
+        "lead_time": 0.8648780487804917,
+        "false_alarms_per_min": 5.666186454152467,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.95,
+        "detection": 0.8571428571428571,
+        "lead_time": 0.8625641025641061,
+        "false_alarms_per_min": 5.059095048350417,
+        "hazards": 91
+      }
+    ],
+    "blend": [
+      {
+        "threshold": 0.05,
+        "detection": 0.978021978021978,
+        "lead_time": 1.6933707865168557,
+        "false_alarms_per_min": 26.654203626166197,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.1,
+        "detection": 0.967032967032967,
+        "lead_time": 1.6088636363636395,
+        "false_alarms_per_min": 22.404563785551847,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.15,
+        "detection": 0.945054945054945,
+        "lead_time": 1.5752325581395394,
+        "false_alarms_per_min": 20.034016391467652,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.2,
+        "detection": 0.945054945054945,
+        "lead_time": 1.551976744186053,
+        "false_alarms_per_min": 18.675288007053542,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.25,
+        "detection": 0.945054945054945,
+        "lead_time": 1.4776744186046593,
+        "false_alarms_per_min": 17.258741393515425,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.3,
+        "detection": 0.945054945054945,
+        "lead_time": 1.3713953488372197,
+        "false_alarms_per_min": 16.420377071217356,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.35,
+        "detection": 0.9340659340659341,
+        "lead_time": 1.3208235294117756,
+        "false_alarms_per_min": 15.321830717861264,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.4,
+        "detection": 0.9340659340659341,
+        "lead_time": 1.2842352941176585,
+        "false_alarms_per_min": 14.107647906257164,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.45,
+        "detection": 0.9010989010989011,
+        "lead_time": 1.2493902439024533,
+        "false_alarms_per_min": 13.269283583959094,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.5,
+        "detection": 0.8791208791208791,
+        "lead_time": 1.1921250000000156,
+        "false_alarms_per_min": 12.37310103253702,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.55,
+        "detection": 0.8461538461538461,
+        "lead_time": 1.1535064935065067,
+        "false_alarms_per_min": 11.130009106370919,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.6,
+        "detection": 0.8351648351648352,
+        "lead_time": 1.0957894736842224,
+        "false_alarms_per_min": 10.031462753014827,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.65,
+        "detection": 0.8241758241758241,
+        "lead_time": 1.0520000000000103,
+        "false_alarms_per_min": 9.164189316154756,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.7,
+        "detection": 0.7802197802197802,
+        "lead_time": 1.0519718309859225,
+        "false_alarms_per_min": 8.210188535608678,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.75,
+        "detection": 0.7472527472527473,
+        "lead_time": 1.0401470588235362,
+        "false_alarms_per_min": 7.603097129806627,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.8,
+        "detection": 0.6813186813186813,
+        "lead_time": 1.022258064516133,
+        "false_alarms_per_min": 6.851460151194565,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.85,
+        "detection": 0.6263736263736264,
+        "lead_time": 1.0000000000000053,
+        "false_alarms_per_min": 6.273277859954518,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.9,
+        "detection": 0.5054945054945055,
+        "lead_time": 1.03391304347827,
+        "false_alarms_per_min": 5.1458223920364246,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.95,
+        "detection": 0.4065934065934066,
+        "lead_time": 1.1394594594594676,
+        "false_alarms_per_min": 4.48091275711037,
+        "hazards": 91
+      }
+    ],
+    "adaptive": [
+      {
+        "threshold": 0.05,
+        "detection": 1.0,
+        "lead_time": 2.2424175824175885,
+        "false_alarms_per_min": 25.989293991240142,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.1,
+        "detection": 0.989010989010989,
+        "lead_time": 1.9106666666666599,
+        "false_alarms_per_min": 23.300746336973923,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.15,
+        "detection": 0.967032967032967,
+        "lead_time": 1.73272727272727,
+        "false_alarms_per_min": 21.248199203071753,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.2,
+        "detection": 0.9340659340659341,
+        "lead_time": 1.6214117647058859,
+        "false_alarms_per_min": 20.901289828327723,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.25,
+        "detection": 0.9010989010989011,
+        "lead_time": 1.635243902439032,
+        "false_alarms_per_min": 18.386196861433515,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.3,
+        "detection": 0.8901098901098901,
+        "lead_time": 1.5304938271604978,
+        "false_alarms_per_min": 14.888193999431229,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.35,
+        "detection": 0.8571428571428571,
+        "lead_time": 1.367179487179492,
+        "false_alarms_per_min": 12.055100772354994,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.4,
+        "detection": 0.7912087912087912,
+        "lead_time": 1.3343055555555612,
+        "false_alarms_per_min": 10.176008325824839,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.45,
+        "detection": 0.7582417582417582,
+        "lead_time": 1.2771014492753667,
+        "false_alarms_per_min": 8.296915879294684,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.5,
+        "detection": 0.6703296703296703,
+        "lead_time": 1.2132786885245852,
+        "false_alarms_per_min": 6.388914318202527,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.55,
+        "detection": 0.6483516483516484,
+        "lead_time": 1.0754237288135575,
+        "false_alarms_per_min": 4.97236770466441,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.6,
+        "detection": 0.5714285714285714,
+        "lead_time": 1.001923076923076,
+        "false_alarms_per_min": 3.3534572891922765,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.65,
+        "detection": 0.5164835164835165,
+        "lead_time": 0.9819148936170216,
+        "false_alarms_per_min": 2.3705473940841957,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.7,
+        "detection": 0.43956043956043955,
+        "lead_time": 0.9644999999999986,
+        "false_alarms_per_min": 1.2720010407281048,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.75,
+        "detection": 0.3076923076923077,
+        "lead_time": 0.881785714285713,
+        "false_alarms_per_min": 0.6070914058020501,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.8,
+        "detection": 0.14285714285714285,
+        "lead_time": 0.8200000000000224,
+        "false_alarms_per_min": 0.20236380193401668,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.85,
+        "detection": 0.054945054945054944,
+        "lead_time": 0.83800000000005,
+        "false_alarms_per_min": 0.028909114562002385,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.9,
+        "detection": 0.02197802197802198,
+        "lead_time": 0.9200000000001438,
+        "false_alarms_per_min": 0.0,
+        "hazards": 91
+      },
+      {
+        "threshold": 0.95,
+        "detection": 0.0,
+        "lead_time": 0.0,
+        "false_alarms_per_min": 0.0,
+        "hazards": 91
+      }
+    ]
+  },
+  "hazards_test": 91,
+  "minutes_test": 34.59116666666717
+}

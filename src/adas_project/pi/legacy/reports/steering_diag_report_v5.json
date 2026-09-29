@@ -1,0 +1,170 @@
+{
+  "started": 1790110582.5605805,
+  "center0": 90.0,
+  "passes": [
+    {
+      "aborted": "insufficient clearance at pass start",
+      "outer": 0
+    }
+  ],
+  "converged": false,
+  "stop_reason": "pass 0 aborted: insufficient clearance at pass start",
+  "center_final": 90.0,
+  "log": [
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -110,
+      "floor": 0.4395,
+      "floor_bearing": 166.74375,
+      "front": 1.02525,
+      "rear": 0.4295
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": -35,
+      "direction": "forward",
+      "target_bin": -40,
+      "floor": 0.42525,
+      "floor_bearing": 165.134375,
+      "front": 1.04325,
+      "rear": 0.41525
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": -30,
+      "direction": "forward",
+      "target_bin": -30,
+      "floor": 0.4565,
+      "floor_bearing": 168.61875,
+      "front": 1.0145000000000002,
+      "rear": 0.4465
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -120,
+      "floor": 0.47375,
+      "floor_bearing": -72.02187500000002,
+      "front": 1.0010000000000001,
+      "rear": 0.47124999999999995
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -130,
+      "floor": 0.45475,
+      "floor_bearing": 167.665625,
+      "front": 1.0170000000000001,
+      "rear": 0.44475
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -130,
+      "floor": 0.44299999999999995,
+      "floor_bearing": 166.634375,
+      "front": 1.02625,
+      "rear": 0.43299999999999994
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": -35,
+      "direction": "forward",
+      "target_bin": -40,
+      "floor": 0.42799999999999994,
+      "floor_bearing": 164.4,
+      "front": 1.0425,
+      "rear": 0.4179999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -110,
+      "floor": 0.45999999999999996,
+      "floor_bearing": 167.74375,
+      "front": 1.0150000000000001,
+      "rear": 0.44999999999999996
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -130,
+      "floor": 0.43174999999999997,
+      "floor_bearing": 164.884375,
+      "front": 1.0357500000000002,
+      "rear": 0.42174999999999996
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -130,
+      "floor": 0.41899999999999993,
+      "floor_bearing": 162.228125,
+      "front": 1.05,
+      "rear": 0.4089999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -130,
+      "floor": 0.40525,
+      "floor_bearing": 160.9625,
+      "front": 1.05725,
+      "rear": 0.39525
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -140,
+      "floor": 0.38349999999999995,
+      "floor_bearing": 158.61875,
+      "front": 1.0750000000000002,
+      "rear": 0.37349999999999994
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": -35,
+      "direction": "forward",
+      "target_bin": -40,
+      "floor": 0.37049999999999994,
+      "floor_bearing": 156.821875,
+      "front": 1.09175,
+      "rear": 0.36049999999999993
+    },
+    {
+      "event": "reposition",
+      "attempt": 13,
+      "steer_offset": -35,
+      "direction": "reverse",
+      "target_bin": -130,
+      "floor": 0.40674999999999994,
+      "floor_bearing": 161.196875,
+      "front": 1.05075,
+      "rear": 0.39674999999999994
+    }
+  ],
+  "finished": 1790110610.1915197
+}

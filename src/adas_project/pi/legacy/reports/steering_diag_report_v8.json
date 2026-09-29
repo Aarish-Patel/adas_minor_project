@@ -1,0 +1,747 @@
+{
+  "started": 1790191649.1574047,
+  "center0": 90.0,
+  "passes": [
+    {
+      "sign_probe": {
+        "raw_angle": 115.0,
+        "bearing_before": 31.765625,
+        "bearing_after": 32.578125,
+        "turn_rate_deg_s": 1.158522651362352,
+        "duration_s": 0.7013242244720459
+      },
+      "centers_tried": [
+        {
+          "center": 90.0,
+          "drift_deg": -0.140625
+        }
+      ],
+      "center_this_pass": 90.0,
+      "outer": 0
+    },
+    {
+      "sign_probe": {
+        "raw_angle": 115.0,
+        "bearing_before": 30.234375,
+        "bearing_after": 30.015625,
+        "turn_rate_deg_s": -0.31191577664819997,
+        "duration_s": 0.7013111114501953
+      },
+      "centers_tried": [
+        {
+          "center": 90.0,
+          "drift_deg": 0.40625
+        }
+      ],
+      "center_this_pass": 90.0,
+      "outer": 1
+    }
+  ],
+  "speed_table": [
+    {
+      "pwm": 110,
+      "speed_m_s": 0.08239732753454232,
+      "n_samples": 6
+    },
+    {
+      "pwm": 140,
+      "speed_m_s": 0.03460095394146967,
+      "n_samples": 6
+    },
+    {
+      "pwm": 170,
+      "speed_m_s": 0.0,
+      "n_samples": 6
+    },
+    {
+      "pwm": 200,
+      "speed_m_s": 0.006599468174876268,
+      "n_samples": 6
+    },
+    {
+      "pwm": 230,
+      "speed_m_s": 0.06027400729075408,
+      "n_samples": 6
+    }
+  ],
+  "speed_model_fit": {
+    "slope_m_s_per_pwm": -7.598781348765672e-05,
+    "deadband_pwm": 937.6347312829831,
+    "v_max_at_255": 0.05187192064092798
+  },
+  "turn_table": [
+    {
+      "offset_from_center": -35,
+      "n_samples": 6,
+      "turn_rate_deg_s_median": 1.1131744643676473,
+      "turn_radius_m": 1.7809325435472183
+    },
+    {
+      "offset_from_center": -20,
+      "n_samples": 6,
+      "turn_rate_deg_s_median": 1.5909592399435217,
+      "turn_radius_m": 1.2460964306718905
+    },
+    {
+      "offset_from_center": 20,
+      "n_samples": 6,
+      "turn_rate_deg_s_median": 2.005195573748393,
+      "turn_radius_m": 0.9886759457244068
+    },
+    {
+      "offset_from_center": 35,
+      "n_samples": 6,
+      "turn_rate_deg_s_median": 0.9463657442564587,
+      "turn_radius_m": 2.094844030724812
+    }
+  ],
+  "v_at_test_pwm": 0.03460095394146967,
+  "center_history": [
+    90.0,
+    90.0
+  ],
+  "asymmetry_ratio_20deg": 0.23037736430462755,
+  "asym_history": [
+    0.8444947197519831,
+    0.23037736430462755
+  ],
+  "vmax_history": [
+    0.019934969598363605,
+    0.05187192064092798
+  ],
+  "log": [
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 0,
+      "speed_m_s": 0.18046949962531234
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 1,
+      "speed_m_s": 0.17121366475501978
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 2,
+      "speed_m_s": 0.04457825890728248
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 0,
+      "speed_m_s": 0.09521260724078215
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 1,
+      "speed_m_s": 0.06919765613127057
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 2,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 0,
+      "speed_m_s": 0.06277793011460932
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 1,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 2,
+      "speed_m_s": 0.11485467016799736
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 0,
+      "speed_m_s": 0.19225862191109536
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.51925,
+      "floor_bearing": -142.796875,
+      "front": 1.0425,
+      "rear": 0.5155
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.53025,
+      "floor_bearing": -143.484375,
+      "front": 1.0290000000000001,
+      "rear": 0.5285
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 1,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.53375,
+      "floor_bearing": -144.921875,
+      "front": 1.0145000000000002,
+      "rear": 0.5375
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 2,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 0,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 1,
+      "speed_m_s": 0.05990938690433535
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 2,
+      "speed_m_s": 0.08667889213101848
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 30.546875,
+        "bearing_after": 32.015625,
+        "turn_rate_deg_s": 2.0913517471713345,
+        "duration_s": 0.7022969722747803
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 30.875,
+        "bearing_after": 31.15625,
+        "turn_rate_deg_s": 0.40106565703957864,
+        "duration_s": 0.7012567520141602
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 30.375,
+        "bearing_after": 31.171875,
+        "turn_rate_deg_s": 1.1361595548823435,
+        "duration_s": 0.7013759613037109
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 30.40625,
+        "bearing_after": 30.609375,
+        "turn_rate_deg_s": 0.28958065311047476,
+        "duration_s": 0.7014453411102295
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 29.515625,
+        "bearing_after": 29.984375,
+        "turn_rate_deg_s": 0.668316882166863,
+        "duration_s": 0.7013888359069824
+      }
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.4535,
+      "floor_bearing": -173.0625,
+      "front": 1.07475,
+      "rear": 0.4435
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.48024999999999995,
+      "floor_bearing": -173.5625,
+      "front": 1.1167500000000001,
+      "rear": 0.47024999999999995
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.50925,
+      "floor_bearing": -141.234375,
+      "front": 1.1107500000000001,
+      "rear": 0.5075
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.5187499999999999,
+      "floor_bearing": -142.75,
+      "front": 1.17775,
+      "rear": 0.52225
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 32.46875,
+        "bearing_after": 31.703125,
+        "turn_rate_deg_s": -1.0900901940683059,
+        "duration_s": 0.7023501396179199
+      }
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.52525,
+      "floor_bearing": -143.75,
+      "front": 1.04475,
+      "rear": 0.52625
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 31.140625,
+        "bearing_after": 31.640625,
+        "turn_rate_deg_s": 0.7128575289056883,
+        "duration_s": 0.7014024257659912
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 30.0625,
+        "bearing_after": 31.09375,
+        "turn_rate_deg_s": 1.470435595250277,
+        "duration_s": 0.7013227939605713
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 29.875,
+        "bearing_after": 30.328125,
+        "turn_rate_deg_s": 0.6461228934348566,
+        "duration_s": 0.7012984752655029
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 29.328125,
+        "bearing_after": 30.15625,
+        "turn_rate_deg_s": 1.1809524845708814,
+        "duration_s": 0.7012348175048828
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 29.46875,
+        "bearing_after": 30.203125,
+        "turn_rate_deg_s": 1.0471921022158972,
+        "duration_s": 0.7012801170349121
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 29.328125,
+        "bearing_after": 29.921875,
+        "turn_rate_deg_s": 0.8455393862970202,
+        "duration_s": 0.7022144794464111
+      }
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 0,
+      "speed_m_s": 0.0456568924515148
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 1,
+      "speed_m_s": 0.11913776261756982
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 2,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 0,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 1,
+      "speed_m_s": 0.006777732405112882
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 2,
+      "speed_m_s": 0.06242417547782646
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 0,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 1,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 2,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.5107499999999999,
+      "floor_bearing": -144.1875,
+      "front": 1.008,
+      "rear": 0.50625
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 0,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.5195,
+      "floor_bearing": -146.609375,
+      "front": 0.9719999999999999,
+      "rear": 0.5235
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 1,
+      "speed_m_s": 0.013198936349752536
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.49224999999999997,
+      "floor_bearing": -143.359375,
+      "front": 0.969,
+      "rear": 0.48475
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.4997499999999999,
+      "floor_bearing": -144.453125,
+      "front": 0.999,
+      "rear": 0.49449999999999994
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.525,
+      "floor_bearing": -146.5,
+      "front": 0.9952500000000001,
+      "rear": 0.53225
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.5307499999999999,
+      "floor_bearing": -147.1875,
+      "front": 0.96725,
+      "rear": 0.53275
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 2,
+      "speed_m_s": 0.07344192294097276
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 0,
+      "speed_m_s": 0.0
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 1,
+      "speed_m_s": 0.060638627677172804
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 2,
+      "speed_m_s": 0.1147998744639691
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -35,
+      "direction": "forward",
+      "target_bin": -80,
+      "floor": 0.5287499999999999,
+      "floor_bearing": -146.3125,
+      "front": 0.9427499999999999,
+      "rear": 0.53225
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 28.640625,
+        "bearing_after": 29.40625,
+        "turn_rate_deg_s": 1.090189373852951,
+        "duration_s": 0.7022862434387207
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 28.25,
+        "bearing_after": 28.3125,
+        "turn_rate_deg_s": 0.08909607642011487,
+        "duration_s": 0.7014899253845215
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 27.90625,
+        "bearing_after": 29.0,
+        "turn_rate_deg_s": 1.5595783530448446,
+        "duration_s": 0.7013113498687744
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 28.421875,
+        "bearing_after": 30.1875,
+        "turn_rate_deg_s": 2.5136015977201804,
+        "duration_s": 0.7024283409118652
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 30.109375,
+        "bearing_after": 33.40625,
+        "turn_rate_deg_s": 4.699917068860037,
+        "duration_s": 0.7014751434326172
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 31.578125,
+        "bearing_after": 34.546875,
+        "turn_rate_deg_s": 4.233256375378939,
+        "duration_s": 0.7012922763824463
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 32.390625,
+        "bearing_after": 34.171875,
+        "turn_rate_deg_s": 2.5399555522465085,
+        "duration_s": 0.7012917995452881
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 32.59375,
+        "bearing_after": 34.90625,
+        "turn_rate_deg_s": 3.2968338345207857,
+        "duration_s": 0.7014305591583252
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 33.5625,
+        "bearing_after": 35.609375,
+        "turn_rate_deg_s": 2.9183845100058807,
+        "duration_s": 0.7013726234436035
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 33.46875,
+        "bearing_after": 34.734375,
+        "turn_rate_deg_s": 1.8042433783882994,
+        "duration_s": 0.7014713287353516
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 33.0,
+        "bearing_after": 32.96875,
+        "turn_rate_deg_s": -0.04455582191268593,
+        "duration_s": 0.7013673782348633
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 31.5,
+        "bearing_after": 31.734375,
+        "turn_rate_deg_s": 0.3342197900382756,
+        "duration_s": 0.7012600898742676
+      }
+    }
+  ]
+}

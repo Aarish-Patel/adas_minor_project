@@ -1,0 +1,3137 @@
+{
+  "started": 1790111439.9344702,
+  "center0": 90.0,
+  "passes": [
+    {
+      "center_skipped": "insufficient clearance",
+      "center_this_pass": 90.0,
+      "outer": 0
+    },
+    {
+      "center_skipped": "insufficient clearance",
+      "center_this_pass": 90.0,
+      "outer": 1
+    },
+    {
+      "sign_probe": {
+        "raw_angle": 115.0,
+        "bearing_before": -24.053125000000023,
+        "bearing_after": -39.52187500000002,
+        "turn_rate_deg_s": -22.058731132287164,
+        "duration_s": 0.7012529373168945
+      },
+      "centers_tried": [
+        {
+          "center": 90.0,
+          "drift_deg": -0.40625
+        }
+      ],
+      "center_this_pass": 90.0,
+      "outer": 2
+    }
+  ],
+  "speed_table": [
+    {
+      "pwm": 110,
+      "speed_m_s": 0.2537525674596439,
+      "n_samples": 9
+    },
+    {
+      "pwm": 140,
+      "speed_m_s": 0.378791918922008,
+      "n_samples": 9
+    },
+    {
+      "pwm": 170,
+      "speed_m_s": 0.5491740617429055,
+      "n_samples": 9
+    },
+    {
+      "pwm": 200,
+      "speed_m_s": 0.5480109416572608,
+      "n_samples": 6
+    },
+    {
+      "pwm": 230,
+      "speed_m_s": 0.5607447907167874,
+      "n_samples": 5
+    }
+  ],
+  "speed_model_fit": {
+    "slope_m_s_per_pwm": 0.002610678230831798,
+    "deadband_pwm": -5.469673240338675,
+    "v_max_at_255": 0.6800025057204239
+  },
+  "turn_table": [
+    {
+      "offset_from_center": -35,
+      "n_samples": 5,
+      "turn_rate_deg_s_median": 16.064956863945056,
+      "turn_radius_m": 1.3509639942701093
+    },
+    {
+      "offset_from_center": -20,
+      "n_samples": 8,
+      "turn_rate_deg_s_median": 0.36759062405956555,
+      "turn_radius_m": 59.04170800932989
+    },
+    {
+      "offset_from_center": 20,
+      "n_samples": 8,
+      "turn_rate_deg_s_median": -9.938037431102659,
+      "turn_radius_m": 2.183849521915534
+    },
+    {
+      "offset_from_center": 35,
+      "n_samples": 6,
+      "turn_rate_deg_s_median": -34.2926858356709,
+      "turn_radius_m": 0.632880678891497
+    }
+  ],
+  "v_at_test_pwm": 0.378791918922008,
+  "center_history": [
+    90.0,
+    90.0,
+    90.0
+  ],
+  "asymmetry_ratio_20deg": 1.8573243194526379,
+  "asym_history": [
+    0.8007194868876429,
+    1.7523771069515695,
+    1.8573243194526379
+  ],
+  "vmax_history": [
+    0.5963265571222622,
+    0.6345796321605944,
+    0.6800025057204239
+  ],
+  "converged": true,
+  "stop_reason": "converged",
+  "center_final": 90.0,
+  "log": [
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 0,
+      "speed_m_s": 0.23072798000210173
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 1,
+      "speed_m_s": 0.29107595572733963
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 2,
+      "speed_m_s": 0.2471906032422206
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 0,
+      "speed_m_s": 0.3116698054979232
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 1,
+      "speed_m_s": 0.3994428134107738
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 2,
+      "speed_m_s": 0.3918472531681285
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 0,
+      "speed_m_s": 0.32028280950649435
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -30,
+      "direction": "forward",
+      "target_bin": -30,
+      "floor": 0.51025,
+      "floor_bearing": -177.38125,
+      "front": 0.8965,
+      "rear": 0.50025
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": -30,
+      "direction": "forward",
+      "target_bin": -30,
+      "floor": 0.5339999999999999,
+      "floor_bearing": -174.6,
+      "front": 0.8797499999999999,
+      "rear": 0.5239999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": -30,
+      "direction": "forward",
+      "target_bin": -30,
+      "floor": 0.5509999999999999,
+      "floor_bearing": -173.240625,
+      "front": 0.86275,
+      "rear": 0.5409999999999999
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 1,
+      "speed_m_s": 0.24753752507691376
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -30,
+      "direction": "forward",
+      "target_bin": -30,
+      "floor": 0.5215,
+      "floor_bearing": -173.19375,
+      "front": 0.8977499999999999,
+      "rear": 0.5115
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": -30,
+      "direction": "forward",
+      "target_bin": -30,
+      "floor": 0.55975,
+      "floor_bearing": -170.303125,
+      "front": 0.9654999999999999,
+      "rear": 0.54975
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 2,
+      "speed_m_s": 0.4708398182839636
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.5057499999999999,
+      "floor_bearing": -168.31875,
+      "front": 1.0455,
+      "rear": 0.4957499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.52625,
+      "floor_bearing": -166.928125,
+      "front": 1.0645,
+      "rear": 0.51625
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": -20,
+      "direction": "forward",
+      "target_bin": -20,
+      "floor": 0.54375,
+      "floor_bearing": -166.00625,
+      "front": 1.0730000000000002,
+      "rear": 0.53375
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 0,
+      "speed_m_s": 0.6377209478675676
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 1,
+      "speed_m_s": 0.5709592294398511
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 2,
+      "speed_m_s": 0.4190693164196765
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 0,
+      "speed_m_s": 0.49512633905807885
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 1,
+      "speed_m_s": 0.5607447907167874
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 2,
+      "speed_m_s": 0.41344859270594514
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.22274999999999998,
+      "floor_bearing": 10.337500000000006,
+      "front": 0.22274999999999998,
+      "rear": 0.7577499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.271,
+      "floor_bearing": 9.884375000000006,
+      "front": 0.271,
+      "rear": 0.77325
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3035,
+      "floor_bearing": 9.978125000000006,
+      "front": 0.3035,
+      "rear": 0.7487499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.32499999999999996,
+      "floor_bearing": 9.040625000000006,
+      "front": 0.32499999999999996,
+      "rear": 0.7264999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.34975,
+      "floor_bearing": 35.243750000000006,
+      "front": 0.3514999999999999,
+      "rear": 0.6875
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.36749999999999994,
+      "floor_bearing": 34.243750000000006,
+      "front": 0.37449999999999994,
+      "rear": 0.6802499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.38725,
+      "floor_bearing": 32.415625000000006,
+      "front": 0.39674999999999994,
+      "rear": 0.6495
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4059999999999999,
+      "floor_bearing": 31.275000000000006,
+      "front": 0.42174999999999996,
+      "rear": 0.63825
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.42899999999999994,
+      "floor_bearing": 30.165625000000006,
+      "front": 0.4472499999999999,
+      "rear": 0.6134999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4485,
+      "floor_bearing": 29.478125000000006,
+      "front": 0.46599999999999997,
+      "rear": 0.59075
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4744999999999999,
+      "floor_bearing": 27.696875000000006,
+      "front": 0.488,
+      "rear": 1.2730000000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.48849999999999993,
+      "floor_bearing": 27.509375000000006,
+      "front": 0.502,
+      "rear": 1.225
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5117499999999999,
+      "floor_bearing": 26.103125000000006,
+      "front": 0.5185,
+      "rear": 1.22675
+    },
+    {
+      "event": "reposition",
+      "attempt": 13,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5115,
+      "floor_bearing": 26.759375000000006,
+      "front": 0.5235,
+      "rear": 1.19025
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5027499999999999,
+      "floor_bearing": -133.38125,
+      "front": 0.5325,
+      "rear": 1.179
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 24.900000000000006,
+        "bearing_after": 36.165625000000006,
+        "turn_rate_deg_s": 16.064956863945056,
+        "duration_s": 0.7012546062469482
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 39.431250000000006,
+        "bearing_after": -39.17812500000002,
+        "turn_rate_deg_s": -112.08832398333662,
+        "duration_s": 0.7013163566589355
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": -39.72500000000002,
+        "bearing_after": -39.16250000000002,
+        "turn_rate_deg_s": 0.8020631412045551,
+        "duration_s": 0.7013163566589355
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": -39.60000000000002,
+        "bearing_after": -39.28750000000002,
+        "turn_rate_deg_s": 0.4455262632823911,
+        "duration_s": 0.7014176845550537
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": -37.97500000000002,
+        "bearing_after": -26.912500000000023,
+        "turn_rate_deg_s": 15.76659205769549,
+        "duration_s": 0.7016417980194092
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": -33.35000000000002,
+        "bearing_after": -13.943750000000023,
+        "turn_rate_deg_s": 27.65049831268722,
+        "duration_s": 0.701840877532959
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": -18.084375000000023,
+        "bearing_after": -22.818750000000023,
+        "turn_rate_deg_s": -6.7513246869284975,
+        "duration_s": 0.7012512683868408
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": -29.990625000000023,
+        "bearing_after": -39.19375000000002,
+        "turn_rate_deg_s": -13.124750175276821,
+        "duration_s": 0.7012038230895996
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": -35.78750000000002,
+        "bearing_after": -39.02187500000002,
+        "turn_rate_deg_s": -4.609247816069772,
+        "duration_s": 0.701714277267456
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": -39.69375000000002,
+        "bearing_after": 39.087500000000006,
+        "turn_rate_deg_s": 112.34336697069607,
+        "duration_s": 0.70125412940979
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 39.118750000000006,
+        "bearing_after": 30.665625000000006,
+        "turn_rate_deg_s": -12.038190851036667,
+        "duration_s": 0.7021923065185547
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 20.400000000000006,
+        "bearing_after": -0.8968750000000227,
+        "turn_rate_deg_s": -30.357558618688078,
+        "duration_s": 0.7015345096588135
+      }
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 0,
+      "speed_m_s": 0.24969794938987894
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 1,
+      "speed_m_s": 0.2507446271250722
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 2,
+      "speed_m_s": 0.2628391005426808
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 0,
+      "speed_m_s": 0.34087591773920245
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.279,
+      "floor_bearing": -13.568750000000023,
+      "front": 0.279,
+      "rear": 1.17625
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.32099999999999995,
+      "floor_bearing": -12.100000000000023,
+      "front": 0.32099999999999995,
+      "rear": 1.13125
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.346,
+      "floor_bearing": -12.553125000000023,
+      "front": 0.346,
+      "rear": 1.1135000000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.37549999999999994,
+      "floor_bearing": -11.568750000000023,
+      "front": 0.37549999999999994,
+      "rear": 1.086
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.39974999999999994,
+      "floor_bearing": -9.975000000000023,
+      "front": 0.39974999999999994,
+      "rear": 1.05725
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.41925,
+      "floor_bearing": -10.271875000000023,
+      "front": 0.41925,
+      "rear": 1.04675
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.44775,
+      "floor_bearing": -9.443750000000023,
+      "front": 0.44775,
+      "rear": 1.00925
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.47324999999999995,
+      "floor_bearing": -8.646875000000023,
+      "front": 0.47324999999999995,
+      "rear": 1.00025
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.50025,
+      "floor_bearing": -8.584375000000023,
+      "front": 0.50025,
+      "rear": 0.96725
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.526,
+      "floor_bearing": -7.631250000000023,
+      "front": 0.526,
+      "rear": 0.945
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 1,
+      "speed_m_s": 0.3171233905218585
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.266,
+      "floor_bearing": -15.928125000000023,
+      "front": 0.266,
+      "rear": 1.2277500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.2875,
+      "floor_bearing": -14.021875000000023,
+      "front": 0.2875,
+      "rear": 1.17825
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3195,
+      "floor_bearing": -13.084375000000023,
+      "front": 0.3195,
+      "rear": 1.1505
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.34324999999999994,
+      "floor_bearing": -12.646875000000023,
+      "front": 0.34324999999999994,
+      "rear": 1.1207500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.37224999999999997,
+      "floor_bearing": -11.709375000000023,
+      "front": 0.37224999999999997,
+      "rear": 1.10525
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.39674999999999994,
+      "floor_bearing": -11.287500000000023,
+      "front": 0.39674999999999994,
+      "rear": 1.072
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.41925,
+      "floor_bearing": -10.912500000000023,
+      "front": 0.41925,
+      "rear": 1.0462500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4465,
+      "floor_bearing": -9.740625000000023,
+      "front": 0.4465,
+      "rear": 1.0230000000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.47275,
+      "floor_bearing": -10.271875000000023,
+      "front": 0.47275,
+      "rear": 0.99425
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.49624999999999997,
+      "floor_bearing": -9.600000000000023,
+      "front": 0.49624999999999997,
+      "rear": 0.98025
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5245,
+      "floor_bearing": -9.100000000000023,
+      "front": 0.5245,
+      "rear": 0.943
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 140,
+      "floor": 0.34724999999999995,
+      "bearing": -13.271875000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 2,
+      "speed_m_s": 0.4553307055975858
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.28674999999999995,
+      "floor_bearing": -14.896875000000023,
+      "front": 0.28674999999999995,
+      "rear": 1.19975
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.31825000000000003,
+      "floor_bearing": -13.896875000000023,
+      "front": 0.31825000000000003,
+      "rear": 1.153
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.34099999999999997,
+      "floor_bearing": -13.240625000000023,
+      "front": 0.34099999999999997,
+      "rear": 1.1315000000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.369,
+      "floor_bearing": -12.553125000000023,
+      "front": 0.369,
+      "rear": 1.1395000000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.39449999999999996,
+      "floor_bearing": -11.740625000000023,
+      "front": 0.39449999999999996,
+      "rear": 1.109
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4139999999999999,
+      "floor_bearing": -11.678125000000023,
+      "front": 0.4139999999999999,
+      "rear": 1.05475
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4415,
+      "floor_bearing": -11.068750000000023,
+      "front": 0.4415,
+      "rear": 1.0297500000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4595,
+      "floor_bearing": -10.271875000000023,
+      "front": 0.4595,
+      "rear": 0.9947499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.48549999999999993,
+      "floor_bearing": -9.818750000000023,
+      "front": 0.48549999999999993,
+      "rear": 0.9792500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.52,
+      "floor_bearing": -10.006250000000023,
+      "front": 0.52,
+      "rear": 0.94925
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.54725,
+      "floor_bearing": -9.725000000000023,
+      "front": 0.54725,
+      "rear": 0.9349999999999999
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 170,
+      "floor": 0.32599999999999996,
+      "bearing": -14.521875000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 0,
+      "speed_m_s": 0.5564866803896785
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.25149999999999995,
+      "floor_bearing": -17.990625000000023,
+      "front": 0.25149999999999995,
+      "rear": 1.25475
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.27974999999999994,
+      "floor_bearing": -16.959375000000023,
+      "front": 0.27974999999999994,
+      "rear": 1.2232500000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3055,
+      "floor_bearing": -16.725000000000023,
+      "front": 0.3055,
+      "rear": 1.1845
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.33225000000000005,
+      "floor_bearing": -15.053125000000023,
+      "front": 0.33225000000000005,
+      "rear": 1.16375
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.35524999999999995,
+      "floor_bearing": -14.928125000000023,
+      "front": 0.35524999999999995,
+      "rear": 1.153
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.38049999999999995,
+      "floor_bearing": -14.943750000000023,
+      "front": 0.38049999999999995,
+      "rear": 1.131
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.399,
+      "floor_bearing": -14.037500000000023,
+      "front": 0.399,
+      "rear": 1.0965
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4265,
+      "floor_bearing": -12.771875000000023,
+      "front": 0.4265,
+      "rear": 1.08325
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4482499999999999,
+      "floor_bearing": -12.600000000000023,
+      "front": 0.4482499999999999,
+      "rear": 1.0515
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.478,
+      "floor_bearing": -11.646875000000023,
+      "front": 0.478,
+      "rear": 1.0405
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.50625,
+      "floor_bearing": -11.506250000000023,
+      "front": 0.50625,
+      "rear": 1.00525
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.53025,
+      "floor_bearing": -11.975000000000023,
+      "front": 0.53025,
+      "rear": 0.9827499999999999
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 170,
+      "floor": 0.32699999999999996,
+      "bearing": -17.803125000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 1,
+      "speed_m_s": 0.5616954934829328
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.251,
+      "floor_bearing": -20.553125000000023,
+      "front": 0.251,
+      "rear": 0.8949999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.26575000000000004,
+      "floor_bearing": -21.021875000000023,
+      "front": 0.26575000000000004,
+      "rear": 0.87
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.29125,
+      "floor_bearing": -19.006250000000023,
+      "front": 0.29125,
+      "rear": 0.8529999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3175,
+      "floor_bearing": -18.959375000000023,
+      "front": 0.3175,
+      "rear": 0.9125
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.34099999999999997,
+      "floor_bearing": -18.193750000000023,
+      "front": 0.34099999999999997,
+      "rear": 1.1940000000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.364,
+      "floor_bearing": -17.068750000000023,
+      "front": 0.364,
+      "rear": 1.1840000000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3837499999999999,
+      "floor_bearing": -16.646875000000023,
+      "front": 0.3837499999999999,
+      "rear": 1.2032500000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4065,
+      "floor_bearing": -16.115625000000023,
+      "front": 0.4065,
+      "rear": 1.1305
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4365,
+      "floor_bearing": -14.568750000000023,
+      "front": 0.4365,
+      "rear": 1.1007500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.45924999999999994,
+      "floor_bearing": -14.803125000000023,
+      "front": 0.45924999999999994,
+      "rear": 1.06875
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.48524999999999996,
+      "floor_bearing": -14.303125000000023,
+      "front": 0.48524999999999996,
+      "rear": 1.0575
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.51425,
+      "floor_bearing": -12.975000000000023,
+      "front": 0.51425,
+      "rear": 1.06525
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5335,
+      "floor_bearing": -13.115625000000023,
+      "front": 0.5335,
+      "rear": 1.018
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 170,
+      "floor": 0.31725000000000003,
+      "bearing": -21.100000000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 2,
+      "speed_m_s": 0.5421310064062268
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.24699999999999997,
+      "floor_bearing": -25.006250000000023,
+      "front": 0.25249999999999995,
+      "rear": 0.9017499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.27125,
+      "floor_bearing": -23.600000000000023,
+      "front": 0.27125,
+      "rear": 0.8695
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.30000000000000004,
+      "floor_bearing": -22.146875000000023,
+      "front": 0.30000000000000004,
+      "rear": 0.838
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.32225000000000004,
+      "floor_bearing": -21.318750000000023,
+      "front": 0.32225000000000004,
+      "rear": 0.81675
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3434999999999999,
+      "floor_bearing": -21.475000000000023,
+      "front": 0.3434999999999999,
+      "rear": 0.8099999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.364,
+      "floor_bearing": -20.084375000000023,
+      "front": 0.364,
+      "rear": 0.8029999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.38974999999999993,
+      "floor_bearing": -19.990625000000023,
+      "front": 0.38974999999999993,
+      "rear": 0.8529999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4095,
+      "floor_bearing": -18.584375000000023,
+      "front": 0.4095,
+      "rear": 0.8312499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.43975,
+      "floor_bearing": -17.053125000000023,
+      "front": 0.43975,
+      "rear": 1.14975
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.46724999999999994,
+      "floor_bearing": -16.412500000000023,
+      "front": 0.46724999999999994,
+      "rear": 1.17025
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.49149999999999994,
+      "floor_bearing": -16.850000000000023,
+      "front": 0.49149999999999994,
+      "rear": 1.11375
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5117499999999999,
+      "floor_bearing": -15.631250000000023,
+      "front": 0.5117499999999999,
+      "rear": 1.131
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5359999999999999,
+      "floor_bearing": -15.443750000000023,
+      "front": 0.5359999999999999,
+      "rear": 1.102
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 200,
+      "floor": 0.34124999999999994,
+      "bearing": -22.662500000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 0,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.255,
+      "floor_bearing": -27.975000000000023,
+      "front": 0.27425,
+      "rear": 0.9065
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.26875000000000004,
+      "floor_bearing": -27.334375000000023,
+      "front": 0.28400000000000003,
+      "rear": 0.872
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.29374999999999996,
+      "floor_bearing": -26.084375000000023,
+      "front": 0.29474999999999996,
+      "rear": 0.8437499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.31099999999999994,
+      "floor_bearing": -24.693750000000023,
+      "front": 0.31099999999999994,
+      "rear": 0.834
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.33625000000000005,
+      "floor_bearing": -23.443750000000023,
+      "front": 0.33625000000000005,
+      "rear": 0.8102499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.35749999999999993,
+      "floor_bearing": -22.396875000000023,
+      "front": 0.35749999999999993,
+      "rear": 0.7905
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3787499999999999,
+      "floor_bearing": -21.959375000000023,
+      "front": 0.3787499999999999,
+      "rear": 0.7699999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4129999999999999,
+      "floor_bearing": -20.693750000000023,
+      "front": 0.4129999999999999,
+      "rear": 0.741
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.43474999999999997,
+      "floor_bearing": -19.631250000000023,
+      "front": 0.43474999999999997,
+      "rear": 0.8062499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.45924999999999994,
+      "floor_bearing": -19.037500000000023,
+      "front": 0.45924999999999994,
+      "rear": 0.7815
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.48324999999999996,
+      "floor_bearing": -18.334375000000023,
+      "front": 0.48324999999999996,
+      "rear": 0.763
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5077499999999999,
+      "floor_bearing": -17.959375000000023,
+      "front": 0.5077499999999999,
+      "rear": 1.14225
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5315,
+      "floor_bearing": -16.943750000000023,
+      "front": 0.5315,
+      "rear": 1.15025
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 200,
+      "floor": 0.3305,
+      "bearing": -25.521875000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 1,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.25049999999999994,
+      "floor_bearing": -30.850000000000023,
+      "front": 0.29400000000000004,
+      "rear": 0.9069999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.27,
+      "floor_bearing": -30.131250000000023,
+      "front": 0.30625,
+      "rear": 0.86875
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.29374999999999996,
+      "floor_bearing": -28.412500000000023,
+      "front": 0.32499999999999996,
+      "rear": 0.8509999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3105,
+      "floor_bearing": -28.131250000000023,
+      "front": 0.32975,
+      "rear": 0.83275
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.33399999999999996,
+      "floor_bearing": -26.350000000000023,
+      "front": 0.35075,
+      "rear": 0.8035
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.358,
+      "floor_bearing": -24.459375000000023,
+      "front": 0.358,
+      "rear": 0.78675
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.386,
+      "floor_bearing": -23.850000000000023,
+      "front": 0.386,
+      "rear": 0.76225
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.40874999999999995,
+      "floor_bearing": -22.412500000000023,
+      "front": 0.40874999999999995,
+      "rear": 0.72975
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4275,
+      "floor_bearing": -21.600000000000023,
+      "front": 0.4275,
+      "rear": 0.71475
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4555,
+      "floor_bearing": -21.568750000000023,
+      "front": 0.4555,
+      "rear": 0.691
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4774999999999999,
+      "floor_bearing": -20.334375000000023,
+      "front": 0.4774999999999999,
+      "rear": 0.6822499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.504,
+      "floor_bearing": -19.131250000000023,
+      "front": 0.504,
+      "rear": 0.6689999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5279999999999999,
+      "floor_bearing": -17.850000000000023,
+      "front": 0.5279999999999999,
+      "rear": 0.7164999999999999
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 200,
+      "floor": 0.3424999999999999,
+      "bearing": -26.521875000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 2,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.25825,
+      "floor_bearing": -33.13125000000002,
+      "front": 0.3145,
+      "rear": 0.9067500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.27025,
+      "floor_bearing": -32.16250000000002,
+      "front": 0.32525000000000004,
+      "rear": 0.878
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.29225,
+      "floor_bearing": -31.553125000000023,
+      "front": 0.33725000000000005,
+      "rear": 0.8517499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.31275,
+      "floor_bearing": -30.459375000000023,
+      "front": 0.3504999999999999,
+      "rear": 0.8312499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.33599999999999997,
+      "floor_bearing": -28.912500000000023,
+      "front": 0.36775,
+      "rear": 0.80575
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.35949999999999993,
+      "floor_bearing": -27.256250000000023,
+      "front": 0.371,
+      "rear": 0.86675
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.38725,
+      "floor_bearing": -24.943750000000023,
+      "front": 0.38725,
+      "rear": 0.75425
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4125,
+      "floor_bearing": -24.115625000000023,
+      "front": 0.4125,
+      "rear": 0.73075
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.43025,
+      "floor_bearing": -22.865625000000023,
+      "front": 0.43025,
+      "rear": 0.7182499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.45699999999999996,
+      "floor_bearing": -22.162500000000023,
+      "front": 0.45699999999999996,
+      "rear": 0.6885
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.479,
+      "floor_bearing": -22.271875000000023,
+      "front": 0.479,
+      "rear": 0.66875
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5045,
+      "floor_bearing": -20.334375000000023,
+      "front": 0.5045,
+      "rear": 0.635
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5245,
+      "floor_bearing": -19.756250000000023,
+      "front": 0.5245,
+      "rear": 0.62425
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_settle",
+      "pwm": 230,
+      "floor": 0.3375,
+      "bearing": -28.334375000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 0,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.29225,
+      "floor_bearing": -32.14687500000002,
+      "front": 0.3494999999999999,
+      "rear": 0.88125
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.24999999999999997,
+      "floor_bearing": -35.81875000000002,
+      "front": 0.32575,
+      "rear": 0.88875
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.27874999999999994,
+      "floor_bearing": -34.28750000000002,
+      "front": 0.34775,
+      "rear": 0.8649999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3035,
+      "floor_bearing": -31.381250000000023,
+      "front": 0.35824999999999996,
+      "rear": 0.83825
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.32199999999999995,
+      "floor_bearing": -30.350000000000023,
+      "front": 0.36849999999999994,
+      "rear": 0.819
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3494999999999999,
+      "floor_bearing": -28.662500000000023,
+      "front": 0.39274999999999993,
+      "rear": 0.7895
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.37124999999999997,
+      "floor_bearing": -27.240625000000023,
+      "front": 0.40349999999999997,
+      "rear": 0.7699999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.395,
+      "floor_bearing": -26.256250000000023,
+      "front": 0.41225,
+      "rear": 0.7414999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.41999999999999993,
+      "floor_bearing": -24.537500000000023,
+      "front": 0.41999999999999993,
+      "rear": 0.72225
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.44375,
+      "floor_bearing": -23.928125000000023,
+      "front": 0.44375,
+      "rear": 0.69275
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.47424999999999995,
+      "floor_bearing": -22.834375000000023,
+      "front": 0.47424999999999995,
+      "rear": 0.6655
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.499,
+      "floor_bearing": -22.225000000000023,
+      "front": 0.499,
+      "rear": 0.64525
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.524,
+      "floor_bearing": -20.881250000000023,
+      "front": 0.524,
+      "rear": 0.6257499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 13,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5419999999999999,
+      "floor_bearing": -20.053125000000023,
+      "front": 0.5419999999999999,
+      "rear": 0.5984999999999999
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 230,
+      "floor": 0.34299999999999997,
+      "bearing": -30.209375000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 1,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.25375000000000003,
+      "floor_bearing": -38.55312500000002,
+      "front": 0.352,
+      "rear": 0.90925
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.25949999999999995,
+      "floor_bearing": -36.58437500000002,
+      "front": 0.35224999999999995,
+      "rear": 0.8862499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.27974999999999994,
+      "floor_bearing": -35.45937500000002,
+      "front": 0.37,
+      "rear": 0.8602500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.30174999999999996,
+      "floor_bearing": -33.64687500000002,
+      "front": 0.37749999999999995,
+      "rear": 0.82975
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3285,
+      "floor_bearing": -32.14687500000002,
+      "front": 0.39425,
+      "rear": 0.8049999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.35575,
+      "floor_bearing": -29.240625000000023,
+      "front": 0.40049999999999997,
+      "rear": 0.78225
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.37525,
+      "floor_bearing": -28.600000000000023,
+      "front": 0.41925,
+      "rear": 0.7637499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.39649999999999996,
+      "floor_bearing": -28.068750000000023,
+      "front": 0.4245,
+      "rear": 0.745
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.42099999999999993,
+      "floor_bearing": -27.225000000000023,
+      "front": 0.4475,
+      "rear": 0.711
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.44599999999999995,
+      "floor_bearing": -26.037500000000023,
+      "front": 0.44699999999999995,
+      "rear": 0.6922499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4714999999999999,
+      "floor_bearing": -24.365625000000023,
+      "front": 0.4714999999999999,
+      "rear": 0.6749999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.49549999999999994,
+      "floor_bearing": -23.928125000000023,
+      "front": 0.49549999999999994,
+      "rear": 0.6407499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.512,
+      "floor_bearing": -22.678125000000023,
+      "front": 0.512,
+      "rear": 0.6347499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 13,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5335,
+      "floor_bearing": -21.756250000000023,
+      "front": 0.5335,
+      "rear": 0.60875
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 230,
+      "floor": 0.33225000000000005,
+      "bearing": -34.67812500000002
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 2,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.24350000000000002,
+      "floor_bearing": -42.56875000000002,
+      "front": 0.38774999999999993,
+      "rear": 0.9362499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.2305,
+      "floor_bearing": -45.35000000000002,
+      "front": 0.38149999999999995,
+      "rear": 0.918
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.25249999999999995,
+      "floor_bearing": -42.24062500000002,
+      "front": 0.4185,
+      "rear": 0.8929999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.277,
+      "floor_bearing": -38.92812500000002,
+      "front": 0.40549999999999997,
+      "rear": 0.8624999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.30000000000000004,
+      "floor_bearing": -37.42812500000002,
+      "front": 0.4352499999999999,
+      "rear": 0.83475
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.32125000000000004,
+      "floor_bearing": -35.50625000000002,
+      "front": 0.42774999999999996,
+      "rear": 0.8182499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.34024999999999994,
+      "floor_bearing": -33.66250000000002,
+      "front": 0.42774999999999996,
+      "rear": 0.7949999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.36649999999999994,
+      "floor_bearing": -32.72500000000002,
+      "front": 0.4365,
+      "rear": 0.7709999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.39,
+      "floor_bearing": -30.740625000000023,
+      "front": 0.4492499999999999,
+      "rear": 0.7424999999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4145,
+      "floor_bearing": -29.928125000000023,
+      "front": 0.46724999999999994,
+      "rear": 0.725
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.44199999999999995,
+      "floor_bearing": -27.990625000000023,
+      "front": 0.47275,
+      "rear": 0.69275
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4615,
+      "floor_bearing": -27.287500000000023,
+      "front": 0.47624999999999995,
+      "rear": 0.66825
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.48549999999999993,
+      "floor_bearing": -25.662500000000023,
+      "front": 0.49424999999999997,
+      "rear": 0.65125
+    },
+    {
+      "event": "reposition",
+      "attempt": 13,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5087499999999999,
+      "floor_bearing": -24.537500000000023,
+      "front": 0.5087499999999999,
+      "rear": 0.6247499999999999
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5307499999999999,
+      "floor_bearing": -24.475000000000023,
+      "front": 0.5307499999999999,
+      "rear": 0.608
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": -23.256250000000023,
+        "bearing_after": -2.8968750000000227,
+        "turn_rate_deg_s": 29.027358187519653,
+        "duration_s": 0.7013857364654541
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 1.4156250000000057,
+        "bearing_after": 34.978125000000006,
+        "turn_rate_deg_s": 47.85942781375899,
+        "duration_s": 0.7012724876403809
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": 26.337500000000006,
+        "bearing_after": 39.306250000000006,
+        "turn_rate_deg_s": 18.49206788995504,
+        "duration_s": 0.7013142108917236
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 35.650000000000006,
+        "bearing_after": -39.45937500000002,
+        "turn_rate_deg_s": -107.10276994419318,
+        "duration_s": 0.7012832164764404
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": -39.38125000000002,
+        "bearing_after": -39.17812500000002,
+        "turn_rate_deg_s": 0.28965498483673996,
+        "duration_s": 0.7012653350830078
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": -36.47500000000002,
+        "bearing_after": -39.91250000000002,
+        "turn_rate_deg_s": -4.901205387752493,
+        "duration_s": 0.7013580799102783
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": -29.037500000000023,
+        "bearing_after": -39.49062500000002,
+        "turn_rate_deg_s": -14.904535483254675,
+        "duration_s": 0.701338529586792
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": -39.97500000000002,
+        "bearing_after": -39.74062500000002,
+        "turn_rate_deg_s": 0.3341905896711093,
+        "duration_s": 0.7013213634490967
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 39.712500000000006,
+        "bearing_after": 39.962500000000006,
+        "turn_rate_deg_s": 0.35631430862704055,
+        "duration_s": 0.7016277313232422
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 35.056250000000006,
+        "bearing_after": 12.275000000000006,
+        "turn_rate_deg_s": -32.48092918145934,
+        "duration_s": 0.7013731002807617
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 10.056250000000006,
+        "bearing_after": -18.396875000000023,
+        "turn_rate_deg_s": -40.56850336045245,
+        "duration_s": 0.7013599872589111
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 16.650000000000006,
+        "bearing_after": -8.678125000000023,
+        "turn_rate_deg_s": -36.104442489882466,
+        "duration_s": 0.7015237808227539
+      }
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 0,
+      "speed_m_s": 0.25463220093049244
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 1,
+      "speed_m_s": 0.2537525674596439
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 110,
+      "trial": 2,
+      "speed_m_s": 0.3017584046697372
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 0,
+      "speed_m_s": 0.430512543710279
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 1,
+      "speed_m_s": 0.378791918922008
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 140,
+      "trial": 2,
+      "speed_m_s": 0.29748002224632125
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 0,
+      "speed_m_s": 0.5491740617429055
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 1,
+      "speed_m_s": 0.5710457515965757
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 170,
+      "trial": 2,
+      "speed_m_s": 0.5494908668163806
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 0,
+      "speed_m_s": 0.6200665230137851
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 1,
+      "speed_m_s": 0.17833538278145936
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 200,
+      "trial": 2,
+      "speed_m_s": 0.5250626538746705
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 30,
+      "direction": "forward",
+      "target_bin": 30,
+      "floor": 0.53675,
+      "floor_bearing": -157.975,
+      "front": 0.9205,
+      "rear": 0.5267499999999999
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 0,
+      "speed_m_s": 0.7250394807649588
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 1,
+      "speed_m_s": 0.7172468183788283
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.24475,
+      "floor_bearing": -27.334375000000023,
+      "front": 0.24600000000000002,
+      "rear": 1.29975
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.28525,
+      "floor_bearing": -25.053125000000023,
+      "front": 0.28625,
+      "rear": 1.26
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.30825,
+      "floor_bearing": -27.037500000000023,
+      "front": 0.30925,
+      "rear": 1.2352500000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.33125000000000004,
+      "floor_bearing": -26.303125000000023,
+      "front": 0.3315,
+      "rear": 1.2000000000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.35575,
+      "floor_bearing": -26.615625000000023,
+      "front": 0.356,
+      "rear": 1.1795
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.38249999999999995,
+      "floor_bearing": -25.646875000000023,
+      "front": 0.3827499999999999,
+      "rear": 1.1505
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4039999999999999,
+      "floor_bearing": -25.896875000000023,
+      "front": 0.40425,
+      "rear": 1.13625
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4275,
+      "floor_bearing": -26.803125000000023,
+      "front": 0.42774999999999996,
+      "rear": 1.1102500000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4482499999999999,
+      "floor_bearing": -23.068750000000023,
+      "front": 0.4482499999999999,
+      "rear": 1.11975
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.46324999999999994,
+      "floor_bearing": -65.27187500000002,
+      "front": 0.46724999999999994,
+      "rear": 1.07075
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.475,
+      "floor_bearing": -62.39687500000002,
+      "front": 0.491,
+      "rear": 1.03725
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.49124999999999996,
+      "floor_bearing": -60.53750000000002,
+      "front": 0.51525,
+      "rear": 1.0117500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.5057499999999999,
+      "floor_bearing": -58.56875000000002,
+      "front": 0.5409999999999999,
+      "rear": 0.99225
+    },
+    {
+      "event": "abort_floor",
+      "phase": "speed_measure",
+      "pwm": 230,
+      "floor": 0.3275,
+      "bearing": -27.553125000000023
+    },
+    {
+      "event": "speed_sample",
+      "pwm": 230,
+      "trial": 2,
+      "speed_m_s": null
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.23374999999999999,
+      "floor_bearing": -31.021875000000023,
+      "front": 0.23525,
+      "rear": 1.3355000000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 1,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.25025,
+      "floor_bearing": -29.865625000000023,
+      "front": 0.25249999999999995,
+      "rear": 1.3
+    },
+    {
+      "event": "reposition",
+      "attempt": 2,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.26975000000000005,
+      "floor_bearing": -26.850000000000023,
+      "front": 0.27149999999999996,
+      "rear": 1.348
+    },
+    {
+      "event": "reposition",
+      "attempt": 3,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.2945,
+      "floor_bearing": -30.053125000000023,
+      "front": 0.29625,
+      "rear": 1.2525000000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 4,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.31575,
+      "floor_bearing": -27.475000000000023,
+      "front": 0.31775,
+      "rear": 1.241
+    },
+    {
+      "event": "reposition",
+      "attempt": 5,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.33925000000000005,
+      "floor_bearing": -28.428125000000023,
+      "front": 0.34075,
+      "rear": 1.20875
+    },
+    {
+      "event": "reposition",
+      "attempt": 6,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.36524999999999996,
+      "floor_bearing": -30.084375000000023,
+      "front": 0.36624999999999996,
+      "rear": 1.17025
+    },
+    {
+      "event": "reposition",
+      "attempt": 7,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.3867499999999999,
+      "floor_bearing": -26.865625000000023,
+      "front": 0.38774999999999993,
+      "rear": 1.1515
+    },
+    {
+      "event": "reposition",
+      "attempt": 8,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.41125,
+      "floor_bearing": -28.271875000000023,
+      "front": 0.41125,
+      "rear": 1.1287500000000001
+    },
+    {
+      "event": "reposition",
+      "attempt": 9,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.4335,
+      "floor_bearing": -23.818750000000023,
+      "front": 0.4335,
+      "rear": 1.0982500000000002
+    },
+    {
+      "event": "reposition",
+      "attempt": 10,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.45299999999999996,
+      "floor_bearing": -66.97500000000002,
+      "front": 0.45924999999999994,
+      "rear": 1.07
+    },
+    {
+      "event": "reposition",
+      "attempt": 11,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.46724999999999994,
+      "floor_bearing": -64.39687500000002,
+      "front": 0.48175,
+      "rear": 1.042
+    },
+    {
+      "event": "reposition",
+      "attempt": 12,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.48324999999999996,
+      "floor_bearing": -61.99062500000002,
+      "front": 0.50925,
+      "rear": 1.02425
+    },
+    {
+      "event": "reposition",
+      "attempt": 13,
+      "steer_offset": 0,
+      "direction": "reverse",
+      "target_bin": null,
+      "floor": 0.49924999999999997,
+      "floor_bearing": -60.38125000000002,
+      "front": 0.53475,
+      "rear": 0.9985
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": -39.64687500000002,
+        "bearing_after": -22.271875000000023,
+        "turn_rate_deg_s": 24.76344053868173,
+        "duration_s": 0.7016391754150391
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": -18.896875000000023,
+        "bearing_after": -28.803125000000023,
+        "turn_rate_deg_s": -14.127393931893092,
+        "duration_s": 0.7012085914611816
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 55.0,
+        "bearing_before": -17.396875000000023,
+        "bearing_after": 7.415625000000006,
+        "turn_rate_deg_s": 35.37903036640533,
+        "duration_s": 0.7013335227966309
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 8.525000000000006,
+        "bearing_after": 25.728125000000006,
+        "turn_rate_deg_s": 24.53098197177659,
+        "duration_s": 0.7012815475463867
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 21.665625000000006,
+        "bearing_after": -2.3656250000000227,
+        "turn_rate_deg_s": -34.26131901891586,
+        "duration_s": 0.7014105319976807
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": -20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 70.0,
+        "bearing_before": 35.915625000000006,
+        "bearing_after": 12.978125000000006,
+        "turn_rate_deg_s": -32.699149134893766,
+        "duration_s": 0.7014708518981934
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 12.462500000000006,
+        "bearing_after": 38.525000000000006,
+        "turn_rate_deg_s": 37.16165247135725,
+        "duration_s": 0.7013278007507324
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 28.696875000000006,
+        "bearing_after": 17.118750000000006,
+        "turn_rate_deg_s": -16.508206991945812,
+        "duration_s": 0.7013556957244873
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 20,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 110.0,
+        "bearing_before": 14.446875000000006,
+        "bearing_after": -0.5062500000000227,
+        "turn_rate_deg_s": -21.315649467108397,
+        "duration_s": 0.7015092372894287
+      }
+    },
+    {
+      "event": "reposition",
+      "attempt": 0,
+      "steer_offset": -35,
+      "direction": "forward",
+      "target_bin": -80,
+      "floor": 0.512,
+      "floor_bearing": 132.696875,
+      "front": 0.7809999999999999,
+      "rear": 0.53275
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 0,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 3.3062500000000057,
+        "bearing_after": -24.834375000000023,
+        "turn_rate_deg_s": -40.124536306771866,
+        "duration_s": 0.7013320922851562
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 1,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": -21.006250000000023,
+        "bearing_after": -14.568750000000023,
+        "turn_rate_deg_s": 9.172525125150154,
+        "duration_s": 0.7018241882324219
+      }
+    },
+    {
+      "event": "turn_trial",
+      "offset_from_center": 35,
+      "trial": 2,
+      "turn": {
+        "raw_angle": 125.0,
+        "bearing_before": 39.556250000000006,
+        "bearing_after": 38.931250000000006,
+        "turn_rate_deg_s": -0.8912467132081604,
+        "duration_s": 0.7012648582458496
+      }
+    }
+  ],
+  "finished": 1790111721.0355997
+}

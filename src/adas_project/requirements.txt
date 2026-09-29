@@ -1,0 +1,27 @@
+# Core (relay code, planners, digital twin, Monte Carlo, unit tests)
+numpy
+scipy
+scikit-learn
+joblib
+matplotlib
+pyserial
+
+# Desktop GUI (gui/) and the 3D scenes
+PySide6
+pyqtgraph
+PyOpenGL
+
+# Rear camera vision (adas/vision) and camera tools
+opencv-python
+
+# Web viewer / remote drive (server.py, rc_controller.py)
+websockets
+pygame
+
+# Optional
+torch          # GPU training of the intent model (sim/train_intent_torch.py); the car itself only needs numpy
+ultralytics    # optional YOLO object detector for the rear camera (weights are not downloaded automatically)
+paramiko       # tools/pull_logs.py (copy logs from the Pi)
+playwright     # only for the screenshot / camera-validation tools in tools/
+
+# On the Raspberry Pi also: rplidar-roboticia (RPLIDAR driver)

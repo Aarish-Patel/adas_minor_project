@@ -1,0 +1,62 @@
+{
+ "pairs": 120,
+ "takeover": {
+  "adas": 68,
+  "adas+intent": 34,
+  "better": 19,
+  "worse": 5,
+  "p_one_sided": 0.0004906375428420448
+ },
+ "brake": {
+  "adas": 14,
+  "adas+intent": 36,
+  "better": 0,
+  "worse": 5,
+  "p_one_sided": 0.978915901451422
+ },
+ "limit": {
+  "adas": 67,
+  "adas+intent": 70,
+  "better": 11,
+  "worse": 10,
+  "p_one_sided": 0.48549860015598495
+ },
+ "all": {
+  "adas": 149,
+  "adas+intent": 140,
+  "better": 19,
+  "worse": 10,
+  "p_one_sided": 0.06155340656496202
+ },
+ "needless_steer_s": {
+  "adas": 105.8,
+  "adas+intent": 73.7,
+  "better": 23,
+  "worse": 11,
+  "p_one_sided": 0.010728092217995026
+ },
+ "needless_throttle_s": {
+  "adas": 31.8,
+  "adas+intent": 43.3,
+  "better": 23,
+  "worse": 13,
+  "p_one_sided": 0.2938983828575572
+ },
+ "needless_s": {
+  "adas": 132.6,
+  "adas+intent": 115.8,
+  "better": 27,
+  "worse": 12,
+  "p_one_sided": 0.04176637385944695
+ },
+ "envelope_adas": {
+  "inside_1.3": 32,
+  "total": 149,
+  "path_clear": 39
+ },
+ "envelope_adas+intent": {
+  "inside_1.3": 61,
+  "total": 140,
+  "path_clear": 28
+ }
+}

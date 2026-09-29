@@ -1,0 +1,43 @@
+{
+  "logs": [
+    "20260928_004952_log_drive.jsonl.gz"
+  ],
+  "speed": {
+    "v_max": 0.8335055881314484,
+    "deadband": 11.187807168445344,
+    "tau_motor": 0.033007589863659106,
+    "coast_decel": 2.0,
+    "delay_s": 0.12,
+    "rms_speed_error": 0.0375164882686713,
+    "n": 1300
+  },
+  "steer": {
+    "identifiable": true,
+    "k_curv_per_deg": 0.06560595173089254,
+    "servo_centre": 86.75904661948498,
+    "r2": 0.9760433309725456,
+    "n": 598,
+    "servo_range": [
+      63.0,
+      111.0
+    ]
+  },
+  "validation": [
+    {
+      "windows": 137,
+      "horizon_s": 3.0,
+      "median_pos_err_m": 0.048742724617842674,
+      "p90_pos_err_m": 0.09756045467821012,
+      "median_heading_err_deg": 1.042326760364875
+    }
+  ],
+  "coverage": {
+    "pwm_range": [
+      -170.0,
+      170.0
+    ],
+    "max_speed_seen": 0.6389251481929319,
+    "trusted_scan_fraction": 0.9641602248770204,
+    "seconds": 148.91853594779968
+  }
+}

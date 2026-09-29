@@ -1,0 +1,38 @@
+{
+ "lounge without": {
+  "err_cm_mean": 6.972233680497491,
+  "err_cm_max": 10.805648623638685,
+  "heading_deg_mean": 6.627916597273411,
+  "heading_deg_max": 13.275245890776565,
+  "crashes": 0,
+  "loops_mean": 0.0,
+  "runs": 6
+ },
+ "lounge with loop closure": {
+  "err_cm_mean": 8.349679008293068,
+  "err_cm_max": 14.566225696125295,
+  "heading_deg_mean": 4.432195267114244,
+  "heading_deg_max": 15.221570536131415,
+  "crashes": 0,
+  "loops_mean": 14.0,
+  "runs": 6
+ },
+ "open without": {
+  "err_cm_mean": 110.09527485331442,
+  "err_cm_max": 213.5368923454174,
+  "heading_deg_mean": 73.95433267832013,
+  "heading_deg_max": 137.36578971092803,
+  "crashes": 0,
+  "loops_mean": 0.0,
+  "runs": 6
+ },
+ "open with loop closure": {
+  "err_cm_mean": 10.786820633408482,
+  "err_cm_max": 16.273723316187812,
+  "heading_deg_mean": 4.051409031349737,
+  "heading_deg_max": 11.35160095870597,
+  "crashes": 0,
+  "loops_mean": 13.666666666666666,
+  "runs": 6
+ }
+}

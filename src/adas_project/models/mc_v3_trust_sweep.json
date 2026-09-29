@@ -1,0 +1,30 @@
+{
+ "0.7": {
+  "runs": 96,
+  "crashes": 0,
+  "reached_goal": 81,
+  "interventions": 91,
+  "needless": 64,
+  "needless_takeovers": 25,
+  "needless_brakes": 3,
+  "needless_limits": 36,
+  "overridden_needlessly_s": 91.1,
+  "wheel_taken_needlessly_s": 72.4,
+  "median_time_s": 12.050000000000036,
+  "min_clearance_cm": 2.6061648529918493
+ },
+ "0.85": {
+  "runs": 96,
+  "crashes": 0,
+  "reached_goal": 81,
+  "interventions": 88,
+  "needless": 62,
+  "needless_takeovers": 27,
+  "needless_brakes": 4,
+  "needless_limits": 31,
+  "overridden_needlessly_s": 83.8,
+  "wheel_taken_needlessly_s": 66.5,
+  "median_time_s": 12.050000000000036,
+  "min_clearance_cm": 2.4587557852378206
+ }
+}
