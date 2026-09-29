@@ -634,6 +634,15 @@ class SafetyPill(Glass):
         self.sub.setVisible(bool(rest))
         self.adjustSize()
 
+    def fit(self, avail):
+        """Drop the numbers when the scene is too narrow for the whole pill (never let it run off the edge)."""
+        if self.sub.text():
+            self.sub.setVisible(True)
+            self.adjustSize()
+            if self.width() > avail:
+                self.sub.setVisible(False)
+                self.adjustSize()
+
 
 class MiniMap(Glass):
     """Bottom-right: the world round the car (heading up), zones, planned path; click to open Map & Zones."""
@@ -1805,7 +1814,8 @@ class EVWindow(QtWidgets.QMainWindow):
         self.intent.move(20, 30 + self.cluster.height())
         self.banner.move((w - self.banner.width()) // 2, 18)
         self.alert.move((w - self.alert.width()) // 2, 18 + self.banner.height() + 10)
-        self.pill.move((w - self.pill.width()) // 2, h - self.pill.height() - 18)
+        self.pill.fit(w - 300 if w < 1000 else w - 40)          # (the mini-map sits at the right on narrow scenes)
+        self.pill.move(max(10, (w - self.pill.width()) // 2), h - self.pill.height() - 18)
         self.mini.move(w - self.mini.width() - 20, h - self.mini.height() - 20)
 
     # --- live

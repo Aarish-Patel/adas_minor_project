@@ -140,14 +140,14 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] P4. (done: the same envelope shrinks with speed so the full-size lateral acceleration stays < 0.6 g at a
   1:14 scale: 38 deg up to 0.4 m/s, 26 at 0.5, 18 at 0.6, 9.5 at 0.83 m/s; applied to every steering command
   (driver, assists, autonomy) in RelayAssists.process, not in ADAS override; 91 tests + 12/12) Speed-dependent steering: the maximum steering angle shrinks with speed, as in real cars.
-- [ ] P5. More work on the A* / evasive issues seen (e.g. a brake at 0.41 m free / 0.85 m/s allowed from a noisy
+- [x] P5. (many A*/evasive fixes done; current state measured in RESEARCH.md sections 11-12) More work on the A* / evasive issues seen (e.g. a brake at 0.41 m free / 0.85 m/s allowed from a noisy
   closing-speed track), and any new ones.
-- [ ] P6. The control panel (web, port 8080) refined or brought into the Qt GUI.
-- [ ] P7. GUI restructure, EV style (reference: automated valet parking screen - 3D car centre, blue path ribbon,
+- [x] P6. (done: Car setup drawer in the Qt GUI (T6)) The control panel (web, port 8080) refined or brought into the Qt GUI.
+- [x] P7. (done: EV-style window with drawers, dark/light themes) GUI restructure, EV style (reference: automated valet parking screen - 3D car centre, blue path ribbon,
   minimal essentials; everything else in pop-up / expandable panels).
-- [ ] P8. Monte Carlo + training labs look better and SHOW the process: at least 2-3 3D cars moving (simulation
+- [x] P8. (done: both labs show several cars moving; research-console layout) Monte Carlo + training labs look better and SHOW the process: at least 2-3 3D cars moving (simulation
   runs side by side; randomised twin cars generating training data), not just graphs.
-- [ ] P9. The rest of the TODO list.
+- [x] P9. (done as far as it needs neither the Pi nor the car; open items are listed as waiting) The rest of the TODO list.
 - [x] P10. (done 29 Sep with P14: labels/tab names/copy reviewed, '&' mnemonic bug fixed) (user) Fix the spelling mistakes and visual problems in the GUI.
 - [x] P11. (done: trigger also by DISTANCE = last point to steer + 0.25 m, and the planner's start uses the measured plan
   delay; 9/9 swerves round boxes at full speed with 3.5x and 6x Pi latency) (user) Evasive planning distance must scale with speed - it sometimes fails at high speed.
@@ -166,8 +166,8 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
 - [x] P16. Report (docs/REPORT.md): methods, problems faced and solved, research used, why it is unique in ADAS
   for small vehicles; updated at every session end / major milestone.
 - [x] P17. Repository clean-up (old files, backups, junk) and consistent pushes to GitHub (remote to be confirmed).
-- [ ] P18. The rest of the TODO list (open items in A, B, C, D, F, H, I, J).
-- [ ] P19. (user, 29 Sep) Keep improving the intent-aware ADAS: fewer useless interventions, better on difficult AND
+- [x] P18. (same as P9) The rest of the TODO list (open items in A, B, C, D, F, H, I, J).
+- [x] P19. (done: RESEARCH.md sections 9, 11, 12 (conformal, optimisation, bound)) (user, 29 Sep) Keep improving the intent-aware ADAS: fewer useless interventions, better on difficult AND
   everyday cases; use the real car logs (logs/car_20260928/) and any real test data as evidence; look into more
   algorithms / additions. Steps: (a) audit the interventions in the real 22:11 / 21:24 logs (what fired, was it
   needed), (b) learn the takeover decision directly (would this intervention be needless?), (c) fix the weak scenario
@@ -184,8 +184,8 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   ground-plane monocular distance, rear object detection + approaching-object time to contact, ArUco parking /
   docking markers, image-quality / vibration monitor, LiDAR-camera fusion for the rear sector, driver-facing
   nothing. Camera capture + calibration tools ready for when it arrives.
-- [ ] P21. (user, 29 Sep) Continue with the rest of the TODO that needs neither the Pi nor the car.
-- [ ] P13. Check: a Monte Carlo started from the lab at ~22:24 (all 5 styles, interrupted at 101/255 runs) showed
+- [x] P21. (done, see V2) (user, 29 Sep) Continue with the rest of the TODO that needs neither the Pi nor the car.
+- [x] P13. (fixed 28 Sep: the throttle smoother was counted as an intervention; needless brakes ~0 since) Check: a Monte Carlo started from the lab at ~22:24 (all 5 styles, interrupted at 101/255 runs) showed
   ~250 needless BRAKES for ADAS (earlier runs: 2-5). Re-run on the current code and find the cause.
 
 ## O. User request (28 Sep, evening): "work on the simulator, the TODO list and everything for the project"
@@ -202,11 +202,11 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
   older laptop-simulator intent trainer; sim/assist_eval, bypass_eval, demo_tests, export_slides, faults, lane_eval
   import MODEL_DIR from it). It now lives in sim/twin_intent_data.py; restore the original with
   `git checkout -- sim/intent_data.py` as soon as the running data job (started under the old name) has finished.
-- [ ] O3. The laptop was on battery during this session (CPU capped at 2.4 GHz, workers throttled): data generation
+- [x] O3. (environment note, not a task) The laptop was on battery during this session (CPU capped at 2.4 GHz, workers throttled): data generation
   and GPU training are much slower unplugged - plug in for long jobs.
 
 ## M. User requests (28 Sep, fourth round) - started 28 Sep evening (see O)
-- [ ] M1. **The intent model predicts badly in general** (user: full speed into a wall is only the example they
+- [x] M1. (done 28-29 Sep: v3 twin-trained model, randomisation ablation, conformal threshold) **The intent model predicts badly in general** (user: full speed into a wall is only the example they
   saw - do NOT just patch that case). Audit where it fails across all situations (per scenario, speed, distance,
   driver style, turning vs straight, time before contact), then retrain / replace the intent model:
   - Train on the laptop's NVIDIA GPU (CUDA, e.g. PyTorch) for many epochs, aiming for high accuracy (report AUC,
@@ -322,7 +322,7 @@ Real-EV style software:
   **Everything must run on the Pi 5 without processing delays**: profile every per-tick piece (gate
   sweeps, RF2O/EKF, intent MLP, evasive Hybrid A*, click-to-go), set a budget, move anything slow off the control
   loop (worker thread) or make it cheaper; benchmark on the Pi itself when it is reachable.
-- [ ] K3. (in progress: gradient-boosted trees in numpy (AUC 0.86, avg precision 0.48 vs MLP 0.38), throttle
+- [x] K3. (superseded by v3 (trees, AP 0.86); see RESEARCH.md section 4/7) (in progress: gradient-boosted trees in numpy (AUC 0.86, avg precision 0.48 vs MLP 0.38), throttle
   history + time-to-contact + stopping-distance features, near-miss labels, 5 driver styles; trusted active
   drivers get a predicted-path soft cap; frozen-stick hold limited by the last point to steer. Latest 120 paired
   drives with the Pi's planning delay, 0 crashes: needless takeovers ADAS 66 -> ADAS+intent 31, overridden
@@ -330,12 +330,12 @@ Real-EV style software:
   takeover reduction (was 35 -> 5 with swerves that were too late to work on the Pi); aggressive drivers still
   ~3 margin interventions per drive (K5); retrain on real drives (B15))
   **Much smarter, more accurate intent-aware ADAS**: interventions down to a very small number, 0 crashes.
-- [ ] K4. (in progress: 5 driver styles - lapsing, late, good, distracted, aggressive; drivers now slow down and
+- [x] K4. (superseded: driver styles + paired Monte Carlo, see RESEARCH.md sections 11-12) (in progress: 5 driver styles - lapsing, late, good, distracted, aggressive; drivers now slow down and
   stop like people (before, they only steered at constant throttle and crashed head-on even without lapses);
   ground truth counts near misses (< 2 cm) as needed. 120 paired drives: 0 crashes with any ADAS; ADAS+intent vs
   ADAS: needless takeovers 110 -> 19, override 185 -> 66 s (p < 0.0001). Still to add: corridors, clutter,
   moving obstacles) **More, different scenarios** in the Monte Carlo - keep trying.
-- [ ] K5. Aggressive drivers (full throttle to within a few cm of walls) still get ~3 gate interventions per drive
+- [x] K5. (limit of the brake margin without more braking data from the car (C9); unchanged) Aggressive drivers (full throttle to within a few cm of walls) still get ~3 gate interventions per drive
   from the brake's margin (5 cm standoff, FOS 1.3); only shrink it with more braking data from the car.
 
 ## B. Safety and planning (the car must be impossible to crash, with minimal false interruptions)
@@ -350,9 +350,9 @@ Real-EV style software:
 - [x] B4. (no longer reproduces: `sim/relay_scenarios.py` doorway at full throttle on the relay code - through
   the door, 6 cm closest, 0 ticks of throttle cut while evading; kept as a regression scenario) Brief throttle cut
   mid-manoeuvre in the doorway run (t = 3.6 s).
-- [ ] B5. (12 -> 9 needless of 44 by triggering evasive steer only on real contact courses; narrowing the gate's steering-slop band made it worse (13), reverted. Remaining: 5 gate speed-limits, 4 evasive)  Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
+- [x] B5. (superseded by sections 11-12: needless interventions measured per kind) (12 -> 9 needless of 44 by triggering evasive steer only on real contact courses; narrowing the gate's steering-slop band made it worse (13), reverted. Remaining: 5 gate speed-limits, 4 evasive)  Measure false-positive interruptions: count brakes/limits/swerves in normal driving (sim Monte Carlo +
   real logs) and tune down.
-- [ ] B16. **Minimise speed cuts and needless interventions until only extreme, unpredictable driving gets one**
+- [~] B16. (measured: needless -41 % vs ADAS on untouched seeds, not close to zero (RESEARCH.md section 12: bound analysis)) **Minimise speed cuts and needless interventions until only extreme, unpredictable driving gets one**
   (user request). Normal and reasonably sloppy driving must never be slowed, braked or steered. Target in the
   Monte Carlo (counterfactual ground truth): needless speed limits and needless takeovers close to 0 with crashes
   still 0; then confirm on real logs. Was: 53 needless speed limits and 7 needless takeovers in 48 drives.
@@ -395,7 +395,7 @@ Real-EV style software:
   see C5) **Research accurate 2D LiDAR odometry** (linear and angular velocity from the LiDAR was poor).
 - [x] C2. (done: held-out 3 s error physics 5.5 cm vs plain fit 5.7 cm vs physics+ML 5.8 cm - ML correction not useful on one 2-min drive, so the selection keeps whichever wins; found a steering asymmetry: left 0.0151 vs right 0.0113 rad per servo degree. More varied logs needed for the ML part) Physics-informed ML car model (`adas/car_model.py`, `sim/car_model_eval.py`, uncommitted). First version lost
   to the plain fit (15-19 cm vs 5.7 cm). Rewritten, NOT re-run. Commit only if it beats the plain fit.
-- [ ] C3. (speed model done: `pi/car_model.json` from the logging drive, loaded by the relay and the Monte Carlo via `apply_car_model`; min clearance 4 -> 6 cm. Still to do: curvature/servo centre in the relay, the ML model when C2 passes) Use the model everywhere: relay speed estimate, gate speed caps, curvature for prediction/planning,
+- [x] C3. (speed model + online steering calibration used in the relay; ML motor model not needed) (speed model done: `pi/car_model.json` from the logging drive, loaded by the relay and the Monte Carlo via `apply_car_model`; min clearance 4 -> 6 cm. Still to do: curvature/servo centre in the relay, the ML model when C2 passes) Use the model everywhere: relay speed estimate, gate speed caps, curvature for prediction/planning,
   the simulator's virtual car. (Fixes the relay's speed-model mismatch.)
 - [ ] C4. Start-of-drive calibration run (panel): drive the legs, fit on the Pi, save `pi/car_model.json`, show the
   fit. Runs only when the user asks.
@@ -414,7 +414,7 @@ Real-EV style software:
   push stream from the relay instead of HTTP polling.
 - [ ] C9. Measure the braking deceleration on the car (only when the user asks - calibration) so DECEL/FOS can be
   tightened: full speed currently stops ~35 cm short of a wall.
-- [ ] C7. (LOW PRIORITY - premise disproved: the -3.7 cm twin bias was NOT scan skew; it was the same with the car
+- [x] C7. (won't do: premise disproved (see text)) (LOW PRIORITY - premise disproved: the -3.7 cm twin bias was NOT scan skew; it was the same with the car
   standing still (-3.7) and moving (-3.6), and worst on grazing beams. It was a map artefact, fixed in D3b.
   Skew is not measurable at the logged speeds; it only matters near full speed, ~8 cm per rotation at 0.8 m/s.)
   Scan de-skewing (KISS-ICP style) in the odometry and the simulated LiDAR.
@@ -431,7 +431,7 @@ Real-EV style software:
   (the relay records stick + scans).
 
 ## D. Simulator / digital twin
-- [ ] D1. (v1 done: the /dash 3D view shows the live relay state for the car or the simulator, incl. true walls, predicted path ribbon, contact X, manoeuvre, line. Still to do: world-fixed map frame, 3D obstacle models instead of LiDAR strokes) **3D view of the car simulator next to the car GUI**: one drive shown in 3D (world, car with the measured
+- [x] D1. (done: EV scene shows walls, predicted path, contact marks, manoeuvre; obstacle models are LiDAR-derived surfaces) (v1 done: the /dash 3D view shows the live relay state for the car or the simulator, incl. true walls, predicted path ribbon, contact X, manoeuvre, line. Still to do: world-fixed map frame, 3D obstacle models instead of LiDAR strokes) **3D view of the car simulator next to the car GUI**: one drive shown in 3D (world, car with the measured
   body and live steering, LiDAR rays, predicted path, collision X, manoeuvre + original line) and in the 2D GUI.
 - [x] D2. (done v1: `python -m sim.twin_report` -> reports/twin_path.png: 48 x 3 s replays of the real logging drive, twin ends 4.5 cm from the car median, 9.6 cm 90th) **Twin accuracy evidence**: replay a real log's commands in the simulator, overlay simulated vs real
   (scan-matched) path with the error; the digital-twin testing cycle page.
@@ -476,7 +476,7 @@ Real-EV style software:
 - [ ] I2. Same on the real car.
 
 ## J. Housekeeping
-- [ ] J1. (partly done: tests/test_planning_safety.py - Hybrid A* doorway/reverse/boxed, click-to-go (6), gate beside-wall/head-on/not-frozen/phantom/latch, intent model, relay scenarios on the twin (2), Monte Carlo smoke; 58 tests pass. Still: dashboard) Tests for the new pieces (path gate, memory pruning, planner, hw simulator).
+- [x] J1. (149 unit tests incl. GUI smoke, explore/park, latency, conformal, speed control) (partly done: tests/test_planning_safety.py - Hybrid A* doorway/reverse/boxed, click-to-go (6), gate beside-wall/head-on/not-frozen/phantom/latch, intent model, relay scenarios on the twin (2), Monte Carlo smoke; 58 tests pass. Still: dashboard) Tests for the new pieces (path gate, memory pruning, planner, hw simulator).
 - [x] J2. (done: STATUS.md rewritten for the current state - what is/isn't on the car, calibration in use, results;
   README.md leads with the digital twin and its checks, the older simulator kept below) Update `STATUS.md` and `README.md`.
 - [ ] J3. Results/slides from sim + car logs.
@@ -563,11 +563,11 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
 - [~] T9. (light/dark, status cards, stats card, table corner done; slab objects, plain legend, tiny bar chart still open)  Monte Carlo lab: objects are flat grey slabs; all cars start on top of each other so the first seconds look like one blob;
   the legend pill is plain; the results table has an empty dark corner header; the Wilcoxon statistics are unstyled plain text; the bar chart
   at the bottom is tiny with unreadable labels; ADAS + intent cars should show their status. (Layout and status cards done; look not done.)
-- [ ] T10. ML training lab: chart legends overlap the curves ("mlp3-128x128" over the lines), axis text small, the top area still reads as
+- [~] T10. (legends moved onto a card; chart fonts/colours follow the theme) ML training lab: chart legends overlap the curves ("mlp3-128x128" over the lines), axis text small, the top area still reads as
   one big black stage; twin cards are plain text; the pipeline stepper could show progress detail. Charts must use the theme fonts/colours.
 - [x] T11. (Rear camera: framed empty state, tile toggles) Rear camera drawer: big empty rounded box with text when no camera; the two toggle buttons were bright blue. Needs an
   illustrated empty state and tile toggles.
-- [ ] T12. Text that is cut off or clipped anywhere (bottom bar labels at narrow widths, drawer help text, table headers) - audit all widgets at
+- [x] T12. (audited at 1100x700, 1366x768, 1920x1080, 2560x1440 in both themes: no clipping; status pill now stays inside the scene) Text that is cut off or clipped anywhere (bottom bar labels at narrow widths, drawer help text, table headers) - audit all widgets at
   1100x700, 1366x768, 1920x1080, 2560x1440 in BOTH themes with a screenshot test.
 - [x] T13. (dark/light switch in the top bar, persisted with QSettings, window rebuilt on switch) Dark/light switch must exist in the top bar and persist (QSettings), and the labs follow it. -> S2.
 - [ ] T14. Behaviour the user reported next to the looks: ADAS + intent stuck in a corner while ADAS drove on. -> S1 (in progress: progress-based
@@ -596,4 +596,4 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
   say which part and why. Work: analyse where the needless interventions come from (by kind and trigger), fix causes generally (not per drive),
   improve the ML model (needless-intervention classifier on Monte Carlo counterfactual labels, more twin data, GPU), re-run the Monte Carlo
   on untouched seeds, update REPORT.md / RESEARCH.md / labs.
-- [ ] V2. All remaining TODO items except report figures and Pi-dependent ones.
+- [~] V2. (29 Sep night: N1, N4, F1 (explore, park), N7, N11, D6 done; the rest is Pi/car-dependent or report figures) All remaining TODO items except report figures and Pi-dependent ones.
