@@ -28,6 +28,14 @@ VARIANT_LABEL = {"off": "driver only", "brake-only": "brake only", "adas": "ADAS
 VARIANT_COL = {"off": theme.C["bad"], "brake-only": theme.C["warn"], "adas": theme.C["s1"], "adas+intent": theme.C["accent"]}
 
 
+def _refresh_palette():
+    COLS[:] = [theme.C[k] for k in ("s1", "s2", "s3", "s5", "s4", "s6")] + ["#B48EAD", "#88C0D0"]
+    VARIANT_COL.update({"off": theme.C["bad"], "brake-only": theme.C["warn"], "adas": theme.C["s1"], "adas+intent": theme.C["accent"]})
+
+
+theme.on_change(_refresh_palette)
+
+
 def read_json(path, default=None):
     try:
         with open(path) as f:

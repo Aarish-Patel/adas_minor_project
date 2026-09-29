@@ -14,12 +14,19 @@ class FeatureTile(QtWidgets.QFrame):
     toggled = QtCore.Signal(bool)
     hovered = QtCore.Signal(str)
 
-    def __init__(self, glyph, title, hint="", danger=False):
+    clicked = QtCore.Signal()
+
+    def __init__(self, glyph, title, hint="", danger=False, state=True, momentary=False, compact=False):
+        """state=False hides ON/OFF (tool selectors); momentary=True is a push tile (an action), it never stays lit;
+        compact=True is the smaller tile used for tool rows and action grids."""
         super().__init__()
         self.on, self.danger, self.hint = False, danger, hint
+        self.show_state, self.momentary, self.compact = state, momentary, compact
         self.setObjectName("tile")
         self.setCursor(QtCore.Qt.PointingHandCursor)
-        self.setMinimumHeight(92)
+        self.setMinimumHeight(78 if compact else 92)
+        if compact:
+            self.setMaximumHeight(78)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.setToolTip(hint)
         lay = QtWidgets.QVBoxLayout(self)
@@ -28,13 +35,14 @@ class FeatureTile(QtWidgets.QFrame):
         top = QtWidgets.QHBoxLayout()
         self.icon = QtWidgets.QLabel(glyph)
         f = QtGui.QFont("Segoe UI Symbol")
-        f.setPixelSize(26)
+        f.setPixelSize(22 if compact else 26)
         self.icon.setFont(f)
         top.addWidget(self.icon)
         top.addStretch(1)
         self.state = QtWidgets.QLabel("OFF")
         self.state.setFont(theme.semibold(10, spacing=1.4))
         top.addWidget(self.state)
+        self.state.setVisible(state)
         lay.addLayout(top)
         lay.addStretch(1)
         self.name = QtWidgets.QLabel(title)
@@ -53,7 +61,7 @@ class FeatureTile(QtWidgets.QFrame):
             self.setStyleSheet(f"QFrame#tile {{ background: {C['bg1']}; border: 1px solid {C['hair']}; border-radius: 14px; }} "
                                f"QFrame#tile:hover {{ border-color: {C['hair2']}; background: {C['surface']}; }} "
                                f"QLabel {{ background: transparent; }}")
-        self.icon.setStyleSheet(f"color: {lit if self.on else C['dim']}; font-family: 'Segoe UI Symbol'; font-size: 28px;")
+        self.icon.setStyleSheet(f"color: {lit if self.on else C['dim']}; font-family: 'Segoe UI Symbol'; font-size: {22 if self.compact else 28}px;")
         self.name.setStyleSheet(f"color: {C['text'] if self.on else C['text2']};")
         self.state.setStyleSheet(f"color: {lit if self.on else C['faint']};")
         self.state.setText("ON" if self.on else "OFF")
@@ -72,8 +80,76 @@ class FeatureTile(QtWidgets.QFrame):
         super().enterEvent(ev)
 
     def mousePressEvent(self, ev):
+        if self.momentary:
+            self.clicked.emit()
+            return
         self.setChecked(not self.on)
         self.toggled.emit(self.on)
+        self.clicked.emit()
+
+
+class TileGroup(QtCore.QObject):
+    """Makes tiles mutually exclusive (tool selectors): one is always lit."""
+
+    def __init__(self, tiles):
+        super().__init__()
+        self.tiles = tiles
+        for t in tiles:
+            t.toggled.connect(lambda on, t=t: self._changed(t, on))
+
+    def _changed(self, tile, on):
+        if on:
+            for o in self.tiles:
+                if o is not tile:
+                    o.setChecked(False)
+        elif not any(o.isChecked() for o in self.tiles):
+            tile.setChecked(True)                        # the lit one cannot be switched off by clicking it again
+
+
+class Card(QtWidgets.QFrame):
+    """A rounded panel (surface colour, hairline border) for grouped content: status, results, the map."""
+
+    def __init__(self, padding=14, tone="bg1"):
+        super().__init__()
+        self.setObjectName("card")
+        self.setStyleSheet(f"QFrame#card {{ background: {C[tone]}; border: 1px solid {C['hair']}; border-radius: 14px; }} "
+                           f"QLabel {{ background: transparent; }}")
+        self.body = QtWidgets.QVBoxLayout(self)
+        self.body.setContentsMargins(padding, padding, padding, padding)
+        self.body.setSpacing(6)
+
+
+class ZoneRow(QtWidgets.QFrame):
+    """One speed-limit zone as a row: colour dot, shape and limit, the scaled car speed, and a delete button."""
+
+    delete = QtCore.Signal()
+
+    def __init__(self, colour, title, sub):
+        super().__init__()
+        self.setObjectName("zrow")
+        self.setStyleSheet(f"QFrame#zrow {{ background: {C['bg1']}; border: 1px solid {C['hair']}; border-radius: 10px; }} "
+                           f"QLabel {{ background: transparent; }}")
+        lay = QtWidgets.QHBoxLayout(self)
+        lay.setContentsMargins(12, 8, 8, 8)
+        dot = QtWidgets.QLabel("●")
+        dot.setStyleSheet(f"color: {colour}; font-size: 16px;")
+        lay.addWidget(dot)
+        col = QtWidgets.QVBoxLayout()
+        col.setSpacing(0)
+        t = QtWidgets.QLabel(title)
+        t.setFont(theme.semibold(13))
+        u = QtWidgets.QLabel(sub)
+        u.setFont(theme.font(11))
+        u.setStyleSheet(f"color: {C['dim']};")
+        col.addWidget(t)
+        col.addWidget(u)
+        lay.addLayout(col, 1)
+        x = QtWidgets.QPushButton("✕")
+        x.setFixedSize(28, 28)
+        x.setStyleSheet(f"QPushButton {{ background: transparent; border: none; color: {C['dim']}; padding: 0; }} "
+                        f"QPushButton:hover {{ color: {C['bad']}; }}")
+        x.clicked.connect(self.delete.emit)
+        lay.addWidget(x)
 
 
 class Segmented(QtWidgets.QFrame):

@@ -256,7 +256,7 @@ class TrainingWindow(QtWidgets.QMainWindow):
         for k, (slot, d) in enumerate(zip(self.slots, picks)):
             off = np.array([0.0, (k - 1) * self.GAP])
             seg = np.asarray(d["segments"], float).reshape(-1, 4) + np.tile(off, 2)
-            sc.mesh(f"walls{k}", walls_mesh(seg, 0.30), (0.40, 0.42, 0.46, 0.95), opts="opaque")
+            sc.mesh(f"walls{k}", walls_mesh(seg, 0.30), C["wall"], opts="opaque")
             pose = np.asarray(d["pose"], float)
             pose[:, :2] += off
             band = pose[np.asarray(d["y"]) == 1, :2]
@@ -478,7 +478,7 @@ class MonteCarloWindow(QtWidgets.QMainWindow):
         sc = self.stage.scene
         world, goal, _ = scenario(int(k[0]))
         segs = np.asarray(world.segments(), float).reshape(-1, 4)
-        sc.mesh("walls", walls_mesh(segs, 0.30), (0.40, 0.42, 0.46, 0.95), opts="opaque")
+        sc.mesh("walls", walls_mesh(segs, 0.30), C["wall"], opts="opaque")
         a = np.linspace(0, 2 * math.pi, 40)
         V = np.vstack([[goal[0], goal[1], 0.004],
                        np.column_stack([goal[0] + 0.18 * np.cos(a), goal[1] + 0.18 * np.sin(a), np.full(40, 0.004)])])

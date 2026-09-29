@@ -24,7 +24,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 
-from gui.controls import FeatureTile, Segmented, section_label
+from gui.controls import Card, FeatureTile, Segmented, TileGroup, ZoneRow, section_label
 from gui.dashboard import ASSISTS, CTRL_PORT, GEO, polar_xy
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -36,8 +36,13 @@ from gui import theme
 from gui.theme import C, rgb
 
 # legacy names used through this file, mapped onto the design system (graphite + brass, not navy + cyan)
-EV = {"bg": C["bg"], "bg2": C["bg1"], "edge": C["hair"], "text": C["text"], "dim": C["dim"], "blue": C["accent"],
-      "cyan": C["accent"], "ok": C["ok"], "warn": C["warn"], "bad": C["bad"], "violet": C["info"]}
+def _ev_tokens():
+    return {"bg": C["bg"], "bg2": C["bg1"], "edge": C["hair"], "text": C["text"], "dim": C["dim"], "blue": C["accent"],
+            "cyan": C["accent"], "ok": C["ok"], "warn": C["warn"], "bad": C["bad"], "violet": C["info"]}
+
+
+EV = _ev_tokens()
+theme.on_change(lambda: EV.update(_ev_tokens()))
 EV_STYLE = theme.STYLE
 
 
@@ -220,11 +225,11 @@ class Scene(gl.GLViewWidget):
 
     def __init__(self, grid=16):
         super().__init__()
-        self.setBackgroundColor(C["bg"])
+        self.setBackgroundColor(C["scene_bg"])
         g = gl.GLGridItem()
         g.setSize(grid, grid)
         g.setSpacing(0.5, 0.5)
-        g.setColor((70, 74, 82, 70))
+        g.setColor(C["grid"])
         self.addItem(g)
         self._meshes = {}
 
@@ -327,7 +332,7 @@ class DriveScene(Scene):
         if hit is not None and len(pts):
             red = np.hypot(pts[:, 0] - hit[0], pts[:, 1] - hit[1]) < 0.15
         idle = ~(on_path | red)
-        self.mesh("obstacles", point_walls(pts[idle]), (0.72, 0.75, 0.80, 0.80))
+        self.mesh("obstacles", point_walls(pts[idle]), C["obstacle"])
         self.mesh("obst_path", point_walls(pts[on_path & ~red]), (*rgb('accent')[:3], 0.95))
         self.mesh("obst_hit", point_walls(pts[red]), (*rgb('bad')[:3], 0.95))
         self._proximity_arcs(pts)
@@ -661,39 +666,63 @@ class MapZonesPanel(QtWidgets.QWidget):
         self._press, self._poly = None, []
         self._sent_n = None
         lay = QtWidgets.QVBoxLayout(self)
-        tools = QtWidgets.QHBoxLayout()
+        lay.setContentsMargins(14, 8, 14, 14)
+        lay.setSpacing(8)
+        lay.addWidget(section_label("Map tool"))
+        tools = QtWidgets.QGridLayout()
+        tools.setSpacing(8)
         self.mode = {}
-        grp = QtWidgets.QButtonGroup(self)
-        for key, text, tip in (("goto", "Go to", "click = drive there; press-drag-release = arrive facing that way"),
-                               ("rect", "▭ Zone", "drag a rectangle"), ("circle", "◯ Zone", "drag from the centre"),
-                               ("poly", "⬠ Zone", "click the corners, right-click to finish"),
-                               ("erase", "Erase", "click a zone to delete it")):
-            b = QtWidgets.QPushButton(text)
-            b.setCheckable(True)
-            b.setToolTip(tip)
-            grp.addButton(b)
-            self.mode[key] = b
-            tools.addWidget(b)
+        for i, (key, glyph, text, tip) in enumerate((
+                ("goto", "\u2316", "Go to", "click = drive there; press-drag-release = arrive facing that way"),
+                ("rect", "\u25ad", "Rectangle", "drag a rectangle"), ("circle", "\u25ef", "Circle", "drag from the centre"),
+                ("poly", "\u2b20", "Polygon", "click the corners, right-click to finish"),
+                ("erase", "\u2715", "Erase", "click a zone to delete it"))):
+            t = FeatureTile(glyph, text, tip, state=False, compact=True)
+            self.mode[key] = t
+            tools.addWidget(t, 0, i)
+        self._group = TileGroup(list(self.mode.values()))
         self.mode["goto"].setChecked(True)
-        tools.addWidget(QtWidgets.QLabel("limit"))
+        lay.addLayout(tools)
+        lim = Card(padding=12)
+        row = QtWidgets.QHBoxLayout()
+        lab = QtWidgets.QVBoxLayout()
+        lab.setSpacing(0)
+        t1 = QtWidgets.QLabel("Speed limit for new zones")
+        t1.setFont(theme.semibold(13))
+        self.kph_car = QtWidgets.QLabel("")
+        self.kph_car.setFont(theme.font(11))
+        self.kph_car.setStyleSheet(f"color: {C['dim']};")
+        lab.addWidget(t1)
+        lab.addWidget(self.kph_car)
+        row.addLayout(lab, 1)
         self.kph = QtWidgets.QSpinBox()
         self.kph.setRange(5, 120)
         self.kph.setValue(20)
         self.kph.setSuffix(" km/h")
-        tools.addWidget(self.kph)
-        lay.addLayout(tools)
+        self.kph.setFont(theme.light(20))
+        self.kph.setMinimumWidth(130)
+        self.kph.valueChanged.connect(lambda v: self.kph_car.setText(f"= {v / 3.6 / CAR_SCALE:.2f} m/s on the car (1:{CAR_SCALE:.0f})"))
+        self.kph.valueChanged.emit(20)
+        row.addWidget(self.kph)
+        lim.body.addLayout(row)
+        lay.addWidget(lim)
         self.hint = QtWidgets.QLabel("")
-        self.hint.setStyleSheet(f"color: {EV['dim']}; font-size: 11px;")
+        self.hint.setFont(theme.font(12))
+        self.hint.setStyleSheet(f"color: {C['dim']}; padding: 0 2px;")
         self.hint.setWordWrap(True)
+        self.hint.setMinimumHeight(36)
         lay.addWidget(self.hint)
+        frame = Card(padding=6)
         self.plot = theme.style_plot(pg.PlotWidget())
+        self.plot.setMinimumHeight(300)
         self.plot.setAspectLocked(True)
         self.plot.showGrid(x=True, y=True, alpha=0.12)
         self.plot.getPlotItem().hideButtons()
         self.plot.getPlotItem().vb.setMouseEnabled(x=False, y=False)
         self.plot.setXRange(-3, 3)
         self.plot.setYRange(-2, 4)
-        self.map_pts = pg.ScatterPlotItem(size=3, brush=pg.mkBrush(180, 186, 195, 150), pen=None)
+        self.plot.setBackground(C["bg1"])
+        self.map_pts = pg.ScatterPlotItem(size=3, brush=pg.mkBrush(C["dim"]), pen=None)
         self.live = pg.ScatterPlotItem(size=3, brush=pg.mkBrush(C["accent"]), pen=None)
         self.path = pg.PlotCurveItem(pen=pg.mkPen(C["accent"], width=4))
         self.car = pg.PlotCurveItem(pen=pg.mkPen(C["text"], width=2))
@@ -701,19 +730,39 @@ class MapZonesPanel(QtWidgets.QWidget):
         for it in (self.map_pts, self.live, self.path, self.car, self.draft):
             self.plot.addItem(it)
         self.zone_items = []
-        lay.addWidget(self.plot, 1)
-        row = QtWidgets.QHBoxLayout()
-        for text, fn in (("Return to start", lambda: (self.link.send("HOME"), self.on_event("return to start"))),
-                         ("Send zones to the car", self.send_zones), ("Delete all zones", self.clear_zones),
-                         ("Reset origin here", self.reset_origin), ("Clear map", self.store.clear),
-                         ("Centre on car", self.centre), ("Cancel autonomy", lambda: self.link.send("GOTO CANCEL"))):
-            b = QtWidgets.QPushButton(text)
-            b.clicked.connect(fn)
-            row.addWidget(b)
-        lay.addLayout(row)
-        self.list = QtWidgets.QListWidget()
-        self.list.setMaximumHeight(90)
-        lay.addWidget(self.list)
+        frame.body.addWidget(self.plot)
+        lay.addWidget(frame, 1)
+        lay.addWidget(section_label("Drive"))
+        g1 = QtWidgets.QGridLayout()
+        g1.setSpacing(8)
+        for i, (glyph, text, fn, danger) in enumerate((
+                ("\u2302", "Return to start", lambda: (self.link.send("HOME"), self.on_event("return to start")), False),
+                ("\u25ce", "Centre on car", self.centre, False),
+                ("\u2b58", "Cancel autonomy", lambda: self.link.send("GOTO CANCEL"), True))):
+            t = FeatureTile(glyph, text, state=False, momentary=True, compact=True, danger=danger)
+            t.clicked.connect(fn)
+            g1.addWidget(t, 0, i)
+        lay.addLayout(g1)
+        lay.addWidget(section_label("Map and zones"))
+        g2 = QtWidgets.QGridLayout()
+        g2.setSpacing(8)
+        for i, (glyph, text, fn) in enumerate((
+                ("\u21e7", "Send zones", self.send_zones), ("\u2300", "Delete zones", self.clear_zones),
+                ("\u2299", "Reset origin", self.reset_origin), ("\u267b", "Clear map", self.store.clear))):
+            t = FeatureTile(glyph, text, state=False, momentary=True, compact=True)
+            t.clicked.connect(fn)
+            g2.addWidget(t, i // 2, i % 2)
+        lay.addLayout(g2)
+        lay.addWidget(section_label("Speed-limit zones"))
+        self.zone_box = QtWidgets.QVBoxLayout()
+        self.zone_box.setSpacing(6)
+        lay.addLayout(self.zone_box)
+        self.zone_empty = QtWidgets.QLabel("No zones yet. Pick Rectangle, Circle or Polygon above and draw on the map; "
+                                           "where there is no zone the car may go at full speed.")
+        self.zone_empty.setWordWrap(True)
+        self.zone_empty.setFont(theme.font(12))
+        self.zone_empty.setStyleSheet(f"color: {C['dim']};")
+        lay.addWidget(self.zone_empty)
         for key, b in self.mode.items():
             b.toggled.connect(self._update_hint)
         self._update_hint()
@@ -819,6 +868,11 @@ class MapZonesPanel(QtWidgets.QWidget):
         self.link.send(cmd)
         self.on_event(txt)
 
+    def _delete_zone(self, i):
+        if 0 <= i < len(self.zones):
+            del self.zones[i]
+            self._changed()
+
     def _add(self, z):
         z["kph"] = float(self.kph.value())
         z = {k: (round(v, 3) if isinstance(v, float) else v) for k, v in z.items()}
@@ -852,7 +906,11 @@ class MapZonesPanel(QtWidgets.QWidget):
         for it in self.zone_items:
             self.plot.removeItem(it)
         self.zone_items = []
-        self.list.clear()
+        while self.zone_box.count():
+            w = self.zone_box.takeAt(0).widget()
+            if w is not None:
+                w.deleteLater()
+        self.zone_empty.setVisible(not self.zones)
         for i, z in enumerate(self.zones):
             out = zone_outline(z)
             if len(out) < 3:
@@ -868,7 +926,11 @@ class MapZonesPanel(QtWidgets.QWidget):
             for it in (curve, fill, text):
                 self.plot.addItem(it)
                 self.zone_items.append(it)
-            self.list.addItem(f"{i + 1}. {z['kind']} - {z['kph']:.0f} km/h (car {z['kph'] / 3.6 / CAR_SCALE:.2f} m/s)")
+            hexc = "#%02x%02x%02x" % (r, g, b)
+            shape = {"rect": "Rectangle", "circle": "Circle", "poly": "Polygon"}.get(z["kind"], z["kind"])
+            row = ZoneRow(hexc, f"{shape} \u00b7 {z['kph']:.0f} km/h", f"{z['kph'] / 3.6 / CAR_SCALE:.2f} m/s on the car")
+            row.delete.connect(lambda i=i: self._delete_zone(i))
+            self.zone_box.addWidget(row)
 
     def show_state(self, st):
         world = st.get("world") or {}
@@ -1109,37 +1171,66 @@ class CarSetupPanel(QtWidgets.QWidget):
         self.host = host
         self.snap = None
         lay = QtWidgets.QVBoxLayout(self)
+        lay.setContentsMargins(14, 8, 14, 14)
+        lay.setSpacing(8)
+        self.card = Card(padding=14)
+        head = QtWidgets.QHBoxLayout()
+        self.dot = QtWidgets.QLabel("\u25cf")
+        self.dot.setStyleSheet(f"color: {C['faint']}; font-size: 18px;")
+        head.addWidget(self.dot)
+        self.status_title = QtWidgets.QLabel("Connecting to the car")
+        self.status_title.setFont(theme.semibold(15))
+        head.addWidget(self.status_title, 1)
+        self.card.body.addLayout(head)
         self.status = QtWidgets.QLabel("connecting to the car's control panel ...")
         self.status.setWordWrap(True)
-        self.status.setStyleSheet("font-size: 14px;")
-        lay.addWidget(self.status)
+        self.status.setFont(theme.font(12))
+        self.status.setStyleSheet(f"color: {C['dim']};")
+        self.card.body.addWidget(self.status)
+        lay.addWidget(self.card)
+        lay.addWidget(section_label("Drive"))
         grid = QtWidgets.QGridLayout()
+        grid.setSpacing(8)
         self.mode_btns = {}
+        glyphs = {"drive": "\u25b6", "lidar": "\u25c9", "center": "\u2316", "speed": "\u25d4", "turn": "\u21bb",
+                  "oa": "\u2934", "logdrive": "\u25cf"}
         for i, (key, text) in enumerate(self.MODES):
-            b = QtWidgets.QPushButton(text)
-            b.clicked.connect(lambda _=False, k=key: self.start(k))
-            grid.addWidget(b, i // 2, i % 2)
-            self.mode_btns[key] = b
-        stop = QtWidgets.QPushButton("STOP (motors zeroed)")
-        stop.setStyleSheet(f"border-color: {EV['bad']}; color: {EV['bad']}; font-weight: 700;")
-        stop.clicked.connect(lambda: self.post("/api/stop", {}))
-        grid.addWidget(stop, (len(self.MODES) + 1) // 2, 0, 1, 2)
+            t = FeatureTile(glyphs.get(key, "\u25cf"), text, state=False, momentary=True, compact=True)
+            t.clicked.connect(lambda k=key: self.start(k))
+            grid.addWidget(t, i // 2, i % 2)
+            self.mode_btns[key] = t
         lay.addLayout(grid)
-        lay.addWidget(QtWidgets.QLabel("Calibration results (applied only when you press Apply):"))
-        self.results = QtWidgets.QLabel("")
+        stop = FeatureTile("\u23fb", "STOP - zero the motors", "sends zero throttle and steering centre to the car",
+                           danger=True, state=False, momentary=True, compact=True)
+        stop.clicked.connect(lambda: self.post("/api/stop", {}))
+        lay.addWidget(stop)
+        lay.addWidget(section_label("Calibration results"))
+        self.res_card = Card(padding=12)
+        self.results = QtWidgets.QLabel("no results yet")
         self.results.setWordWrap(True)
-        self.results.setStyleSheet(f"color: {EV['dim']}; font-size: 12px;")
-        lay.addWidget(self.results)
-        row = QtWidgets.QHBoxLayout()
-        for kind, text in (("lidar", "Apply LiDAR"), ("servo_center", "Apply centre"), ("speed", "Apply speed"),
-                           ("turn", "Apply turning")):
-            b = QtWidgets.QPushButton(text)
-            b.clicked.connect(lambda _=False, k=kind: self.apply(k))
-            row.addWidget(b)
-        lay.addLayout(row)
+        self.results.setFont(theme.font(12))
+        self.results.setStyleSheet(f"color: {C['text2']};")
+        self.res_card.body.addWidget(self.results)
+        lay.addWidget(self.res_card)
+        note = QtWidgets.QLabel("Nothing is written to the car until you press Apply (a backup of the tuning file is kept).")
+        note.setWordWrap(True)
+        note.setFont(theme.font(11))
+        note.setStyleSheet(f"color: {C['dim']};")
+        lay.addWidget(note)
+        ga = QtWidgets.QGridLayout()
+        ga.setSpacing(8)
+        for i, (kind, text) in enumerate((("lidar", "Apply LiDAR"), ("servo_center", "Apply centre"), ("speed", "Apply speed"),
+                                          ("turn", "Apply turning"))):
+            t = FeatureTile("\u2713", text, state=False, momentary=True, compact=True)
+            t.clicked.connect(lambda k=kind: self.apply(k))
+            ga.addWidget(t, i // 2, i % 2)
+        lay.addLayout(ga)
+        lay.addWidget(section_label("Activity"))
         self.log = QtWidgets.QPlainTextEdit()
         self.log.setReadOnly(True)
-        self.log.setMaximumHeight(140)
+        self.log.setMinimumHeight(110)
+        self.log.setMaximumHeight(160)
+        self.log.setPlaceholderText("Job output appears here")
         lay.addWidget(self.log)
         lay.addStretch(1)
         self.state_ready.connect(self._show)
@@ -1196,13 +1287,17 @@ class CarSetupPanel(QtWidgets.QWidget):
             self.poll()
             return
         if "error" in s:
-            self.status.setText("Control panel not reachable (the Pi's rc-panel service, port 8080) - in the laptop "
-                                "simulator there is none.")
+            self.dot.setStyleSheet(f"color: {C['warn']}; font-size: 18px;")
+            self.status_title.setText("Control panel not reachable")
+            self.status.setText("The Pi's rc-panel service (port 8080) does not answer. In the laptop simulator there is none - "
+                                "calibrations and drive modes need the car.")
+            self.results.setText("no results yet")
             return
         self.snap = s
         run = "running" if s.get("running") else "idle"
-        self.status.setText(f"<b>{s.get('mode') or 'no job'}</b> - {run}<br>{s.get('message', '')}<br>"
-                            f"relay (drive mode): {'on' if s.get('relay') else 'off'}")
+        self.dot.setStyleSheet(f"color: {C['ok'] if s.get('running') or s.get('relay') else C['dim']}; font-size: 18px;")
+        self.status_title.setText(f"{s.get('mode') or 'No job'} \u00b7 {run}")
+        self.status.setText(f"{s.get('message', '')}\nrelay (drive mode): {'on' if s.get('relay') else 'off'}")
         res = s.get("results") or {}
         lines = []
         if "lidar" in res:
@@ -1361,6 +1456,11 @@ class EVWindow(QtWidgets.QMainWindow):
             c = QtWidgets.QLabel("")
             lay.addWidget(c)
             self.chips[k] = c
+        self.theme_btn = QtWidgets.QPushButton("◐  " + ("LIGHT" if theme.MODE == "dark" else "DARK"))
+        self.theme_btn.setObjectName("app")
+        self.theme_btn.setToolTip("Switch between the dark and the light theme")
+        self.theme_btn.clicked.connect(self.toggle_theme)
+        lay.addWidget(self.theme_btn)
         f.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
         return f
 
@@ -1408,11 +1508,35 @@ class EVWindow(QtWidgets.QMainWindow):
         """Narrow windows: the bottom bar shows icons only (tooltips carry the names) instead of forcing the window wider."""
         super().resizeEvent(ev)
         QtCore.QTimer.singleShot(0, self._place)
-        compact = self.width() < 1500
+        compact = self.centralWidget().width() < 1280 if self.centralWidget() is not None else self.width() < 1500
         for b in self.app_btns.values():
             full = b.property("full")
             if full:
                 b.setText(full.split("  ", 1)[0] if compact else full.replace("&", "&&"))
+
+    def toggle_theme(self):
+        """Dark <-> light: switch the palette and rebuild the window (every widget's colours are set at construction)."""
+        theme.set_mode("light" if theme.MODE == "dark" else "dark")
+        theme.save_mode()
+        app = QtWidgets.QApplication.instance()
+        app.setStyleSheet(theme.STYLE)
+        was_open = [k for k, d in self.docks.items() if d.isVisible()]
+        geo = self.geometry()
+        new = EVWindow(self.link)
+        new.setGeometry(geo)
+        if self.isMaximized():
+            new.showMaximized()
+        elif self.isFullScreen():
+            new.showFullScreen()
+        else:
+            new.show()
+        for k in was_open:
+            new.toggle(k, True)
+        for lab in self.labs.values():
+            lab.close()
+        app._ev_window = new
+        self.timer.stop()
+        self.close()
 
     def toggle(self, key, on):
         self.docks[key].setVisible(on)

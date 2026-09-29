@@ -819,8 +819,10 @@ def main():
         win = Dashboard(Link(a.host))
         win.tabs.setCurrentIndex(a.tab)
     else:
-        from gui.ev import EV_STYLE, EVWindow
-        app.setStyleSheet(EV_STYLE)
+        from gui import theme as _theme
+        from gui.ev import EVWindow
+        _theme.load_mode()
+        app.setStyleSheet(_theme.STYLE)
         win = EVWindow(Link(a.host))
     win.show()
     target = win

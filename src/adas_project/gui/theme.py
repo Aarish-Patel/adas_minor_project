@@ -12,20 +12,67 @@ Direction: premium EV cockpit (Polestar / Lucid / Porsche Taycan school), not a 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 # ---------------------------------------------------------------- colour
-C = {
-    # surfaces: Night Black with cool glass layers (HarmonyOS "Night Black / Snow Gray")
-    "bg": "#08090B", "bg1": "#0F1114", "surface": "#15181C", "raised": "#1B1F24", "hair": "#262A31",
-    "hair2": "#39404A",
-    # content
-    "text": "#F1F3F5", "text2": "#B4BAC3", "dim": "#7B818B", "faint": "#4B5058",
-    # brand accent: luminous Cosmic Blue (HarmonyOS accent, lifted for legibility on black) - used for lines, text and glow,
-    # never as a flat button fill
-    "accent": "#4C8DFF", "accent_dim": "#2C5CB0", "accent_bg": "rgba(76,141,255,28)",
-    # status (automotive convention)
-    "ok": "#64BB5C", "warn": "#ED6F21", "bad": "#E84026", "info": "#DCE3EA",
-    # data series on dark
-    "s1": "#E8ECEF", "s2": "#4C8DFF", "s3": "#7BA7C7", "s4": "#9AA0A8", "s5": "#64BB5C", "s6": "#E84026",
+# Two palettes, switchable at run time (set_mode), taken from the Huawei ADS screens the user pointed to (29 Sep): a slate
+# blue-grey dark mode (not black) and a pale blue-grey light mode with white cards, one luminous blue for the path ribbon and
+# active lines, Tesla-style greys. Blue is used for lines, text and glow - never as a flat button fill.
+PALETTES = {
+    "dark": {
+        "bg": "#232D3D", "bg1": "#1B2431", "surface": "#2B3648", "raised": "#34415A", "hair": "#3A475C", "hair2": "#4B5B75",
+        "text": "#F3F6FA", "text2": "#C3CCDA", "dim": "#8D99AC", "faint": "#5E6B80",
+        "accent": "#3D8BFF", "accent_dim": "#2A62B8", "accent_bg": "rgba(61,139,255,28)",
+        "ok": "#4CC38A", "warn": "#F0A030", "bad": "#F0533F", "info": "#DCE3EA",
+        "s1": "#E8ECEF", "s2": "#3D8BFF", "s3": "#7BA7C7", "s4": "#9AA0A8", "s5": "#4CC38A", "s6": "#F0533F",
+        "scene_bg": "#26324A", "grid": (150, 175, 215, 46), "obstacle": (0.66, 0.72, 0.82, 0.85), "wall": (0.55, 0.62, 0.74, 0.95),
+        "hover": "#3B4964",
+    },
+    "light": {
+        "bg": "#E9EEF4", "bg1": "#F6F8FB", "surface": "#FFFFFF", "raised": "#EEF2F7", "hair": "#D5DCE6", "hair2": "#BAC5D4",
+        "text": "#1B2430", "text2": "#3C4A5E", "dim": "#6B7A90", "faint": "#9AA7B9",
+        "accent": "#1E6BFF", "accent_dim": "#7FA8F0", "accent_bg": "rgba(30,107,255,28)",
+        "ok": "#2FA35A", "warn": "#E67E22", "bad": "#D93A2B", "info": "#31455E",
+        "s1": "#1B2430", "s2": "#1E6BFF", "s3": "#4F7FA8", "s4": "#6B7A90", "s5": "#2FA35A", "s6": "#D93A2B",
+        "scene_bg": "#DDE5EF", "grid": (90, 110, 140, 60), "obstacle": (0.52, 0.58, 0.68, 0.85), "wall": (0.60, 0.66, 0.75, 0.95),
+        "hover": "#E2E8F0",
+    },
 }
+MODE = "dark"
+C = dict(PALETTES["dark"])
+_hooks = []
+
+
+def on_change(fn):
+    """Register a function to run after every palette switch (module-level colour tables refresh themselves)."""
+    _hooks.append(fn)
+
+
+def set_mode(mode):
+    """Switch the palette in place (widgets built afterwards pick it up; the main window is rebuilt on a switch)."""
+    global MODE, STYLE
+    MODE = mode if mode in PALETTES else "dark"
+    C.clear()
+    C.update(PALETTES[MODE])
+    STYLE = build_style()
+    for fn in _hooks:
+        fn()
+
+
+def load_mode():
+    """The last chosen mode (QSettings), dark by default."""
+    try:
+        m = QtCore.QSettings("RC-ADAS", "gui").value("theme", "dark")
+    except Exception:
+        m = "dark"
+    set_mode(str(m))
+    return MODE
+
+
+def save_mode():
+    try:
+        QtCore.QSettings("RC-ADAS", "gui").setValue("theme", MODE)
+    except Exception:
+        pass
+
+
 # the same in 0-1 floats for OpenGL
 def rgb(name, a=1.0):
     h = C[name].lstrip("#")
@@ -104,7 +151,8 @@ class Fade(QtCore.QObject):
 
 
 # ---------------------------------------------------------------- Qt stylesheet
-STYLE = f"""
+def build_style():
+    return f"""
 * {{ font-family: '{TEXT}', 'Segoe UI', sans-serif; font-size: 13px; color: {C['text']}; }}
 QMainWindow, QWidget#root {{ background: {C['bg']}; }}
 QLabel {{ background: transparent; }}
@@ -113,7 +161,7 @@ QFrame#top {{ background: {C['bg']}; border-bottom: 1px solid {C['hair']}; }}
 QFrame#bar {{ background: {C['bg1']}; border-top: 1px solid {C['hair']}; }}
 QPushButton {{ background: {C['raised']}; border: 1px solid {C['hair']}; border-radius: 9px; padding: 8px 16px;
                font-family: '{DISPLAY}'; letter-spacing: 0.4px; }}
-QPushButton:hover {{ border-color: {C['hair2']}; background: #23272D; }}
+QPushButton:hover {{ border-color: {C['hair2']}; background: {C['hover']}; }}
 QPushButton:pressed {{ background: {C['bg1']}; }}
 QPushButton:checked {{ background: {css_rgba('accent', 0.14)}; border-color: {C['accent_dim']}; color: {C['accent']}; }}
 QPushButton:disabled {{ color: {C['faint']}; }}
@@ -124,6 +172,8 @@ QPushButton#app:checked {{ color: {C['accent']}; background: transparent; border
                            border-radius: 0; }}
 QPushButton#danger {{ border-color: {C['bad']}; color: {C['bad']}; font-weight: 600; }}
 QDockWidget {{ color: {C['text']}; font-family: '{DISPLAY}'; }}
+QDockWidget {{ background: {C['bg1']}; }}
+QDockWidget QScrollArea, QDockWidget QScrollArea > QWidget > QWidget {{ background: {C['bg1']}; }}
 QDockWidget::title {{ background: {C['bg1']}; padding: 10px 14px; border-bottom: 1px solid {C['hair']}; }}
 QListWidget, QTableWidget, QPlainTextEdit, QTextEdit {{ background: {C['bg1']}; border: 1px solid {C['hair']};
                    border-radius: 8px; gridline-color: {C['hair']}; selection-background-color: {C['raised']}; }}
@@ -149,6 +199,9 @@ QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; width: 0; }}
 QStatusBar {{ background: {C['bg1']}; color: {C['dim']}; }}
 QToolTip {{ background: {C['raised']}; color: {C['text']}; border: 1px solid {C['hair2']}; padding: 6px; }}
 """
+
+
+STYLE = build_style()
 
 
 def chip_css(colour_name, filled=False):

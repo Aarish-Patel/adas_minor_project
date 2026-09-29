@@ -45,8 +45,9 @@ class GuiSmoke(unittest.TestCase):
     def setUpClass(cls):
         QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-        from gui.ev import EV_STYLE
-        cls.app.setStyleSheet(EV_STYLE)
+        from gui import theme
+        theme.set_mode("dark")
+        cls.app.setStyleSheet(theme.STYLE)
 
     def test_drawers_fit_and_state_draws(self):
         from gui.ev import EVWindow
@@ -66,6 +67,21 @@ class GuiSmoke(unittest.TestCase):
                 self.assertGreater(w.centralWidget().height(), 300, f"{key} drawer squeezed the scene at {W}x{H}")
                 d.hide()
         w.close()
+
+    def test_theme_switch_rebuilds_the_window(self):
+        from gui import theme
+        from gui.ev import EVWindow
+        w = EVWindow(Link(STATE))
+        w.show()
+        w.toggle_theme()
+        self.app.processEvents()
+        self.assertEqual(theme.MODE, "light")
+        self.assertEqual(theme.C["bg"], theme.PALETTES["light"]["bg"])
+        self.assertIsNot(self.app._ev_window, w)
+        self.app._ev_window.refresh()
+        self.app._ev_window.toggle_theme()                        # and back: leaves the module in dark for the other tests
+        self.assertEqual(theme.MODE, "dark")
+        self.app._ev_window.close()
 
     def test_lab_windows_build(self):
         from gui.lab_windows import MonteCarloWindow, TrainingWindow
