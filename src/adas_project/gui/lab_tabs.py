@@ -190,8 +190,12 @@ class MonteCarloTab(QtWidgets.QWidget):
         self.table = QtWidgets.QTableWidget()
         self.table.setMinimumHeight(170)
         ll.addWidget(self.table)
+        from gui.controls import Card
+        tcard = Card(padding=12)
         self.tests = small_label("", dim=False)
-        ll.addWidget(self.tests)
+        self.tests.setStyleSheet(f"color: {theme.C['text2']}; font-size: 12px; font-family: 'Consolas', monospace;")
+        tcard.body.addWidget(self.tests)
+        ll.addWidget(tcard)
         self.bars = plot("crashes (red) and needless interventions (orange) per system")
         ll.addWidget(self.bars, 1)
         right = QtWidgets.QWidget()

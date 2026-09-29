@@ -177,6 +177,7 @@ QDockWidget QScrollArea, QDockWidget QScrollArea > QWidget > QWidget {{ backgrou
 QDockWidget::title {{ background: {C['bg1']}; padding: 10px 14px; border-bottom: 1px solid {C['hair']}; }}
 QListWidget, QTableWidget, QPlainTextEdit, QTextEdit {{ background: {C['bg1']}; border: 1px solid {C['hair']};
                    border-radius: 8px; gridline-color: {C['hair']}; selection-background-color: {C['raised']}; }}
+QTableCornerButton::section {{ background: {C['bg1']}; border: none; border-bottom: 1px solid {C['hair']}; }}
 QHeaderView::section {{ background: {C['bg1']}; color: {C['dim']}; border: none; border-bottom: 1px solid {C['hair']};
                    padding: 6px; font-family: '{DISPLAY}'; letter-spacing: 0.6px; }}
 QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit {{ background: {C['bg1']}; border: 1px solid {C['hair']};

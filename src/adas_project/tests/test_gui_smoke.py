@@ -4,6 +4,8 @@ import os
 import sys
 import unittest
 
+import numpy as np
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
@@ -67,6 +69,23 @@ class GuiSmoke(unittest.TestCase):
                 self.assertGreater(w.centralWidget().height(), 300, f"{key} drawer squeezed the scene at {W}x{H}")
                 d.hide()
         w.close()
+
+    def test_car_render_stays_inside_the_real_footprint(self):
+        """The hot-rod model with its LiDAR must not be bigger than the car the LiDAR and the gate see (rear .. front, width)."""
+        from gui.dashboard import GEO
+        from gui.ev import car_geometry
+        lo = np.array([np.inf] * 3)
+        hi = -lo
+        for name, (V, F), col in car_geometry():
+            lo, hi = np.minimum(lo, V.min(axis=0)), np.maximum(hi, V.max(axis=0))
+            self.assertEqual(F.max() < len(V), True, name)
+        eps = 1e-6
+        self.assertGreaterEqual(lo[0], GEO["rear"] - eps)
+        self.assertLessEqual(hi[0], GEO["front"] + eps)
+        self.assertLessEqual(hi[1], GEO["width"] / 2 + eps)
+        self.assertGreaterEqual(lo[1], -GEO["width"] / 2 - eps)
+        self.assertGreaterEqual(lo[2], -eps)
+        self.assertLess(hi[2], 0.25)                               # low: a hot rod, LiDAR on top
 
     def test_theme_switch_rebuilds_the_window(self):
         from gui import theme

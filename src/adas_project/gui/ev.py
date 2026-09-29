@@ -168,46 +168,107 @@ def point_walls(xy, h=0.10, half=0.02, join=0.12):
     return walls_mesh(np.array(seg), h) if seg else None
 
 
-class CarModel:
-    """A small EV body: chassis, cabin, glass, wheels, lights, and the ground ring (brass, pulsing).
-    All parts hang off one parent, so the whole car moves with one transform (labs animate several)."""
+def cyl(centre, radius, length, axis, n=18):
+    """A cylinder as (V, F): centre (x, y, z), the axis 'x', 'y' or 'z', capped at both ends."""
+    cx, cy, cz = centre
+    k = "xyz".index(axis)
+    b, c = [i for i in range(3) if i != k]
+    ang = np.linspace(0, 2 * math.pi, n, endpoint=False)
+    V = []
+    for end in (-0.5, 0.5):
+        for t in ang:
+            v = [cx, cy, cz]
+            v[k] += end * length
+            v[b] += radius * math.cos(t)
+            v[c] += radius * math.sin(t)
+            V.append(v)
+    for end in (-0.5, 0.5):
+        v = [cx, cy, cz]
+        v[k] += end * length
+        V.append(v)
+    F = []
+    for i in range(n):
+        j = (i + 1) % n
+        F += [[i, j, n + j], [i, n + j, n + i], [2 * n, j, i], [2 * n + 1, n + i, n + j]]
+    return np.array(V, float), np.array(F)
 
-    def __init__(self, view, colour=(0.90, 0.91, 0.92, 1.0), ring=None, scale=1.0):
+
+def car_geometry(colour=(0.78, 0.82, 0.90, 1.0)):
+    """The car as a hot rod with the LiDAR on top, in the vehicle frame (x ahead of the rear axle, y left, z up), as a list
+    of (name, (V, F), colour). Everything stays inside the real footprint - GEO rear .. front in x, +-width/2 in y - so the
+    render never passes through what the LiDAR sees (tests/test_gui_smoke.py checks the bounds)."""
+    r, f, w = GEO["rear"], GEO["front"], GEO["width"] / 2
+    wb, lx = GEO["wheelbase"], GEO["lidar_x"]
+    L = f - r
+    at = lambda u: r + u * L
+    glass, tyre, hub = (0.07, 0.09, 0.13, 1), (0.035, 0.035, 0.04, 1), (0.78, 0.80, 0.84, 1)
+    chrome, dark = (0.88, 0.90, 0.93, 1), (0.10, 0.11, 0.14, 1)
+    body = loft([(r + 0.005, w * 0.70, 0.040, 0.072, w * 0.55), (at(0.12), w * 0.90, 0.032, 0.085, w * 0.72),
+                 (at(0.35), w * 0.96, 0.032, 0.088, w * 0.78), (at(0.55), w * 0.92, 0.032, 0.084, w * 0.74),
+                 (at(0.70), w * 0.90, 0.034, 0.090, w * 0.62), (at(0.92), w * 0.80, 0.036, 0.082, w * 0.56),
+                 (f - 0.004, w * 0.62, 0.040, 0.066, w * 0.48)])
+    cabin = loft([(at(0.32), w * 0.72, 0.086, 0.090, w * 0.62), (at(0.40), w * 0.72, 0.088, 0.118, w * 0.56),
+                  (at(0.58), w * 0.70, 0.088, 0.118, w * 0.54), (at(0.64), w * 0.72, 0.086, 0.095, w * 0.62)])
+    wheels_t, wheels_h = [], []
+    for x0, rad, wid in ((0.0, 0.034, 0.030), (wb, 0.028, 0.022)):
+        for sgn in (-1, 1):
+            yc = sgn * (w - wid / 2 - 0.002)                  # the tyre's outer face sits 2 mm inside the footprint
+            wheels_t.append(cyl((x0, yc, rad), rad, wid, "y"))
+            wheels_h.append(cyl((x0, sgn * (w - 0.002), rad), rad * 0.62, 0.004, "y"))
+    pipes = [cyl((at(0.50), sgn * (w - 0.010), 0.046), 0.008, 0.28 * L, "x", 12) for sgn in (-1, 1)]
+    lights_f = [cyl((f - 0.003, sgn * 0.040, 0.060), 0.012, 0.006, "x", 14) for sgn in (-1, 1)]
+    lights_r = [box(r, r + 0.005, sgn * 0.055 - 0.015, sgn * 0.055 + 0.015, 0.056, 0.068) for sgn in (-1, 1)]
+    scoop = box(at(0.72), at(0.86), -0.020, 0.020, 0.086, 0.103)
+    lidar = [cyl((lx, 0.0, 0.126), 0.012, 0.016, "z", 14),        # mount post
+             cyl((lx, 0.0, 0.150), 0.034, 0.032, "z", 24)]        # the RPLIDAR body (~7 cm across)
+    cap = cyl((lx, 0.0, 0.1675), 0.028, 0.003, "z", 24)
+    return [("body", body, colour), ("cabin", cabin, glass), ("tyres", merge(wheels_t), tyre), ("hubs", merge(wheels_h), hub),
+            ("pipes", merge(pipes), chrome), ("head", merge(lights_f), (1.0, 0.96, 0.85, 1)),
+            ("tail", merge(lights_r), (0.86, 0.16, 0.18, 1)), ("scoop", scoop, dark), ("lidar", merge(lidar), dark),
+            ("lidar_cap", cap, (0.30, 0.55, 1.0, 1))]
+
+
+class CarModel:
+    """A small hot rod with a LiDAR puck on top, and the ground ring (pulsing). All parts hang off one parent, so the whole
+    car moves with one transform (labs animate several); items[0] is the body (labs colour it by risk). The LiDAR's
+    marker spins while the car is shown."""
+
+    def __init__(self, view, colour=(0.78, 0.82, 0.90, 1.0), ring=None, scale=1.0):
         ring = ring or rgb('accent', 0.85)
         self.scale = scale
-        r, f, w = GEO["rear"] - 0.03, GEO["front"], GEO["width"] / 2
-        wb = GEO["wheelbase"]
         a = np.linspace(0, 2 * math.pi, 60)
         self.parent = gl.GLLinePlotItem(pos=np.column_stack([0.1 + 0.30 * np.cos(a), 0.30 * np.sin(a),
                                                              np.full(60, 0.003)]), color=ring, width=3,
                                         antialias=True)
         view.addItem(self.parent)
-        L = f - r
-        at = lambda u: r + u * L
-        body = loft([(at(0.00), w * 0.80, 0.045, 0.070, w * 0.70), (at(0.06), w * 0.94, 0.038, 0.082, w * 0.86),
-                     (at(0.50), w, 0.035, 0.090, w * 0.90), (at(0.90), w * 0.95, 0.038, 0.078, w * 0.82),
-                     (at(1.00), w * 0.78, 0.046, 0.062, w * 0.66)])
-        cabin = loft([(at(0.30), w * 0.80, 0.085, 0.088, w * 0.70), (at(0.40), w * 0.78, 0.088, 0.128, w * 0.58),
-                      (at(0.62), w * 0.76, 0.088, 0.130, w * 0.56), (at(0.76), w * 0.78, 0.085, 0.100, w * 0.66)])
-        parts = [(body, colour),
-                 (cabin, (0.06, 0.075, 0.10, 1)),
-                 (merge([box(-0.03, 0.03, s * w - 0.02, s * w + 0.02, 0.0, 0.06) for s in (-1, 1)] +
-                        [box(wb - 0.03, wb + 0.03, s * w - 0.02, s * w + 0.02, 0.0, 0.06) for s in (-1, 1)]),
-                  (0.04, 0.045, 0.05, 1)),
-                 (merge([box(f - 0.006, f + 0.004, s * w * 0.55 - 0.02, s * w * 0.55 + 0.02, 0.06, 0.075)
-                         for s in (-1, 1)]), (1.0, 0.97, 0.88, 1)),
-                 (merge([box(r - 0.004, r + 0.006, -w * 0.8, w * 0.8, 0.065, 0.075)]), (0.86, 0.16, 0.18, 1))]
         self.items = []
-        for k, ((V, F), col) in enumerate(parts):
-            edge = tuple(0.55 * c for c in col[:3]) + (1.0,)
-            it = gl.GLMeshItem(vertexes=V, faces=F, color=col, smooth=False, drawEdges=k < 2, edgeColor=edge,
-                               glOptions="opaque")
+        for k, (name, (V, F), col) in enumerate(car_geometry(colour)):
+            edge = tuple(0.78 * c for c in col[:3]) + (1.0,)
+            it = gl.GLMeshItem(vertexes=V, faces=F, color=col, smooth=(name in ("tyres", "hubs", "pipes", "lidar", "lidar_cap")),
+                               drawEdges=name in ("body", "cabin"), edgeColor=edge, glOptions="opaque")
             it.setParentItem(self.parent)
             self.items.append(it)
+            if name == "lidar_cap":
+                self.spin_item = it
+        # a small bright marker on the LiDAR cap that goes round with it (the scan direction)
+        lx = GEO["lidar_x"]
+        mk = gl.GLMeshItem(vertexes=box(lx + 0.010, lx + 0.026, -0.004, 0.004, 0.1695, 0.1725)[0],
+                           faces=box(0, 1, 0, 1, 0, 1)[1], color=(1.0, 1.0, 1.0, 1), smooth=False, glOptions="opaque")
+        mk.setParentItem(self.parent)
+        self.marker = mk
+        self._lx = lx
+
+    def _spin(self):
+        m = QtGui.QMatrix4x4()
+        m.translate(self._lx, 0, 0)
+        m.rotate((time.time() * 540.0) % 360.0, 0, 0, 1)         # ~1.5 turns a second, like the real sensor at 5.5 Hz x ...
+        m.translate(-self._lx, 0, 0)
+        self.marker.setTransform(m)
 
     def pulse(self, t, colour_name="accent", speed=1.6):
         a = 0.55 + 0.35 * math.sin(t * speed)
         self.parent.setData(color=rgb(colour_name, a))
+        self._spin()
 
     def place(self, x, y, th_rad):
         m = QtGui.QMatrix4x4()
@@ -215,6 +276,7 @@ class CarModel:
         m.rotate(math.degrees(th_rad), 0, 0, 1)
         m.scale(self.scale, self.scale, self.scale)
         self.parent.setTransform(m)
+        self._spin()
 
     def set_visible(self, on):
         self.parent.setVisible(on)
@@ -534,25 +596,43 @@ class Banner(Glass):
 
 
 class SafetyPill(Glass):
-    """Bottom-centre: the brake's view of the path - clear / time to contact."""
+    """Bottom-centre status pill in the style of production cockpits: a coloured icon disc (tick / warning / cross), the
+    state as a headline, and the numbers (free distance, RSS need) as a quieter second part."""
 
     def __init__(self, parent):
         super().__init__(parent)
+        self.setStyleSheet(f"QFrame#glass {{ background: {theme.css_rgba('surface', 0.92)}; border: 1px solid {C['hair']}; "
+                           f"border-radius: 24px; }} QLabel {{ background: transparent; }}")
         lay = QtWidgets.QHBoxLayout(self)
-        lay.setContentsMargins(16, 7, 20, 7)
-        lay.setSpacing(10)
-        self.dot = QtWidgets.QLabel("")
-        self.dot.setFixedSize(8, 8)
-        self.text = QtWidgets.QLabel("path clear")
-        self.text.setFont(theme.font(13, spacing=0.4))
-        lay.addWidget(self.dot)
-        lay.addWidget(self.text)
+        lay.setContentsMargins(10, 8, 22, 8)
+        lay.setSpacing(12)
+        self.disc = QtWidgets.QLabel("✓")
+        self.disc.setFixedSize(30, 30)
+        self.disc.setAlignment(QtCore.Qt.AlignCenter)
+        lay.addWidget(self.disc)
+        self.head = QtWidgets.QLabel("Path clear")
+        self.head.setFont(theme.semibold(15))
+        lay.addWidget(self.head)
+        self.sub = QtWidgets.QLabel("")
+        self.sub.setFont(theme.font(12))
+        self.sub.setStyleSheet(f"color: {C['dim']};")
+        lay.addWidget(self.sub)
+        self._last = None
 
     def set(self, text, colour):
-        self.dot.setStyleSheet(f"background: {colour}; border-radius: 4px;")
-        if text != self.text.text():
-            self.text.setText(text)
-            self.adjustSize()
+        if (text, colour) == self._last:
+            return
+        self._last = (text, colour)
+        head, _, rest = text.partition(" · ")
+        glyph = "✓" if colour == EV["ok"] else "✕" if colour == EV["bad"] else "!"
+        r, g, b = (int(colour[i:i + 2], 16) for i in (1, 3, 5))
+        self.disc.setText(glyph)
+        self.disc.setStyleSheet(f"background: rgba({r},{g},{b},40); color: {colour}; border: 1px solid rgba({r},{g},{b},150); "
+                                f"border-radius: 15px; font-size: 15px; font-weight: 700;")
+        self.head.setText(head[:1].upper() + head[1:])
+        self.sub.setText(rest)
+        self.sub.setVisible(bool(rest))
+        self.adjustSize()
 
 
 class MiniMap(Glass):
