@@ -275,6 +275,9 @@ class RelayIntent:
         rp = risk_path or os.path.join(here, "intent_v3.json")
         self.risk_net = IntentNet(rp) if os.path.exists(rp) else None
         self.p_risk = None
+        from adas.online_calibration import OnlineCalibrator
+        self.calib = OnlineCalibrator()          # on-the-go recalibration of the shown risk (adas/online_calibration.py)
+        self.p_adapted, self._calib_tick = None, 0
         self.profile = DriverProfile()
         self.assist, self.trust_threshold = assist, trust
         self.hist, self.pwm_hist, self.last_t = [], [], None
@@ -326,7 +329,14 @@ class RelayIntent:
             z = tick_vector(servo, physical, v, pts_v, a.p, a.centre, a.k,
                             react=self.profile.reaction_distance)
             self.zhist = (self.zhist + [z])[-WINDOW:]
-            self.p_risk = v3.risk(window_of(self.zhist))
+            Wn = window_of(self.zhist)
+            self.p_risk = v3.risk(Wn)
+            from adas.intent_net import physics_floor
+            lg = v3.logit3(Wn)
+            self._calib_tick += 1
+            if self._calib_tick % 5 == 0:
+                self.calib.observe(now, lg)                                  # resolved 2 s later by safety events
+            self.p_adapted = max(self.calib.probability(lg), physics_floor(Wn))
             if decides_v3:
                 self.profile.update(self.hist, z[Z_FREE_NOW] * HORIZON3)
                 self.p_crash = self.p_risk
@@ -361,13 +371,19 @@ class RelayIntent:
         """The trusted, active driver's curvature rate (1/m per s) for the gate's predicted path, else None."""
         return self.assist.assists.intent_k_rate if self.gate_trust else None
 
+    def feedback_event(self, now):
+        """A physical safety event happened (the path brake latched / held the car): feedback for the online calibration."""
+        self.calib.event(now)
+
     def gui(self):
-        """p_crash: the risk the driver sees (v3 when available); p_decision: the model deciding takeovers."""
-        shown = self.p_risk if self.p_risk is not None else self.p_crash
+        """p_crash: the risk the driver sees (v3, recalibrated to this driver once enough feedback exists); p_decision: the model
+        deciding takeovers (never the adapted one)."""
+        shown = self.p_adapted if (self.p_adapted is not None and self.calib.active) else             (self.p_risk if self.p_risk is not None else self.p_crash)
         return {"p_crash": None if shown is None else round(shown, 3),
                 "p_decision": None if self.p_crash is None else round(self.p_crash, 3), "trusted": self.trusted,
                 "attentive": self.attentive, "reaction_m": round(self.profile.reaction_distance, 2),
-                "stalled": self.stalled}
+                "stalled": self.stalled, "calibrated": self.calib.active, "calib_a": round(float(self.calib.theta[0]), 2),
+                "calib_b": round(float(self.calib.theta[1]), 2)}
 
 
 class RelayAssists:
@@ -528,7 +544,7 @@ class RelayAssists:
             a.pose_fix = fix
 
     # --- click-to-go autonomy
-    def goto(self, x, y, points=None, heading_deg=None):
+    def goto(self, x, y, points=None, heading_deg=None, reverse_first=False):
         """Start driving to (x, y) m in the vehicle frame now (x forward from the rear axle, y left), arriving
         pointing heading_deg (0 = the car's heading now, + = left) or any way if None.
         points: the latest scan (relay format); defaults to the last one seen by process()."""
@@ -537,7 +553,7 @@ class RelayAssists:
         self.odo, self.nav_pose = None, (0.0, 0.0, 0.0)
         raw = points if points else self._last_raw
         return self.nav.start((float(x), float(y)), self._planning_points(raw),
-                              None if heading_deg is None else math.radians(float(heading_deg)))
+                              None if heading_deg is None else math.radians(float(heading_deg)), reverse_first)
 
     def explore(self, on):
         """Start / stop exploring the room by itself (frontier goals sent to click-to-go; the operator holds the throttle)."""
@@ -550,17 +566,23 @@ class RelayAssists:
             self.nav.cancel("exploration stopped")
         return "stopped"
 
-    def park(self, points=None):
-        """Back into the nearest perpendicular bay beside the car (adas/park.py). Returns a message."""
-        from adas.park import find_bays, park_goal
+    def park(self, points=None, kind="auto"):
+        """Park in the nearest bay (perpendicular, reverse-in) or slot (parallel, reverse-in) beside the car (adas/park.py).
+        kind: 'auto' (whichever is nearest), 'perpendicular' or 'parallel'. Returns a message."""
+        from adas.park import find_bays, find_parallel_slots, park_goal, park_goal_parallel
         raw = points if points else self._last_raw
         pts = self.points_vehicle_frame(raw, self.p.lidar_x) if raw else np.empty((0, 2))
-        bays = find_bays(pts, car_width=self.p.width)
-        if not bays:
+        options = []
+        if kind in ("auto", "perpendicular"):
+            options += [(abs(b.x - 0.1), "bay", b.width, park_goal(b)) for b in find_bays(pts, car_width=self.p.width)]
+        if kind in ("auto", "parallel"):
+            options += [(abs(s.x), "parallel slot", s.length, park_goal_parallel(s))
+                        for s in find_parallel_slots(pts, car_width=self.p.width)]
+        if not options:
             return "no parking bay found beside the car"
-        gx, gy, gh = park_goal(bays[0])
-        ok = self.goto(gx, gy, raw, heading_deg=gh)
-        return f"parking in a {bays[0].width * 100:.0f} cm bay" if ok else f"bay found but no way in: {self.nav.msg}"
+        _, what, size, (gx, gy, gh) = min(options, key=lambda o: o[0])
+        ok = self.goto(gx, gy, raw, heading_deg=gh, reverse_first=True)
+        return f"parking in a {size * 100:.0f} cm {what}" if ok else f"{what} found but no way in: {self.nav.msg}"
 
     def _explore_tick(self, points, now):
         ex = self.explorer

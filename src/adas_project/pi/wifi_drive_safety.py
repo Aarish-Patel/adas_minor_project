@@ -930,9 +930,9 @@ def main():
                 sock.sendto(b"OK", addr)
                 continue
 
-            if text.strip() == "PARK":                                    # back into the nearest bay beside the car
+            if parts and parts[0] == "PARK":                              # back into the nearest bay / slot beside the car
                 gpts, _ = clr.read_points_seq()
-                res = assist.park(gpts)
+                res = assist.park(gpts, parts[1].lower() if len(parts) > 1 else "auto")
                 dlog.event("park", result=res, state=assist.nav.state)
                 sock.sendto(res.encode(), addr)
                 continue
@@ -1041,6 +1041,8 @@ def main():
                                                        trusted=rintent.gate_trust and not adas_override,
                                                        leg=assist.planned_leg())    # a planned path: check it
                         gate_info = dict(pgate.info)
+                        if g_brake or str(gate_info.get('action') or '').startswith(('holding', 'stopped', 'braking')):
+                            rintent.feedback_event(time.time())          # a real safety event: feedback for the online calibration
                         if pkt_now - last_seq_t > SCAN_LOST_S and physical != 0:
                             g_phys, g_brake = 0, False
                             gate_info["action"] = "LiDAR lost"

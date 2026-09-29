@@ -69,6 +69,22 @@ class BayTest(unittest.TestCase):
         self.assertGreater(gy, 0.6)
 
 
+class ParallelTest(unittest.TestCase):
+    def test_finds_the_gap_in_a_parallel_row_and_ignores_short_or_solid_ones(self):
+        from adas.park import find_parallel_slots, park_goal_parallel
+        xs = np.arange(0.3, 3.0, 0.02)
+        row = np.array([(x, 0.62) for x in xs if not 1.2 < x < 2.2])                       # a 1.0 m gap in a row of parked objects
+        slots = find_parallel_slots(row, side=1)
+        self.assertEqual(len(slots), 1)
+        self.assertAlmostEqual(slots[0].x, 1.7, delta=0.1)
+        gx, gy, gh = park_goal_parallel(slots[0])
+        self.assertAlmostEqual(gh, 0.0)
+        self.assertGreater(gy, 0.62)
+        short = np.array([(x, 0.62) for x in xs if not 1.2 < x < 1.5])                     # 30 cm: shorter than the car
+        self.assertEqual(find_parallel_slots(short, side=1), [])
+        self.assertEqual(find_parallel_slots(np.array([(x, 0.62) for x in xs]), side=1), [])
+
+
 class EndToEnd(unittest.TestCase):
     def test_explores_a_furnished_room_without_contact(self):
         from sim.explore_eval import explore
@@ -77,12 +93,19 @@ class EndToEnd(unittest.TestCase):
         self.assertGreater(r["coverage"], 0.9)
         self.assertLess(r["t"], 90.0)
 
+    def test_parallel_parks_between_two_objects(self):
+        from sim.park_eval import parallel
+        ok, r = parallel()
+        self.assertFalse(r["crashed"])
+        self.assertLess(r["err"], 0.12)
+        self.assertLess(r["heading_err_deg"], 10.0)
+
     def test_parks_backwards_into_the_bay(self):
         from sim.autonav_eval import drive
         from sim.park_eval import bay_from_scan
         bays, goal = bay_from_scan("parking")
         self.assertEqual(len(bays), 1)
-        r = drive("parking", goal[:2], t_max=60.0, heading_deg=goal[2])
+        r = drive("parking", goal[:2], t_max=60.0, heading_deg=goal[2], reverse_first=True)
         self.assertFalse(r["crashed"])
         self.assertLess(r["err"], 0.10)
         self.assertLess(r["heading_err_deg"], 12.0)

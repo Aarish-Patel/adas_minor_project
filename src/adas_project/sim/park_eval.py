@@ -33,6 +33,39 @@ def bay_from_scan(world_name, start_pose=None):
     return bays, (park_goal(bays[0]) if bays else None)
 
 
+def slot_from_scan(world_name):
+    """The first parallel slot the scan shows, and the rear-axle goal for it."""
+    from adas.config import load_tuning
+    from adas.park import find_parallel_slots, park_goal_parallel
+    from pi.relay_assists import car_params
+    from sim.hw_sim import SimLidar, VirtualCar
+    from sim.hw_worlds import WORLDS
+    world, start = WORLDS[world_name]()
+    tun = load_tuning(os.path.join(HERE, "..", "pi", "tuning_real_car.json"))
+    p = car_params(tun.mount)
+    car = VirtualCar(world, p, start, threaded=False)
+    lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=0)
+    x, y, th = start
+    best, _ = lidar._raycast(x + p.lidar_x * math.cos(th), y + p.lidar_x * math.sin(th), th)
+    ok = np.isfinite(best) & (best >= 0.2) & (best < 12)
+    pts = np.column_stack([best[ok] * np.cos(lidar.ccw[ok]) + p.lidar_x, best[ok] * np.sin(lidar.ccw[ok])])
+    slots = find_parallel_slots(pts)
+    return slots, (park_goal_parallel(slots[0]) if slots else None)
+
+
+def parallel():
+    from sim.autonav_eval import drive
+    slots, goal = slot_from_scan("parallel")
+    print("slots found:", slots)
+    if goal is None:
+        return None
+    r = drive("parallel", goal[:2], t_max=80.0, heading_deg=goal[2], reverse_first=True)
+    ok = r["ok"] and (r["heading_err_deg"] or 99) < 10.0
+    print(f"parallel park: {'OK' if ok else 'FAIL'} {r['why']}  t {r.get('t')} s, {r.get('err', 0) * 100:.0f} cm from the slot centre, heading error "
+          f"{r.get('heading_err_deg', 0):.1f} deg, min clearance {r.get('min_clear', 0) * 100:.0f} cm, crashed={r.get('crashed')}")
+    return ok, r
+
+
 def main():
     from sim.autonav_eval import drive
     bays, goal = bay_from_scan("parking")
@@ -40,7 +73,7 @@ def main():
     if goal is None:
         print("no bay")
         return
-    r = drive("parking", goal[:2], t_max=60.0, heading_deg=goal[2])
+    r = drive("parking", goal[:2], t_max=60.0, heading_deg=goal[2], reverse_first=True)
     ok = r["ok"] and (r["heading_err_deg"] or 99) < 12.0
     print(f"park: {'OK' if ok else 'FAIL'} {r['why']}  t {r.get('t')} s, {r.get('err', 0) * 100:.0f} cm from the bay centre, heading error "
           f"{r.get('heading_err_deg', 0):.1f} deg, reversed {r.get('reversed_m', 0):.2f} m, min clearance {r.get('min_clear', 0) * 100:.0f} cm, "
@@ -68,3 +101,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    parallel()

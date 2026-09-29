@@ -473,3 +473,52 @@ row of parked objects (wide enough for the body plus clearance, bounded on both 
 out (reverse-in parking as in valet systems), with the existing pose-goal planner (Hybrid A* with reversing legs). Twin: bay found,
 parked 3-4 cm from the bay centre, heading error 9-10 deg, no contact, ~21-28 s. Perpendicular bays only; parallel parking and
 bays seen only after passing them are not done.
+
+## 14. Submaps and loop closure, return to start, parallel parking, on-the-go recalibration (TODO W1-W4, W6; 29 Sep, night)
+
+**What Cartographer-style submaps and loop closure are, and why the car needs them.** Scan matching gives the car's motion from one
+LiDAR scan to the next; every match has a small error and the errors add up (1.7 % of the distance in the twin, more on the car,
+much more in a bare room where the walls all look alike): come back to where you started and the pose says you are somewhere else.
+SLAM fixes that with two ideas (Hess, Kohler, Rapp, Andor, "Real-time loop closure in 2D LiDAR SLAM", ICRA 2016 - Google Cartographer):
+(1) *submaps* - scans are inserted into small local maps built from a short stretch of driving, in which drift is negligible, and a
+finished submap never changes shape; (2) *loop closure* - each new scan is matched against the finished submaps near the current
+position (correlative scan matching, Olson ICRA 2009: every pose in a window is scored against a likelihood field of the submap); a
+clear match means "this is the place I was at before", which is a constraint between two poses that were far apart in time. All poses
+are then adjusted together by sparse pose adjustment (Konolige et al. ICRA 2010, robust nonlinear least squares over the pose graph
+with the start fixed), so the whole trajectory bends back onto itself.
+
+**Implementation (`adas/submaps.py`).** Submaps of 14 nodes (a node every 0.20 m or 12 deg), likelihood field = distance transform of
+the submap's points, search +-0.45 m x +-14 deg with the best pose refined by ICP, accepted only with a score >= 0.62 and a margin over
+the runner-up, soft-L1 loss in the optimiser. A worker thread (`SlamService`) keeps the match and optimisation out of the control
+loop; the relay applies the resulting transform (`RelaySpeed.pose_corrected`) to the world pose used by the map, the speed zones and
+'return to start'. Twin: a 9 m loop with 3 % scale and 0.7 deg/m yaw drift ends 8.0 cm / 5.3 deg off; corrected 0.8 cm / 0.9 deg;
+with real-like drift 3.1 -> 0.4 cm (`sim/slam_eval.py`). Not done: multi-floor / long-term map maintenance, global relocalisation after a
+kidnap, the branch-and-bound matcher of the paper (a brute-force window is enough for a room-sized map).
+
+**Return to start (`HOME`, GUI tile 'Return to start', `sim/home_eval.py`).** The car drives an 18 s loop out, then plans back to the
+origin pose with the corrected estimate. Over 6 drives per case: in a bare open room the front end alone ends **110 cm and 74 deg** off
+the true start (scan matching is lost), with loop closure **10.8 cm and 4.1 deg** (max 16 cm); in a furnished room the front end is
+already good (7.0 cm) and loop closure is neutral (8.3 cm; the remaining ~8 cm is the arrival tolerance of click-to-go). 0 crashes.
+
+**Parallel parking (`adas/park.py`, `sim/park_eval.py`, relay `PARK [PARALLEL]`).** A slot is found from one scan as a gap in a row of
+objects parked along the car's heading (length >= car + 2 x 9 cm margin, free to the kerb); the goal is the slot centre aligned with
+the row, planned with the pose-goal Hybrid A* searching with reversing from the start (`reverse_first`, 4x time budget - the
+forward-only stage only burned the budget), followed by 'straightening strokes' - short forward / reverse moves with opposite
+steering, as a driver does the last correction in a tight slot - because the path tracker alone left 13-25 deg of heading error.
+Twin, 1.12 m gap (3.4 car lengths - the car turns on a ~0.4 m radius): parked 3-6 cm from the slot centre, heading error 4-8 deg, no
+contact, 8-13 s, in 4/4 runs; a 62 cm gap (1.9 lengths) gave no path with the current margins.
+
+**Robust adaptive EKF (`SpeedEKF(robust=True)`).** Re-evaluated with bad scan-match measurements that a covariance gate cannot see
+(5-35 cm/s error, 10-30 % of the measurements): Huber weights, then a redescending tail, gave exactly the plain filter's RMSE in every
+case (`models/ekf_robust.json`). The filter already trusts each measurement little (measurement noise inflated x4, slow process
+noise), so the normalised innovation of a bad measurement rarely exceeds the Huber threshold. Not enabled; the residual error comes
+from the measurements' bias, which needs a different remedy (redundant sensors, e.g. the rear camera's visual odometry).
+
+**On-the-go adaptation of the crash predictor (`adas/online_calibration.py`, `sim/online_adapt_eval.py`).** Two parts adapt as a
+person drives: the existing DriverProfile (their usual reaction distance) and a new online recalibration of the risk: Platt scaling
+p' = sigmoid(a * logit + b) with (a, b) tracked by a Kalman-filter logistic regression with forgetting, learning from feedback the car
+can observe (a prediction is resolved 2 s later: outcome 1 if the path brake latched / held the car or a near miss occurred). It
+changes the *displayed* risk and warnings only, never the takeover decision or the brake. Prequential test on the twin's held-out drives
+(one driver style = one session, predict-then-update, second half of each session): expected calibration error 0.040 -> 0.025 on the
+nominal twin and 0.050 -> 0.036 on unseen wider cars (-37 % / -28 %), Brier and log-loss unchanged within noise (calibration improves,
+discrimination does not - that is the model's job). Caveat: the twin's ground-truth labels stand in for the car's safety events.

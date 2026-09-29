@@ -36,13 +36,17 @@ def plan_line_job(params, kappa_max, pts, start, x_goal, max_nodes, reverse_node
 GOTO_W_REVERSE = 6.0              # click-to-go: a metre driven backwards costs as much as 7 m forwards
 
 
-def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_heading=None):
+def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_heading=None, reverse_first=False):
     # (budget_s applies to each of the two searches)
     """Click-to-go to a goal position (and heading, if given): forward-only first - also for goals behind the car
     (a forward U-turn when there is room) - and only if no forward path exists, a search that may reverse, where
     reversing is expensive, so it backs up only as much as the goal heading or the room needs."""
     from .hybrid_astar import HybridAStar
     ha = HybridAStar(params, kappa_max=kappa_max)
+    if reverse_first:                      # parking: the way in is a reverse S-curve; the forward-only stage would only burn the budget
+        return ha.plan_to_point(pts, start, goal, allow_reverse=True, max_nodes=12000,
+                                budget_s=None if budget_s is None else 4.0 * budget_s,      # parking plans while standing: more time is fine
+                                goal_heading=goal_heading, w_reverse=GOTO_W_REVERSE)
     # a goal pose needs more search than a point: the forward stage then uses the coarse lattice too (the fine one
     # ran out of nodes on a doorway-then-turn goal that the coarse one solves in a fraction of the time)
     path = ha.plan_to_point(pts, start, goal, max_nodes=2500, budget_s=budget_s, goal_heading=goal_heading,

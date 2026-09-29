@@ -149,23 +149,30 @@ class MonteCarloTab(QtWidgets.QWidget):
             "on the digital twin: the same room, driver and attention lapses are driven by every system, and a "
             "needless intervention is one where the same driver, left alone, would not have come within 2 cm of "
             "anything in the next 2 s (counterfactual).", dim=True))
+        from gui.controls import Chip, section_label, style_danger, style_primary
+        lay.addWidget(section_label("Systems"))
         ctl = QtWidgets.QHBoxLayout()
         self.var_boxes = {}
         for v in ("off", "brake-only", "adas", "adas+intent"):
-            b = QtWidgets.QCheckBox(VARIANT_LABEL[v])
+            b = Chip(VARIANT_LABEL[v], VARIANT_COL[v])
             b.setChecked(v != "brake-only")
-            b.setStyleSheet(f"color: {VARIANT_COL[v]};")
             self.var_boxes[v] = b
             ctl.addWidget(b)
-        ctl.addSpacing(16)
+        ctl.addStretch(1)
+        lay.addLayout(ctl)
+        lay.addWidget(section_label("Driver styles"))
+        ctl = QtWidgets.QHBoxLayout()
         self.style_boxes = {}
-        for s in ("lapsing", "late", "good", "distracted", "aggressive"):
-            b = QtWidgets.QCheckBox(s)
-            b.setChecked(s in ("lapsing", "late"))
-            self.style_boxes[s] = b
+        for s_ in ("lapsing", "late", "good", "distracted", "aggressive"):
+            b = Chip(s_)
+            b.setChecked(s_ in ("lapsing", "late"))
+            self.style_boxes[s_] = b
             ctl.addWidget(b)
-        ctl.addSpacing(16)
-        ctl.addWidget(QtWidgets.QLabel("rooms"))
+        ctl.addStretch(1)
+        lay.addLayout(ctl)
+        ctl = QtWidgets.QHBoxLayout()
+        ctl.addSpacing(2)
+        ctl.addWidget(QtWidgets.QLabel("ROOMS"))
         self.n_runs = QtWidgets.QSpinBox()
         self.n_runs.setRange(1, 200)
         self.n_runs.setValue(12)
@@ -175,14 +182,20 @@ class MonteCarloTab(QtWidgets.QWidget):
         if os.path.exists(os.path.join(ROOT, "models", "intent_v3.json")):
             self.model.addItem("intent v3 (twin-trained)", os.path.join(ROOT, "models", "intent_v3.json"))
         ctl.addWidget(self.model)
-        self.run_btn = QtWidgets.QPushButton("Run Monte Carlo")
+        ctl.addSpacing(12)
+        self.run_btn = QtWidgets.QPushButton("RUN MONTE CARLO")
+        style_primary(self.run_btn)
         self.run_btn.clicked.connect(self.start)
-        stop = QtWidgets.QPushButton("Stop")
+        stop = QtWidgets.QPushButton("STOP")
+        style_danger(stop)
         ctl.addWidget(self.run_btn)
         ctl.addWidget(stop)
         ctl.addStretch(1)
         lay.addLayout(ctl)
         self.progress = QtWidgets.QProgressBar()
+        self.progress.setStyleSheet(f"QProgressBar {{ background: {theme.C['bg1']}; border: 1px solid {theme.C['hair']}; border-radius: 10px; height: 20px; "
+                                    f"text-align: center; color: {theme.C['text2']}; }} "
+                                    f"QProgressBar::chunk {{ background: {theme.css_rgba('accent', 0.35)}; border-radius: 9px; }}")
         lay.addWidget(self.progress)
         self.console = QtWidgets.QPlainTextEdit()
         self.console.setReadOnly(True)
@@ -369,7 +382,10 @@ class TrainingTab(QtWidgets.QWidget):
         train.clicked.connect(lambda: self.train(False))
         quick = QtWidgets.QPushButton("Quick train (check)")
         quick.clicked.connect(lambda: self.train(True))
-        stop = QtWidgets.QPushButton("Stop")
+        stop = QtWidgets.QPushButton("STOP")
+        from gui.controls import style_danger, style_primary
+        style_primary(train)
+        style_danger(stop)
         for b in (gen, train, quick, stop):
             ctl.addWidget(b)
         ctl.addStretch(1)
@@ -378,6 +394,9 @@ class TrainingTab(QtWidgets.QWidget):
         ctl.addWidget(self.device)
         lay.addLayout(ctl)
         self.progress = QtWidgets.QProgressBar()
+        self.progress.setStyleSheet(f"QProgressBar {{ background: {theme.C['bg1']}; border: 1px solid {theme.C['hair']}; border-radius: 10px; height: 20px; "
+                                    f"text-align: center; color: {theme.C['text2']}; }} "
+                                    f"QProgressBar::chunk {{ background: {theme.css_rgba('accent', 0.35)}; border-radius: 9px; }}")
         lay.addWidget(self.progress)
         self.console = QtWidgets.QPlainTextEdit()
         self.console.setReadOnly(True)

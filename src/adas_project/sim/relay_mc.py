@@ -286,6 +286,11 @@ def run(args):
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
     driver = HumanDriver(world, goal, np.random.default_rng(seed + 1000), p, K, assist.centre, style)
     rint = None
+    shadow, shadow_rows = None, []
+    if os.environ.get("RC_SHADOW") == "1" and variant == "adas":     # record what the car sees at every takeover (W5 data)
+        from pi.relay_assists import RelayIntent
+        shadow = RelayIntent(assist, path="__no_model__")
+        shadow.net = None
     if variant == "adas+oracle":                 # upper bound for any learned intent model: it KNOWS the counterfactual
         rint = OracleIntent(assist, car, driver)
     elif variant == "adas+intent":               # the relay's own intent code (pi/relay_assists.RelayIntent)
@@ -351,6 +356,10 @@ def run(args):
                 # stick history, LiDAR free distances); the stopping-distance brake below is never suppressed
                 rint.update(t, d_servo, d_pwm, vest.v, pts)
                 p_crash = rint.p_crash
+            if shadow is not None:
+                a_ = assist.assists
+                shadow.update(t, d_servo, d_pwm, vest.v, pts)
+                a_.intent_hold, a_.intent_attentive, a_.intent_k_rate, a_.intent_stalled, a_.intent_commit = False, True, None, False, False
             lines, _nd = assist.nudge(gate, lines, vest.v_gate(1))  # steering correction first (as in the relay)
             out = assist.process(lines, pts, seq, now=t)
             for ln in out:
@@ -391,6 +400,11 @@ def run(args):
             stop = BASE_M + abs(v) * REACTION_S + v * v / (2 * DECEL)
             ratio = round(f_drv / stop, 2) if math.isfinite(f_drv) else None
             why = counterfactual(car, driver, t)
+            if shadow is not None and kind in ("evasive", "steer") and shadow.zhist:
+                from adas.intent_net import flat_features, window_of
+                shadow_rows.append({"x": flat_features(window_of(shadow.zhist)).tolist(), "needed": why is not None,
+                                    "p_v3": None if shadow.p_risk is None else float(shadow.p_risk), "t": round(t, 2),
+                                    "lapsed": bool(driver.lapsed(t)), "ratio": ratio})
             if why is None:
                 fp += 1
                 events.append((x, y, "fp", kind, None if p_crash is None else round(p_crash, 3), driver.lapsed(t),
@@ -418,7 +432,7 @@ def run(args):
     x, y, th, v, *_ = car.pose()
     crashed = car.crash_count > 0
     return {"seed": seed, "variant": variant, "style": style, "crashed": crashed, "reached": reached, "min_clear": float(min_clear),
-            "interventions": interventions, "false_positives": fp, "episodes": episodes, "progress": progress, "lapses": len(driver.lapses),
+            "shadow": shadow_rows, "interventions": interventions, "false_positives": fp, "episodes": episodes, "progress": progress, "lapses": len(driver.lapses),
             "trace": trace, "events": events, "goal": goal, "burden": {k: round(v, 2) for k, v in burden.items()}}
 
 

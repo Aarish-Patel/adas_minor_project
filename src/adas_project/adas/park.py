@@ -76,3 +76,53 @@ def park_goal(bay, car_length=0.36, rear_axle_to_centre=0.115, margin=0.03):
     # the rear axle is `rear_axle_to_centre` behind the body centre along the heading: nose out => axle is deeper in
     ya = yc + bay.side * rear_axle_to_centre
     return (bay.x, ya, heading)
+
+
+# ----------------------------------------------------------------------------------------------- parallel parking
+@dataclass
+class Slot:
+    side: int            # +1 left, -1 right
+    x: float             # centre of the gap along the car's heading (vehicle frame, m)
+    y_center: float      # lateral centre line of the parked row (m, signed)
+    length: float        # free length between the neighbours (m)
+
+
+def find_parallel_slots(pts, side=None, car_length=0.33, car_width=0.20, margin=0.09, x_range=(-2.0, 3.2), row=(0.25, 0.9),
+                        res=0.02, max_extra=0.7):
+    """Gaps in a row of objects parked parallel to the car's heading, long enough for the car plus a manoeuvring margin at each end.
+    Same scan-only idea as find_bays, with the gap measured along x. Nearest first."""
+    pts = np.asarray(pts, float).reshape(-1, 2)
+    out = []
+    for sd in ((1, -1) if side is None else (side,)):
+        lat = pts[:, 1] * sd
+        n = int((x_range[1] - x_range[0]) / res)
+        band = pts[(lat > row[0]) & (lat < row[1]) & (pts[:, 0] > x_range[0]) & (pts[:, 0] < x_range[1])]
+        if len(band) == 0:
+            continue
+        occ = np.zeros(n, bool)
+        occ[np.clip(((band[:, 0] - x_range[0]) / res).astype(int), 0, n - 1)] = True
+        k = int(0.05 / res)
+        occ = np.convolve(occ.astype(int), np.ones(2 * k + 1, int), "same") > 0
+        i = 0
+        while i < n:
+            if occ[i]:
+                i += 1
+                continue
+            j = i
+            while j < n and not occ[j]:
+                j += 1
+            length = (j - i) * res
+            if i > 0 and j < n and occ[i - 1] and occ[j] and car_length + 2 * margin <= length <= car_length + 2 * margin + max_extra:
+                x0, x1 = x_range[0] + i * res, x_range[0] + j * res
+                nb = band[((band[:, 0] > x0 - 0.30) & (band[:, 0] < x0)) | ((band[:, 0] > x1) & (band[:, 0] < x1 + 0.30))]
+                y_near = float(np.min(nb[:, 1] * sd)) if len(nb) else row[0]
+                inside = pts[(pts[:, 0] > x0 + 0.03) & (pts[:, 0] < x1 - 0.03) & (lat > row[0] - 0.05) & (lat < y_near + car_width + 0.05)]
+                if len(inside) == 0:                                   # nothing in the slot: it is free
+                    out.append(Slot(sd, 0.5 * (x0 + x1), sd * (y_near + 0.5 * car_width), length))
+            i = j
+    return sorted(out, key=lambda s: abs(s.x))
+
+
+def park_goal_parallel(slot, rear_axle_to_centre=0.115):
+    """Rear-axle goal (x, y, heading deg) that puts the car in the gap, aligned with the row (heading 0)."""
+    return (slot.x - rear_axle_to_centre + 0.02, slot.y_center, 0.0)

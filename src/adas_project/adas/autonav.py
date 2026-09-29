@@ -26,6 +26,8 @@ class AutoNav:
         self.path = None
         self.goal = None
         self.goal_heading = None          # rad in the start frame, or None: arrive pointing any way
+        self.reverse_first = False
+        self.fine_strokes, self._stroke_from, self._stroke_dir = 0, None, 0
         self.heading_tol = math.radians(20.0)
         self.x = self.y = self.th = 0.0
         self.i = 0
@@ -47,7 +49,7 @@ class AutoNav:
         self.state = "planning"
         self._job_t = time.perf_counter()
         self._job = self.service.submit(plan_point_job, self.p, self.kappa_max, pts_start, start, self.goal,
-                                        self.service.budget(GOTO_BUDGET_S), self.goal_heading)
+                                        self.service.budget(GOTO_BUDGET_S), self.goal_heading, self.reverse_first)
         if self._job.ready(0.0):
             self._collect()
 
@@ -66,12 +68,15 @@ class AutoNav:
         self.state = "driving"
         self.msg = "driving to the goal" if self.replans == 0 else "re-planned around a new obstacle"
 
-    def start(self, goal, pts_vehicle, heading=None):
+    def start(self, goal, pts_vehicle, heading=None, reverse_first=False):
         """goal: (x, y) m in the vehicle frame now; heading: the direction to arrive in (rad, 0 = the car's heading
         now, + = left), or None for any. Starts planning; returns False if the request is refused."""
         self.x = self.y = self.th = 0.0
         self.goal = (float(goal[0]), float(goal[1]))
         self.goal_heading = None if heading is None else float(heading)
+        self.reverse_first = bool(reverse_first)          # parking: search with reversing allowed from the start
+        self.fine_strokes, self._stroke_from, self._stroke_dir = 0, None, 0
+        self.heading_tol = math.radians(8.0 if reverse_first else 20.0)   # a bay / slot needs the car straight
         self.path, self.replans = None, 0
         self.stall_s, self.stalls = 0.0, 0
         self.msg = "planning a path"
@@ -112,7 +117,9 @@ class AutoNav:
             self.cancel("arrived")
             return None
         if self.goal_heading is not None and self.i >= len(self.path) - 2 and dist_goal < 2 * self.arrive:
-            self.cancel(f"arrived ({math.degrees(head_err):.0f} deg off the chosen heading)")
+            if self.reverse_first and head_err > 0.5 * self.heading_tol and self.fine_strokes < 10:
+                return self._straighten(head_err, pose)
+            self.cancel("arrived" if head_err < self.heading_tol else f"arrived ({math.degrees(head_err):.0f} deg off the chosen heading)")
             return None
         P = self.path
         self.replan_t += dt
@@ -162,6 +169,21 @@ class AutoNav:
         to_stop = dist_goal if k == len(P) - 1 else math.hypot(P[k, 0] - self.x, P[k, 1] - self.y)
         speed = min(self.cruise, math.sqrt(1.2 / max(abs(kappa), 1e-3)), 0.12 + 0.6 * to_stop)
         return kappa, direction * speed
+
+    STROKE_M, STROKE_V = 0.07, 0.10
+
+    def _straighten(self, head_err, pose):
+        """Parking, at the spot but not straight: short forward and reverse strokes with opposite steering (each pair turns the car a
+        few degrees and brings it back), as a driver does the last correction in a tight bay. Returns (curvature, signed speed)."""
+        e = (self.th - self.goal_heading + math.pi) % (2 * math.pi) - math.pi          # + : the car points left of the goal heading
+        if self._stroke_from is None or math.hypot(self.x - self._stroke_from[0], self.y - self._stroke_from[1]) >= self.STROKE_M:
+            self._stroke_dir = -self._stroke_dir if self._stroke_dir else 1
+            self._stroke_from = (self.x, self.y)
+            self.fine_strokes += 1
+        self.msg = f"straightening ({math.degrees(abs(e)):.0f} deg off)"
+        k = self.kappa_max
+        kappa = -k * math.copysign(1.0, e) if self._stroke_dir > 0 else k * math.copysign(1.0, e)
+        return kappa, self._stroke_dir * self.STROKE_V
 
     def leg(self):
         """The leg of the path being driven (up to the next change of direction) in the vehicle frame, for the

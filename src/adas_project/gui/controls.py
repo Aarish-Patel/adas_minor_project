@@ -193,3 +193,39 @@ def section_label(text):
     lb.setFont(theme.semibold(11, spacing=1.6))
     lb.setStyleSheet(f"color: {C['dim']}; padding: 12px 2px 2px 2px; background: transparent;")
     return lb
+
+
+class Chip(QtWidgets.QPushButton):
+    """A checkable pill for filters and selections in the labs (a coloured dot + a label): outlined when off, blue border and a
+    faint tint when on - the compact sibling of FeatureTile for rows of options."""
+
+    def __init__(self, text, colour=None):
+        super().__init__(text)
+        self.setCheckable(True)
+        self.setCursor(QtCore.Qt.PointingHandCursor)
+        dot = colour or C["accent"]
+        self.setText(f"\u25cf  {text}")
+        self.setStyleSheet(
+            f"QPushButton {{ background: {C['bg1']}; border: 1px solid {C['hair']}; border-radius: 15px; padding: 6px 14px; "
+            f"color: {C['text2']}; font-size: 12px; text-transform: none; letter-spacing: 0.4px; }} "
+            f"QPushButton:hover {{ border-color: {C['hair2']}; color: {C['text']}; }} "
+            f"QPushButton:checked {{ background: {theme.css_rgba('accent', 0.10)}; border: 1px solid {C['accent']}; color: {C['text']}; }}")
+        self._dot = dot
+
+
+def style_primary(btn):
+    """Main action: blue outline and text, a faint tint on hover - never a flat blue fill."""
+    btn.setCursor(QtCore.Qt.PointingHandCursor)
+    btn.setStyleSheet(
+        f"QPushButton {{ background: transparent; border: 1px solid {C['accent']}; border-radius: 12px; padding: 9px 20px; "
+        f"color: {C['accent']}; font-weight: 600; letter-spacing: 0.8px; }} "
+        f"QPushButton:hover {{ background: {theme.css_rgba('accent', 0.14)}; }} "
+        f"QPushButton:disabled {{ border-color: {C['hair']}; color: {C['faint']}; }}")
+
+
+def style_danger(btn):
+    btn.setCursor(QtCore.Qt.PointingHandCursor)
+    btn.setStyleSheet(
+        f"QPushButton {{ background: transparent; border: 1px solid {C['hair2']}; border-radius: 12px; padding: 9px 20px; "
+        f"color: {C['text2']}; letter-spacing: 0.8px; }} "
+        f"QPushButton:hover {{ border-color: {C['bad']}; color: {C['bad']}; background: {theme.css_rgba('bad', 0.10)}; }}")

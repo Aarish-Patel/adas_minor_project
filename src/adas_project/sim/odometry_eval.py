@@ -38,7 +38,7 @@ def stats(est, ref, ok):
 
 
 # ------------------------------------------------------------------ 1. digital twin
-def twin_run(seconds=24.0, seed=3, battery=1.0, robust=False, corrupt=0.0):
+def twin_run(seconds=24.0, seed=3, battery=1.0, robust=False, corrupt=0.0, mag=(0.10, 0.35)):
     """battery < 1: the twin car is that much slower than the model the estimators believe (a sagging battery or a
     carpet) - the case a throttle-only speed estimate cannot see."""
     from adas.aeb import SpeedEstimator, SpeedModel
@@ -97,7 +97,7 @@ def twin_run(seconds=24.0, seed=3, battery=1.0, robust=False, corrupt=0.0):
             meas = rf.update(xy, t, guess=(ekf.v, ekf.w * p.lidar_x, ekf.w))
             if meas is not None and corrupt and crng.random() < corrupt:
                 # a bad scan match that still reports a small covariance (the case a covariance gate cannot see)
-                meas = (meas[0] + crng.choice([-1, 1]) * crng.uniform(0.10, 0.35), meas[1], meas[2] + crng.normal(0, 0.3), meas[3], meas[4])
+                meas = (meas[0] + crng.choice([-1, 1]) * crng.uniform(*mag), meas[1], meas[2] + crng.normal(0, 0.3), meas[3], meas[4])
             if meas is not None:
                 ekf.correct(t, meas)
             pose = icp.update(np.column_stack([xy[:, 0], -xy[:, 1]]), t, ekf.v, 0.0)

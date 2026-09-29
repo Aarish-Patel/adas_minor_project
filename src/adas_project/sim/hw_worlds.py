@@ -108,6 +108,17 @@ def parking():
     return _finish(w), (0.0, 0.0, 0.0)
 
 
+def parallel():
+    """A row of two parked objects along the left kerb with a 1.12 m gap (3.4 car lengths: the car turns on a ~0.4 m radius, so a slot
+    needs about that much for a reverse S-curve); the car starts ahead of the gap (reverse-in needed)."""
+    w = World()
+    room_walls(w, -1.0, 5.0, -1.6, 1.6)
+    w.add(Box(0.95, 0.75, 0.33, 0.20))              # parked object 1 (x 0.785 .. 1.115)
+    w.add(Box(2.40, 0.75, 0.33, 0.20))              # parked object 2 (x 2.235 .. 2.565): the gap is 1.12 m
+    w.add(Wall(0.6, 0.98, 2.8, 0.98))               # the kerb
+    return _finish(w), (2.9, 0.0, 0.0)
+
+
 def lounge():
     """An open room with asymmetric furniture off the driving line: a good place for loop closure (features to match, room to loop)."""
     w = World()
@@ -120,7 +131,7 @@ def lounge():
     return _finish(w), (0.0, 0.0, 0.0)
 
 
-WORLDS = {"lounge": lounge, "parking": parking, "doorway": doorway, "room": room, "corridor": corridor, "gap": gap, "open": open_room}
+WORLDS = {"parallel": parallel, "lounge": lounge, "parking": parking, "doorway": doorway, "room": room, "corridor": corridor, "gap": gap, "open": open_room}
 
 
 def build(name):

@@ -114,7 +114,9 @@ class SpeedEKF:
             self.nis = 0.95 * self.nis + 0.05 * (d2 / 3.0)         # normalised innovation squared, 1.0 when R is right
             adapt = min(3.0, max(0.5, self.nis))                    # measurements noisier than R says -> trust them less
             k_h = 1.345                                             # Huber's constant (95 % efficiency at the normal)
-            w = 1.0 if dd <= k_h else k_h / dd                      # Huber equivalent weight
+            # Huber equivalent weight up to 3 sigma, then a redescending tail (Tukey-like): a measurement that far off the
+            # prediction is nearly ignored instead of pulling the estimate linearly
+            w = 1.0 if dd <= k_h else (k_h / dd if dd <= 3.0 else max(0.02, (k_h / dd) ** 2 * 0.5))
             R = R * adapt / w
             S = H @ self.P @ H.T + R
         K = self.P @ H.T @ np.linalg.inv(S)

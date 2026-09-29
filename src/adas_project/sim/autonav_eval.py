@@ -22,7 +22,7 @@ CASES = [
 ]
 
 
-def drive(world_name, goal, t_max=40.0, seed=0, heading_deg=None):
+def drive(world_name, goal, t_max=40.0, seed=0, heading_deg=None, reverse_first=False):
     """One click-to-go on the relay code (sim/relay_scenarios.run): the goal is sent once two scans are in, the
     operator holds the throttle and lets go once the car reports it has finished."""
     from sim.hw_worlds import WORLDS
@@ -36,7 +36,7 @@ def drive(world_name, goal, t_max=40.0, seed=0, heading_deg=None):
         if not st["started"] and seq >= 2:
             st["started"] = True
             t0 = time.perf_counter()
-            st["ok_plan"] = assist.goto(*goal, points=pts, heading_deg=heading_deg)
+            st["ok_plan"] = assist.goto(*goal, points=pts, heading_deg=heading_deg, reverse_first=reverse_first)
             st["plan_ms"] = (time.perf_counter() - t0) * 1000
             st["planned"] = None if assist.nav.path is None else assist.nav.path.copy()
         elif st["started"] and not assist.nav.active:
