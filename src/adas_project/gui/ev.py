@@ -405,7 +405,12 @@ class DriveScene(Scene):
         self.mesh("walls", walls_mesh(segs, 0.05), (0.5, 0.52, 0.56, 0.10))     # simulator ground truth, faint
         state = plan.get("state", "clear")
         col = {"collision": rgb('bad')[:3], "limited": rgb('warn')[:3]}.get(state, (0.93, 0.94, 0.95))
-        self.mesh("pred", ribbon(polar_xy(plan.get("pred")), GEO["width"] * 0.9, 0.004), (*col, 0.30))
+        pred_xy = polar_xy(plan.get("pred"))
+        half = max(2, len(pred_xy) // 2)
+        slowing = state in ("limited", "collision")
+        self.mesh("pred", ribbon(pred_xy[:half + 1], GEO["width"] * 0.9, 0.004), (*col, 0.36))
+        self.mesh("pred_far", ribbon(pred_xy[half:], GEO["width"] * 0.9, 0.004) if len(pred_xy) > half + 1 else None,
+                  (*col, 0.10 if slowing else 0.26))      # faded = the car will slow down there
         man = polar_xy(plan.get("maneuver"))
         self.mesh("plan", ribbon(man, 0.12, 0.006) if len(man) >= 2 else None, rgb('accent', 0.9))
         self.mesh("line", ribbon(polar_xy(plan.get("line")), 0.02, 0.002), (0.85, 0.87, 0.9, 0.35))
@@ -1564,6 +1569,14 @@ class DiagnosticsPanel(QtWidgets.QWidget):
         for c in (self.c_health, self.c_lidar, self.c_esp):
             row.addWidget(c, 1)
         lay.addLayout(row)
+        trip = QtWidgets.QHBoxLayout()
+        trip.setSpacing(8)
+        self.t_dist, self.t_time, self.t_top, self.t_brake = (StatCard("Trip distance"), StatCard("Driving time"),
+                                                             StatCard("Top speed"), StatCard("Brake events"))
+        for c in (self.t_dist, self.t_time, self.t_top, self.t_brake):
+            trip.addWidget(c, 1)
+        lay.addLayout(trip)
+        self.trip = {"dist": 0.0, "time": 0.0, "top": 0.0, "brakes": 0, "last": None, "braking": False}
         self.hist = collections.deque(maxlen=900)
         self.curves = {}
         for title, specs in (("Speed (m/s): estimate vs throttle model", (("v", "cyan", 2), ("vm", "dim", 1))),
@@ -1590,8 +1603,24 @@ class DiagnosticsPanel(QtWidgets.QWidget):
         self.hist.append((now, float(d.get("v", 0) or 0), float(d.get("v_model", 0) or 0), float(d.get("pwm_in", 0) or 0),
                           float(d.get("pwm_out", 0) or 0), g.get("free_m") if g.get("free_m") is not None else np.nan,
                           p if p is not None else np.nan))
+        tp = self.trip
+        if tp["last"] is not None:
+            dt = min(0.5, now - tp["last"])
+            v = abs(float(d.get("v", 0) or 0))
+            tp["dist"] += v * dt
+            tp["time"] += dt if v > 0.03 else 0.0
+            tp["top"] = max(tp["top"], v)
+            braking = "brak" in str(g.get("action") or "") or str(g.get("action") or "").startswith("hold")
+            if braking and not tp["braking"]:
+                tp["brakes"] += 1
+            tp["braking"] = braking
+        tp["last"] = now
         if not self.isVisible() or len(self.hist) < 3:
             return
+        self.t_dist.set(f"{tp['dist']:.1f} m", f"{tp['dist'] * CAR_SCALE / 1000:.2f} km at full size")
+        self.t_time.set(f"{int(tp['time'] // 60)}:{int(tp['time'] % 60):02d}", "time the car was moving")
+        self.t_top.set(f"{kmh(tp['top']):.0f} km/h", f"{tp['top']:.2f} m/s on the car")
+        self.t_brake.set(str(tp["brakes"]), "brake / hold interventions", EV["warn"] if tp["brakes"] else None)
         h = np.array(self.hist, float)
         t = h[:, 0] - h[-1, 0]
         for key, i in (("v", 1), ("vm", 2), ("in", 3), ("out", 4), ("free", 5), ("risk", 6)):
