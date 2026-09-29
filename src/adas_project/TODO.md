@@ -506,7 +506,7 @@ Real-EV style software:
 - [ ] Q9. Apply the tile/segmented layout and type scale to the other drawers (Map & zones, Car setup, Diagnostics, Rear camera buttons) and the lab windows; redraw the car model (currently a white block).
 
 ## R. Session of 29 Sep (afternoon): labs + finish TODO + algorithm-research report (user)
-- [ ] R1. Lab windows (Monte Carlo, ML training) redesigned as a research console: live 3D simulator with several cars actually moving
+- [x] R1. (Monte Carlo lab: room framed so every car is visible, 4 systems driving at once with a live status card each (speed, time, distance to goal, outcome, closest approach), replay timeline, results below; training lab: camera frames all 3 twins; 4-system data set models/mc_live from 12 seeds x 3 styles; earlier ADAS-vs-intent 96-run set kept in models/mc_live_v2v3_backup) Lab windows (Monte Carlo, ML training) redesigned as a research console: live 3D simulator with several cars actually moving
   (system under test vs baselines, twins), per-car live status cards (speed, risk, intervention, clearance), progress, event
   timeline, results next to it; tile/segmented controls; theme consistent with the main window.
 - [ ] R2. Finish the rest of the TODO that needs neither Pi nor car (list in R3-R9); mark car/Pi-only items as waiting.
