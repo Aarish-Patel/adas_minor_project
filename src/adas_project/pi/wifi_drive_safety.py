@@ -923,6 +923,19 @@ def main():
                 sock.sendto(b"OK", addr)
                 continue
 
+            if len(parts) >= 1 and parts[0] == "EXPLORE":                # "EXPLORE ON" / "EXPLORE OFF"
+                res = assist.explore(len(parts) < 2 or parts[1].upper() != "OFF")
+                dlog.event("explore", state=res)
+                sock.sendto(b"OK", addr)
+                continue
+
+            if text.strip() == "PARK":                                    # back into the nearest bay beside the car
+                gpts, _ = clr.read_points_seq()
+                res = assist.park(gpts)
+                dlog.event("park", result=res, state=assist.nav.state)
+                sock.sendto(res.encode(), addr)
+                continue
+
             if text.strip() == "PING":
                 # answered from the link supervisor's own once-a-second PING (no serial read in the control loop):
                 # PONG only if the ESP32 itself answered recently, otherwise say what is wrong

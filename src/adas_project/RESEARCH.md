@@ -440,3 +440,36 @@ intent). The oracle experiment shows why: the remaining interventions are needed
 brake-gate holds, not mistakes of the learned model. Reaching 90 % would need a scenario set without stuck geometry or a driver
 model that always recovers by itself. Timing is non-deterministic in the twin (planner compute time enters the simulated Pi
 delay); differences of a few drives between runs are noise.
+
+## 13. Closed-loop speed, uncertainty-aware margins, exploration and auto-park (TODO N1, N4, F1, C6; 29 Sep, night)
+
+**Closed-loop speed control (`adas/speed_control.py`, `sim/speed_ctrl_eval.py`).** Feedforward from the fitted throttle model plus a PI
+correction on the measured speed, conditional-integration anti-windup (Astrom & Hagglund 1995), applied only to the throttle the ADAS
+itself commands (click-to-go, evasive cap, reverse creep). Twin, car off its model, speed steps 0.30 -> 0.55 -> 0.25 -> -0.20 m/s:
+
+| car vs model | open loop bias / RMSE (cm/s) | closed loop bias / RMSE (cm/s) |
+|---|---|---|
+| 0.70 (sagging battery) | -6.3 / 8.8 | -1.0 / 3.0 |
+| 0.85 | -1.8 / 4.5 | -0.1 / 2.2 |
+| 1.00 | 2.7 / 6.1 | 0.3 / 2.6 |
+| 1.15 | 7.2 / 11.4 | 0.5 / 3.3 |
+
+Click-to-go still arrives 6/6 (4-6 cm), 21/21 scenarios pass. Not tested on the car.
+
+**Uncertainty-aware brake margin (`PathGate.v_effective`, `RelaySpeed.sigma_v`).** The stopping distance is planned for the speed
+estimate plus 1.645 x the excess of its standard deviation (EKF covariance) over the 0.03 m/s the design margins already contain
+(normal twin value 0.02), so a loose estimate (rejected scan matches, dropouts) brakes earlier and a sharp one changes nothing. Together
+with the scan-latency estimate (section 10) the gate's margins now follow two measured uncertainties. The braking-deceleration spread
+(95th-percentile stopping distance) still needs the car's own measurements (TODO C9, calibration - only when the user asks).
+
+**Exploration (`adas/explore.py`, `sim/explore_eval.py`, relay command `EXPLORE ON/OFF`).** Frontier-based exploration (Yamauchi, CIRA
+1997) on a log-odds occupancy grid (Moravec & Elfes 1985; Thrun et al. 2005): the nearest reachable frontier (BFS over free, robot-
+radius-safe cells) is sent to click-to-go; every tried goal is blacklisted for 60 s so a sliver frontier at a wall cannot trap the car.
+Twin, through the relay's own `RelayAssists.explore`: open room 100 % of the free floor in 9 s; furnished room with a doorway and three
+obstacles 97.7 % in 17 s, 3.1 m driven, no contact (min clearance 7.8 cm). Results: `models/explore.json`, `reports/explore.png`.
+
+**Auto-park (`adas/park.py`, `sim/park_eval.py`, relay command `PARK`).** A perpendicular bay is found from one LiDAR scan as a gap in the
+row of parked objects (wide enough for the body plus clearance, bounded on both ends, free to the back); the car then backs in, nose
+out (reverse-in parking as in valet systems), with the existing pose-goal planner (Hybrid A* with reversing legs). Twin: bay found,
+parked 3-4 cm from the bay centre, heading error 9-10 deg, no contact, ~21-28 s. Perpendicular bays only; parallel parking and
+bays seen only after passing them are not done.

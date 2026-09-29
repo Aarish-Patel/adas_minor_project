@@ -263,7 +263,7 @@ M2 Monte Carlo tab -> O1 -> N items that can be built and tested in the simulato
 
 ## N. Proposed software improvements (28 Sep, suggested to the user - not agreed yet; ask before starting)
 Consistency on a vibrating car:
-- [ ] N1. Closed-loop speed control (PI + feedforward from pi/car_model.json on the RF2O/EKF speed) instead of
+- [x] N1. (29 Sep: adas/speed_control.py, twin evaluation RMSE 8.8 -> 3.0 cm/s at 0.7x, RESEARCH.md section 13; not on the car)  Closed-loop speed control (PI + feedforward from pi/car_model.json on the RF2O/EKF speed) instead of
   open-loop PWM, like an EV's torque/speed controller; jerk-limited commands.
 - [x] N2. (done 29 Sep: adas/online_steering.py - RLS with forgetting on the scan-matched heading change per distance
   driven -> servo centre + steering gain, clipped to +-4.5 deg / +-25 %, applied slowly after 10 samples, live in
@@ -273,7 +273,7 @@ Consistency on a vibrating car:
 - [ ] N3. Adaptive noise in the speed EKF (innovation-based adaptive estimation, Mehra 1970) + robust (Huber)
   weights in ICP/RF2O so vibration-induced outliers don't jerk the estimate; LiDAR motion deskew (LOAM, Zhang &
   Singh 2014) and a temporal scan filter / log-odds occupancy grid.
-- [~] N4. (scan-latency part done 29 Sep: adas/latency.py measures the delay online and the gate widens its margin; safe at 0.3 s extra latency in the twin, was contact from 0.15 s; uncertainty-aware margins for the rest still open)  Uncertainty-aware safety: margins scaled by the measured spread (e.g. braking distance 95th percentile),
+- [x] N4. (29 Sep: scan latency + speed-uncertainty margins done; braking-decel spread needs car data = C9)  (scan-latency part done 29 Sep: adas/latency.py measures the delay online and the gate widens its margin; safe at 0.3 s extra latency in the twin, was contact from 0.15 s; uncertainty-aware margins for the rest still open)  Uncertainty-aware safety: margins scaled by the measured spread (e.g. braking distance 95th percentile),
   calibrated intent probabilities (temperature scaling, Guo et al. 2017), conformal prediction bounds (Angelopoulos
   & Bates 2021) or a small deep ensemble (Lakshminarayanan et al. 2017).
 - [x] N5. (done 29 Sep: sim/repeat_scenarios.py - every relay scenario on N randomised twins; 300 runs: 100 % safe, closest
@@ -284,7 +284,7 @@ Real-EV style software:
 - [~] N6. (dashboard part done 28 Sep: COLLISION WARNING chip + beep below 1.6 s to contact, then "PARTIAL BRAKE -
   SPEED LIMITED", then EMERGENCY BRAKE; still to do: buzzer/LED on the car) Staged AEB as in Euro NCAP / UN R152: forward-collision warning -> partial brake -> full brake, with
   warnings shown in the GUI (and a buzzer/LED if available).
-- [ ] N7. Responsibility-Sensitive Safety (Shalev-Shwartz et al. 2017) as a formal safe-distance rule to cite
+- [x] N7. (done: adas/rss.py, RSS need shown in the safety pill)  Responsibility-Sensitive Safety (Shalev-Shwartz et al. 2017) as a formal safe-distance rule to cite
   alongside the gate/CBF.
 - [x] N8. (done 28 Sep: pi/health.py + tests/test_health.py; the relay caps the throttle at 120 PWM in LIMP (LiDAR
   < 6 Hz, loop 95th > 60 ms, driver link < 12 packets/s while driving, Pi >= 80 C) and holds the motor in FAULT (no
@@ -422,7 +422,7 @@ Real-EV style software:
   Robotics ch. 9) instead of "cells hit 3 times". Median |sim - real| 3.7 -> 1.1 cm, bias -3.7 -> -0.6 cm, 86% of
   9928 beams within 5 cm, bias now uniform in every direction.
 - [ ] D7. (dashboard part done: Reports tab; slides still to do) Show the twin report figures in the dashboard (Diagnostics mode) and as slides.
-- [ ] C6. Room map (Cartographer-style submaps) for localisation, point-to-point navigation, return-to-start.
+- [~] C6. (29 Sep: global occupancy map + exploration + return-to-start done; Cartographer-style submaps / loop closure not done)  Room map (Cartographer-style submaps) for localisation, point-to-point navigation, return-to-start.
 
 - [x] B14. (done: relay samples the stick on a 50 ms clock, features from live scans, P(crash) < 0.5 -> no evasive takeover; dashboard 'Driver intent' card with risk bar, trust state, learned reaction distance) Put the learned intent model + driver profile into the relay on the car (features from live scans,
   `pi/intent_net.json`), shown on the dashboard (risk gauge, "driver is avoiding it" message).
@@ -462,7 +462,7 @@ Real-EV style software:
   (`python -m sim.autonav_eval` -> reports/autonav.png): 6/6 goals reached - doorway, side goal, furnished room,
   point beside the car, 52 cm gap, reverse in a corridor - 4-7 cm from the goal, 0 crashes, plans 1-440 ms.
   End-to-end through the relay in the simulator: doorway and corridor both arrive.)
-- [ ] F1. (click-to-go done, F1a; the rest still to do) List and expose all autonomy modes in the GUI: obstacle avoidance run, follow-the-leader, return to start,
+- [x] F1. (29 Sep: explore the room (EXPLORE) and auto-park (PARK) added with GUI tiles in Map & zones > Autonomy; obstacle-avoidance run, follow-the-leader, return to start, click-to-go already there; parallel parking not done)  (click-to-go done, F1a; the rest still to do) List and expose all autonomy modes in the GUI: obstacle avoidance run, follow-the-leader, return to start,
   explore/map the room, point-to-point navigation (click a goal on the map), auto-park (with camera later).
 
 ## G. Camera (one camera, front or rear) - plan first

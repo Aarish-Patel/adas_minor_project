@@ -841,6 +841,19 @@ class MapZonesPanel(QtWidgets.QWidget):
             t.clicked.connect(fn)
             g1.addWidget(t, 0, i)
         lay.addLayout(g1)
+        lay.addWidget(section_label("Autonomy"))
+        g3 = QtWidgets.QGridLayout()
+        g3.setSpacing(8)
+        self.explore_tile = FeatureTile("\u2734", "Explore the room", "the car maps the room by itself, frontier by frontier "
+                                        "(hold the throttle as the dead-man switch)", compact=True)
+        self.explore_tile.toggled.connect(lambda on: (self.link.send("EXPLORE ON" if on else "EXPLORE OFF"),
+                                                      self.on_event("exploring" if on else "exploration stopped")))
+        park = FeatureTile("\u24c5", "Auto-park", "finds a bay beside the car and backs into it (hold the throttle)",
+                           state=False, momentary=True, compact=True)
+        park.clicked.connect(lambda: (self.link.send("PARK"), self.on_event("auto-park requested")))
+        g3.addWidget(self.explore_tile, 0, 0)
+        g3.addWidget(park, 0, 1)
+        lay.addLayout(g3)
         lay.addWidget(section_label("Map and zones"))
         g2 = QtWidgets.QGridLayout()
         g2.setSpacing(8)

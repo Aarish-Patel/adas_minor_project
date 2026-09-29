@@ -395,6 +395,7 @@ class RelayAssists:
         self.odo = None                # scan-matching odometry, only while a manoeuvre runs
         self._odo_seq = None
         from adas.autonav import AutoNav
+        self.explorer = None           # frontier exploration (adas/explore.py), started by explore(True)
         self.nav = AutoNav(self.p, self.model, service=self.planner)   # click-to-go (Hybrid A* + pure pursuit)
         self.nav_pose = (0.0, 0.0, 0.0)
         self._nav_stick = 0.0
@@ -517,6 +518,39 @@ class RelayAssists:
         raw = points if points else self._last_raw
         return self.nav.start((float(x), float(y)), self._planning_points(raw),
                               None if heading_deg is None else math.radians(float(heading_deg)))
+
+    def explore(self, on):
+        """Start / stop exploring the room by itself (frontier goals sent to click-to-go; the operator holds the throttle)."""
+        if on and self.explorer is None:
+            from adas.explore import Explorer
+            self.explorer = Explorer(self.p.lidar_x)
+            return "exploring"
+        if not on and self.explorer is not None:
+            self.explorer = None
+            self.nav.cancel("exploration stopped")
+        return "stopped"
+
+    def park(self, points=None):
+        """Back into the nearest perpendicular bay beside the car (adas/park.py). Returns a message."""
+        from adas.park import find_bays, park_goal
+        raw = points if points else self._last_raw
+        pts = self.points_vehicle_frame(raw, self.p.lidar_x) if raw else np.empty((0, 2))
+        bays = find_bays(pts, car_width=self.p.width)
+        if not bays:
+            return "no parking bay found beside the car"
+        gx, gy, gh = park_goal(bays[0])
+        ok = self.goto(gx, gy, raw, heading_deg=gh)
+        return f"parking in a {bays[0].width * 100:.0f} cm bay" if ok else f"bay found but no way in: {self.nav.msg}"
+
+    def _explore_tick(self, points, now):
+        ex = self.explorer
+        if ex is None or self.speed is None or not points:
+            return
+        xy = self.points_vehicle_frame(points, self.p.lidar_x)
+        ex.step(now, self.speed.pose, xy, self.nav.active, lambda gx, gy: bool(self.goto(gx, gy, points=points)))
+        self.info["explore"] = ex.msg
+        if ex.done:
+            self.explorer = None
 
     def _planning_points(self, points):
         """The scan in the vehicle frame PLUS the brake gate's remembered points in the LiDAR's blind ring (closer
@@ -823,6 +857,8 @@ class RelayAssists:
         self.changed = False
         if points:
             self._last_raw = points
+            if self.explorer is not None and seq is not None:
+                self._explore_tick(points, now)
         if self.nav.active:
             nav = self._navigate(dt, self._planning_points(points), stick, physical,
                                  points, seq, now)

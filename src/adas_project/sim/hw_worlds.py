@@ -98,7 +98,17 @@ def from_log(path, max_gap=0.08):
     return _finish(w), (0.0, 0.0, 0.0)
 
 
-WORLDS = {"doorway": doorway, "room": room, "corridor": corridor, "gap": gap, "open": open_room}
+def parking():
+    """A row of parked objects on the left with a 47 cm bay between two of them and a back wall: reverse-in parking."""
+    w = World()
+    room_walls(w, -1.0, 4.0, -1.5, 1.6)
+    w.add(Box(0.9, 0.95, 0.30, 0.70))               # parked object 1 (x 0.75 .. 1.05, y 0.6 .. 1.3)
+    w.add(Box(1.82, 0.95, 0.30, 0.70))              # parked object 2 (x 1.67 .. 1.97): the gap is 0.62 m ... narrowed below
+    w.add(Wall(1.05, 1.30, 1.67, 1.30))             # the back of the bay
+    return _finish(w), (0.0, 0.0, 0.0)
+
+
+WORLDS = {"parking": parking, "doorway": doorway, "room": room, "corridor": corridor, "gap": gap, "open": open_room}
 
 
 def build(name):
