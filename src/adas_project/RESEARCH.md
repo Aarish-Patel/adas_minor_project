@@ -294,3 +294,35 @@ Features documented, and what this project does with each:
 Design rules taken from the NHTSA/ISO guidance: keep glance time short (few, large elements on the main view), show
 system mode and limits at all times (mode chips, limit sign, steering range), colour escalation green -> amber -> red
 with one meaning per colour, and keep detail (diagnostics, tuning) in drawers away from the driving view.
+
+## 9. Conformal risk control of the intent warning threshold (TODO R5; 29 Sep)
+
+**Problem.** The intent model gives a risk in [0, 1], and the point at which the ADAS warns or intervenes was a hand-picked
+0.5. There was no way to say *what that choice promises*, or to dial the trade between missed warnings and false alarms.
+
+**Method.** Conformal risk control (Angelopoulos, Bates, Fisch, Lei, Schuster, arXiv 2208.02814, ICLR 2024): choose the
+threshold from calibration drives so that the expected loss of a new drive is at most alpha, with no assumptions about the
+model. Loss here = "a crash drive was warned less than 1 s before contact". Related safe-control uses of conformal
+prediction that were read: Formal Verification and Control with Conformal Prediction (arXiv 2409.00536), Statistically
+Assuring Safety of Control Systems using Ensembles of Safety Filters and Conformal Prediction (arXiv 2511.07899), Safe
+Control using Learned Safety Filters and Adaptive Conformal Inference (arXiv 2604.18482). Code: `adas/conformal.py`,
+study: `sim/conformal_intent.py` -> `models/conformal_intent.json`, tests: `tests/test_conformal.py`.
+
+**Result** (v3 trees, 155 crash / 402 safe held-out twin drives, 300 random calibration/test splits; 100 crash drives from
+1.6x wider, unseen cars as a shifted test):
+
+| target alpha (late warnings) | threshold | late, same twin (mean, 5-95 %) | late, shifted wide cars | safe drives with a false alarm |
+|---|---|---|---|---|
+| 0.10 | 0.07 | 0.091 (0.026-0.179) | 0.111 | 48 % |
+| 0.15 | 0.12 | 0.138 (0.064-0.231) | 0.143 | 41 % |
+| 0.20 | 0.20 | 0.190 (0.089-0.295) | 0.199 | 32 % |
+| 0.30 | 0.33 | 0.286 (0.179-0.397) | 0.304 | 26 % |
+
+The stated risk holds on average on the same twin, and (at the tested alphas) within one point on the shifted cars - which
+the theory does not promise. 5.2 % of the crash drives can never be warned 1 s early by anyone (the danger appears less than a
+second before contact). The price of a stricter guarantee is visible: a 90 % promise costs about half of the safe drives a
+short false alarm. This is why the *warning* threshold is tuned separately from the *takeover* decision (which stays with
+the v2 model plus the path brake): the warning is cheap, the takeover is not.
+
+**Not done:** the car still uses 0.5. Switching the displayed-risk colours to a conformal threshold is a display change; it
+is left for when the model has been checked on real logs.
