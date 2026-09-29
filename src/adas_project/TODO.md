@@ -597,3 +597,16 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
   improve the ML model (needless-intervention classifier on Monte Carlo counterfactual labels, more twin data, GPU), re-run the Monte Carlo
   on untouched seeds, update REPORT.md / RESEARCH.md / labs.
 - [~] V2. (29 Sep night: N1, N4, F1 (explore, park), N7, N11, D6 done; the rest is Pi/car-dependent or report figures) All remaining TODO items except report figures and Pi-dependent ones.
+
+## W. User request (29 Sep, night): the remaining sim-doable items, plus return to start
+- [ ] W1. Explain Cartographer-style submaps + loop closure (answer in chat + RESEARCH.md), implement them (adas/submaps.py: scan-to-submap
+  matching, pose graph, loop-closure detection, optimisation) and test in the twin with injected odometry drift.
+- [ ] W2. **Return to start** must work properly: HOME exists (relay + GUI tile) but uses the drifting pose; test it end to end in the twin (drive
+  out, come back), measure the error, and use the loop-closed / start-submap-relocalised pose so it returns exactly.
+- [ ] W3. Parallel parking (slot detection along a row / kerb, parallel pose goal, S-curve reverse with the pose planner), twin test.
+- [ ] W4. Robust EKF: re-evaluate with corruptions that pass the covariance gate; enable only if it helps, else document.
+- [ ] W5. Direct 'would this takeover be needless' model: build a dataset of takeover decisions from Monte Carlo counterfactual labels
+  (features at trigger time), train (GPU/sklearn), use it as the decider, compare with v2 on untouched seeds.
+- [ ] W6. On-the-go adaptation of the crash predictor once a person starts driving: online recalibration of the risk (Platt / Bayesian) from
+  outcome feedback the car can observe, per-driver profile; prequential evaluation in the twin.
+- [ ] W7. Restyle the labs' RUN tab and window buttons; finish the training-lab chart polish.
