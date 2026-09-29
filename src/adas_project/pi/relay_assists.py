@@ -262,7 +262,7 @@ class RelayIntent:
     `intent_k_rate` on the assists); braking stays pure physics. One class, used by the relay, the Monte Carlo and
     the scenario checks, so the simulator runs exactly the car's logic."""
 
-    def __init__(self, assist, path=None, trust=0.5, risk_path=None):
+    def __init__(self, assist, path=None, trust=0.5, risk_path=None, need_path=None, need_tau=None):
         import os
         from adas.intent_net import DriverProfile, IntentNet
         here = os.path.dirname(os.path.abspath(__file__))
@@ -274,6 +274,12 @@ class RelayIntent:
         # (held-out AP 0.42 -> 0.86) and supplies the risk the driver sees and the warnings.
         rp = risk_path or os.path.join(here, "intent_v3.json")
         self.risk_net = IntentNet(rp) if os.path.exists(rp) else None
+        # optional decider: P(this takeover is needed) trained directly on Monte Carlo counterfactual labels (sim/train_needless.py);
+        # when present it replaces v2's crash probability in the trust decision (trusted = P(needed) < need_tau)
+        np_ = need_path or os.environ.get("RC_NEED_PATH")
+        self.need_net = IntentNet(np_) if np_ and os.path.exists(np_) else None
+        self.need_tau = float(need_tau if need_tau is not None else os.environ.get("RC_NEED_TAU", "0.5"))
+        self.p_need = None
         self.p_risk = None
         from adas.online_calibration import OnlineCalibrator
         self.calib = OnlineCalibrator()          # on-the-go recalibration of the shown risk (adas/online_calibration.py)
@@ -348,6 +354,12 @@ class RelayIntent:
                 self.profile.update(self.hist, free_now(f))
                 self.p_crash = self.net.crash_probability(f)
                 self.trusted = self.p_crash < self.trust_threshold
+        if self.need_net is not None and self.zhist:              # the takeover-needed model decides (the profile above keeps learning)
+            from adas.intent_net import window_of as _wo
+            lg = self.need_net.logit3(_wo(self.zhist))
+            self.p_need = 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, lg))))
+            self.p_crash = self.p_need
+            self.trusted = self.p_need < self.need_tau
         self._progress(now, physical)
         self.stalled = now < self.release_until
         if self.stalled:                                 # stuck: the model's trust is withdrawn for a while

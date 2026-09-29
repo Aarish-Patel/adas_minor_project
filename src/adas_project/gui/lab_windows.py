@@ -185,7 +185,7 @@ class TrainingWindow(QtWidgets.QMainWindow):
         self.tab = TrainingTab()
         ll.addWidget(self.tab, 1)
         split.addWidget(low)
-        split.setSizes([640, 360])
+        split.setSizes([560, 470])
         lay.addWidget(split, 1)
         self.drives = read_json(os.path.join(TRAIN_DIR, "showcase.json"), []) or []
         self.batch, self.slots = 0, []
