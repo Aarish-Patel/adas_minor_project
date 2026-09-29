@@ -517,3 +517,21 @@ Real-EV style software:
 - [~] R7. (J1 GUI smoke test done: tests/test_gui_smoke.py)  J1 GUI smoke test, D6 flicker check, N11 architecture doc, D7/J3 figures restyle.
 - [ ] R8. Tick off / reword stale TODO items (P6-P8, P13, B-section duplicates).
 - [ ] R9. Final summary to the user: new algorithm research done (list with sources) and what is waiting on the car.
+
+## S. User feedback, 29 Sep (afternoon, screenshots)
+- [ ] S1. **ADAS + intent got stuck in a corner while plain ADAS drove on** (Monte Carlo lab replay, brake-only and ADAS + intent side
+  by side at a wall/box gap). Expected: with intent the evasive steer / Hybrid A* must still get out (intent may only hold back
+  needless takeovers, never leave the car stuck). Find the failure in models/mc_live runs, fix generally (a stuck car under
+  intent-hold must release the evasive planner), add a scenario + a Monte Carlo check of goals reached (ADAS 31, +intent 28 of 36).
+- [ ] S2. Colour scheme: drop pitch black. Dark mode = Huawei ADS slate blue-grey (see the user's screenshots), light mode = pale
+  blue-grey with white cards; blue for path ribbon/active lines; Tesla grey/blue tones. **A switch between dark and light**, applied to
+  the main window, drawers and both labs; 3D scene background/lights follow the mode.
+- [ ] S3. Map & zones drawer redesigned in the style of the Assists drawer (approved): tools as tiles/segmented control, zone list as cards,
+  no cut-off text or empty boxes, the map with proper styling.
+- [ ] S4. Car setup drawer redesigned the same way (calibration tiles, results cards, STOP as a proper safety control; graceful
+  'panel not reachable' state).
+- [ ] S5. Events drawer and the other drawers (Diagnostics, Rear camera) get the same treatment; the 3D scene closer to the Huawei /
+  Tesla reference (blue path ribbon, glow ring under the car, soft floor, grey car models for objects).
+- [~] N3. Robust adaptive speed EKF: implemented as `SpeedEKF(robust=True)` (Huber weights + innovation-based noise scaling) and
+  evaluated in sim/ekf_robust_eval.py - first result: no difference under injected bad measurements (the existing Mahalanobis gate
+  already rejects them, or the injection is caught earlier). Inconclusive; do not enable on the car until shown to help.

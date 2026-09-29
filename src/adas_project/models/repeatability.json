@@ -1,20 +1,20 @@
 {
  "level": 1.0,
  "runs_per_scenario": 20,
- "overall": 0.92,
+ "overall": 0.9357142857142857,
  "overall_safe": 1.0,
  "scenarios": [
   {
    "name": "Evasive steer around a block",
    "runs": 20,
-   "passed": 18,
-   "rate": 0.9,
+   "passed": 15,
+   "rate": 0.75,
    "safe": 20,
    "safe_rate": 1.0,
-   "min_clearance_cm": 4.7,
+   "min_clearance_cm": 4.5,
    "example_failures": [
     "with evasive: around the box (x 3.6 m), closest 5 cm, handed back; without: braked to a stop at x 3.57 m",
-    "with evasive: around the box (x 4.5 m), closest 13 cm, handed back; without: braked to a stop at x 3.82 m"
+    "with evasive: around the box (x 3.9 m), closest 11 cm, handed back; without: braked to a stop at x 1.73 m"
    ]
   },
   {
@@ -47,9 +47,9 @@
    "rate": 0.75,
    "safe": 20,
    "safe_rate": 1.0,
-   "min_clearance_cm": 10.3,
+   "min_clearance_cm": 10.4,
    "example_failures": [
-    "driver steers around the box themselves: evasive took over for 77 ticks, no contact",
+    "driver steers around the box themselves: evasive took over for 76 ticks, no contact",
     "driver steers around the box themselves: evasive took over for 87 ticks, no contact"
    ]
   },
@@ -60,7 +60,7 @@
    "rate": 1.0,
    "safe": 20,
    "safe_rate": 1.0,
-   "min_clearance_cm": 4.0,
+   "min_clearance_cm": 4.4,
    "example_failures": []
   },
   {
@@ -146,7 +146,7 @@
    "rate": 1.0,
    "safe": 20,
    "safe_rate": 1.0,
-   "min_clearance_cm": 20.1,
+   "min_clearance_cm": 20.5,
    "example_failures": []
   },
   {
@@ -156,9 +156,9 @@
    "rate": 0.95,
    "safe": 20,
    "safe_rate": 1.0,
-   "min_clearance_cm": 14.0,
+   "min_clearance_cm": 16.0,
    "example_failures": [
-    "person 3.2 m to the side, walking in at 0.5 m/s: through in 8.0 s, closest 14 cm"
+    "person 3.2 m to the side, walking in at 0.5 m/s: through in 8.0 s, closest 16 cm"
    ]
   },
   {
@@ -173,6 +173,66 @@
     "person walking straight at the car: no contact (closest 2 cm), car ended at x 1.95 m",
     "person walking straight at the car: no contact (closest 1 cm), car ended at x 2.14 m"
    ]
+  },
+  {
+   "name": "Fault: LiDAR dropout burst",
+   "runs": 20,
+   "passed": 20,
+   "rate": 1.0,
+   "safe": 20,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 5.0,
+   "example_failures": []
+  },
+  {
+   "name": "Fault: frozen (stale) scan",
+   "runs": 20,
+   "passed": 20,
+   "rate": 1.0,
+   "safe": 20,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 5.0,
+   "example_failures": []
+  },
+  {
+   "name": "Fault: scans arrive 0.1 s late (design envelope)",
+   "runs": 20,
+   "passed": 20,
+   "rate": 1.0,
+   "safe": 20,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 4.2,
+   "example_failures": []
+  },
+  {
+   "name": "Fault: scans 0.25 s late, latency measured online",
+   "runs": 20,
+   "passed": 20,
+   "rate": 1.0,
+   "safe": 20,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 2.9,
+   "example_failures": []
+  },
+  {
+   "name": "Fault: 30 % of ESP32 commands lost",
+   "runs": 20,
+   "passed": 20,
+   "rate": 1.0,
+   "safe": 20,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 5.1,
+   "example_failures": []
+  },
+  {
+   "name": "Fault: spurious LiDAR points",
+   "runs": 20,
+   "passed": 20,
+   "rate": 1.0,
+   "safe": 20,
+   "safe_rate": 1.0,
+   "min_clearance_cm": 13.4,
+   "example_failures": []
   }
  ]
 }

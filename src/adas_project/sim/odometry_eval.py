@@ -24,11 +24,11 @@ ROOT = os.path.join(HERE, "..")
 sys.path.insert(0, ROOT)
 
 
-def make_ekf(m, lidar_x=0.12):
+def make_ekf(m, lidar_x=0.12, robust=False):
     from adas.speed_ekf import SpeedEKF
     return SpeedEKF(m["v_max"], m["deadband"], tau=max(m["tau_motor"], 0.05), delay=m["delay_s"],
                     coast_decel=m["coast_decel"], k_curv_per_deg=m["k_curv_per_deg"],
-                    servo_centre=m["servo_centre"], lidar_x=lidar_x)
+                    servo_centre=m["servo_centre"], lidar_x=lidar_x, robust=robust)
 
 
 def stats(est, ref, ok):
@@ -38,7 +38,7 @@ def stats(est, ref, ok):
 
 
 # ------------------------------------------------------------------ 1. digital twin
-def twin_run(seconds=24.0, seed=3, battery=1.0):
+def twin_run(seconds=24.0, seed=3, battery=1.0, robust=False, corrupt=0.0):
     """battery < 1: the twin car is that much slower than the model the estimators believe (a sagging battery or a
     carpet) - the case a throttle-only speed estimate cannot see."""
     from adas.aeb import SpeedEstimator, SpeedModel
@@ -63,7 +63,8 @@ def twin_run(seconds=24.0, seed=3, battery=1.0):
     car.last_cmd_t = 0.0
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=1360, seed=seed)
     pwm_est = SpeedEstimator(SpeedModel(v_max=m["v_max"], deadband=m["deadband"]))
-    rf, ekf, icp = RangeFlow(), make_ekf(m, p.lidar_x), Odometry()
+    rf, ekf, icp = RangeFlow(), make_ekf(m, p.lidar_x, robust), Odometry()
+    crng = np.random.default_rng(seed + 5)
     centre = m["servo_centre"]
     # a drive with speed steps, coasting and both turn directions, staying inside the room
     # (until t, throttle, servo offset: below centre = left)
@@ -94,6 +95,9 @@ def twin_run(seconds=24.0, seed=3, battery=1.0):
             okb = np.isfinite(best) & (r >= 0.2) & (r < 12) & (lidar.rng.random(len(best)) > 0.04)
             xy = np.column_stack([r[okb] * np.cos(lidar.ccw[okb]), r[okb] * np.sin(lidar.ccw[okb])])
             meas = rf.update(xy, t, guess=(ekf.v, ekf.w * p.lidar_x, ekf.w))
+            if meas is not None and corrupt and crng.random() < corrupt:
+                # a bad scan match that still reports a small covariance (the case a covariance gate cannot see)
+                meas = (meas[0] + crng.choice([-1, 1]) * crng.uniform(0.10, 0.35), meas[1], meas[2] + crng.normal(0, 0.3), meas[3], meas[4])
             if meas is not None:
                 ekf.correct(t, meas)
             pose = icp.update(np.column_stack([xy[:, 0], -xy[:, 1]]), t, ekf.v, 0.0)

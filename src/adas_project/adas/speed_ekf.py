@@ -15,7 +15,7 @@ import numpy as np
 class SpeedEKF:
     def __init__(self, v_max, deadband, tau=0.1, delay=0.12, coast_decel=4.0, k_curv_per_deg=0.0656,
                  servo_centre=87.0, lidar_x=0.12, q_v=0.6, q_w=1.5, r_scale=4.0, r_floor=(0.02, 0.02, 0.05),
-                 accel_limits=(-4.0, 3.0), brake_decel=8.0):
+                 accel_limits=(-4.0, 3.0), brake_decel=8.0, robust=False):
         self.v_max, self.deadband, self.tau, self.delay = v_max, deadband, max(tau, 0.03), delay
         self.coast = coast_decel
         self.k, self.centre, self.lx = k_curv_per_deg, servo_centre, lidar_x
@@ -24,6 +24,9 @@ class SpeedEKF:
         self.a_min, self.a_max = accel_limits          # the motor cannot change speed faster (fitted twin limits)
         self.brake = brake_decel                       # reverse throttle while moving: active braking (measured)
         self.rejects = 0
+        # robust=True: Huber-weighted innovations + innovation-based measurement-noise adaptation (TODO N3;
+        # Huber 1964 equivalent weights, Mehra 1970 / Sage-Husa 1969 adaptive estimation, see RESEARCH.md section 11)
+        self.robust, self.nis = robust, 1.0
         self.x = np.zeros(2)
         self.P = np.diag([0.05, 0.1])
         self.cmds = []                                 # (t, pwm, servo) history for the command delay
@@ -106,6 +109,14 @@ class SpeedEKF:
             self.P = self.P + np.diag([0.25, 0.5])
             S = H @ self.P @ H.T + R
         self.rejects = 0
+        if self.robust:
+            dd = math.sqrt(d2 / 3.0)
+            self.nis = 0.95 * self.nis + 0.05 * (d2 / 3.0)         # normalised innovation squared, 1.0 when R is right
+            adapt = min(3.0, max(0.5, self.nis))                    # measurements noisier than R says -> trust them less
+            k_h = 1.345                                             # Huber's constant (95 % efficiency at the normal)
+            w = 1.0 if dd <= k_h else k_h / dd                      # Huber equivalent weight
+            R = R * adapt / w
+            S = H @ self.P @ H.T + R
         K = self.P @ H.T @ np.linalg.inv(S)
         self.x = self.x + K @ y
         self.P = (np.eye(2) - K @ H) @ self.P
