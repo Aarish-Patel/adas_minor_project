@@ -6,6 +6,8 @@ intervenes only when the driver, left alone, would (nearly) collide. Verified on
 Car: Raspberry Pi 5 (relay) + RPLIDAR A3 + ESP32 (servo/ESC PWM, 500 ms failsafe) + optional rear USB camera. Laptop: HMI, twin, training.
 
 ## Read first (in this order, only what the task needs)
+0. For work on ONE subsystem: its file in `docs/modules/` (perception, safety_decision, planning, ml, monte_carlo, gui,
+   integration) is usually enough; open the documents below only if it points there.
 1. `docs/requirements.md` - requirement IDs (FR-xxx, NFR-xx), acceptance criteria, status
 2. `docs/architecture.md` - modules, data objects, interfaces, frames, state machines
 3. `docs/decisions.md` - ADRs; do not reverse an accepted decision without a new ADR
