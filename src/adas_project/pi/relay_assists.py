@@ -359,6 +359,9 @@ class RelayAssists:
         self.planner = PlanService(plan_mode, plan_latency).start()
         self.assists.plan_service = self.planner
         self.est = SpeedEstimator(self.model)
+        from adas.speed_control import SpeedController
+        self.speed_ctl = SpeedController(self.model)     # closed loop on the throttle the ADAS itself commands (N1)
+        self.speed_ctl_on = True
         self.speed = None              # a RelaySpeed shared with the brake gate; if set, the assists use its speed
         self.memory = None             # the brake gate's obstacle memory (its blind-ring points join the planners)
         from pi.zones import SpeedZones
@@ -551,6 +554,8 @@ class RelayAssists:
             self.info = {"autonomy": "paused - hold the throttle to drive"}
             return self._nav_stick, 0.0
         self.info = {"autonomy": self.nav.msg}
+        if self.speed_ctl_on and self.speed is not None:
+            return self._nav_stick, self.speed_ctl.pwm(v_target, self.v, dt)
         return self._nav_stick, math.copysign(self.model.pwm_for_speed(abs(v_target)), v_target)
 
     def _rewrite(self, lines, i_a, i_m, servo, physical, dt):
@@ -839,6 +844,11 @@ class RelayAssists:
         pts = self._planning_points(points)
         self._odometry(points, seq, stick, now)
         s_out, p_out, self.level = self.assists.update(dt, pts, stick, physical, self.v)
+        if self.speed_ctl_on and self.speed is not None and self.assists.evading and self.assists.evade_pwm is not None                 and abs(p_out - physical) > 0.5 and p_out != 0:
+            # the manoeuvre's own speed (a cap or a reverse creep) is held by the PI loop, not by the open-loop model
+            p_out = self.speed_ctl.pwm(math.copysign(self.model.speed(abs(p_out)), p_out), self.v, dt)
+        elif not self.assists.evading and not self.nav.active:
+            self.speed_ctl.reset()
         self._odometry(points, seq, stick, now)     # a manoeuvre that just began: this scan is its reference
         self.info = dict(self.assists.info, **nudged)
         out = list(lines)

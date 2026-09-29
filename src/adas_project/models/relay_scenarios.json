@@ -2,7 +2,7 @@
  {
   "name": "Evasive steer around a block",
   "pass": true,
-  "detail": "with evasive: around the box (x 4.8 m), closest 9 cm, handed back; without: braked to a stop at x 1.74 m"
+  "detail": "with evasive: around the box (x 4.8 m), closest 12 cm, handed back; without: braked to a stop at x 1.74 m"
  },
  {
   "name": "Steering correction instead of braking (nudge)",
