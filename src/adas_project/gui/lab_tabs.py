@@ -256,7 +256,8 @@ class MonteCarloTab(QtWidgets.QWidget):
 
     def show_summary(self, summ, tests):
         cols = [("runs", "runs"), ("crashes", "crashes"), ("reached_goal", "reached goal"),
-                ("interventions", "interventions"), ("needless_takeovers", "needless takeovers"),
+                ("interventions", "interventions"), ("episodes", "takeover episodes"),
+                ("progress_assists", "progress assists"), ("needless_takeovers", "needless takeovers"),
                 ("needless_brakes", "needless brakes"), ("needless_limits", "needless speed limits"),
                 ("overridden_needlessly_s", "overridden needlessly (s)"), ("median_time_s", "median time (s)"),
                 ("min_clearance_cm", "min clearance (cm)")]

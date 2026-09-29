@@ -9,6 +9,7 @@ The relay's existing emergency braking still runs afterwards and always has the 
 Toggle each assist with UDP "ASSIST <name> ON|OFF" or the GUI buttons.
 """
 import math
+import os
 import time
 
 import numpy as np
@@ -321,6 +322,7 @@ class RelayIntent:
         self.attentive = k_rate is not None            # the stick moved in the last second
         a.assists.intent_hold = self.trusted
         a.assists.intent_stalled = self.stalled
+        a.assists.intent_commit = os.environ.get('RC_COMMIT', '1') == '1'     # (env: experiments)
         a.assists.intent_attentive = self.attentive
         a.assists.intent_k_rate = (k_rate or 0.0) if self.trusted else None
 

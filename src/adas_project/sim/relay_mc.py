@@ -24,7 +24,8 @@ sys.path.insert(0, os.path.join(HERE, ".."))
 DT = 0.05
 SCAN_DT = 0.1
 T_MAX = 30.0
-VARIANTS = ("off", "brake-only", "adas", "adas+intent")
+VARIANTS = ("off", "brake-only", "adas", "adas+intent", "adas+oracle")
+EPISODE_GAP_S = 2.5                                        # takeovers closer than this belong to one episode
 TRUST_THRESHOLD = float(os.environ.get("RC_TRUST", "0.5"))   # hold the swerve when P(driver crashes) is below this
 FOS_TRUSTED = os.environ.get("RC_FOS_TRUSTED")                 # sweep the gate's soft-cap FOS for trusted drivers
 
@@ -204,6 +205,39 @@ def counterfactual_crash(car, driver, t0, horizon=2.0):
     return counterfactual(car, driver, t0, horizon) == "crash"
 
 
+class OracleIntent:
+    """A perfect intent model, for the upper bound: every 0.2 s it forks the simulation and lets the same driver carry on alone
+    for 2 s (the counterfactual that defines a needed takeover). The driver is trusted exactly when they would come through.
+    The progress rules (stuck-car release, commitment) are the deployed ones. Not deployable - it shows what a better ML model
+    could at best achieve."""
+
+    def __init__(self, assist, car, driver):
+        from pi.relay_assists import RelayIntent
+        self.base = RelayIntent(assist, path="__no_model__")
+        self.base.net = self.base.risk_net = None
+        self.assist, self.car, self.driver = assist, car, driver
+        self.p_crash, self.p_risk, self.trusted, self.attentive = 0.0, 0.0, True, True
+        self.last = -9.0
+        self.profile = self.base.profile
+        self.gate_trust, self.gate_k_rate = True, None
+
+    def update(self, now, servo, physical, v, points):
+        if now - self.last >= 0.2:
+            self.last = now
+            cf = counterfactual(self.car, self.driver, now)
+            self.p_crash = 0.0 if cf is None else 1.0
+            self.trusted = cf is None
+        self.base._progress(now, physical)
+        stalled = now < self.base.release_until
+        a = self.assist.assists
+        a.intent_hold = self.trusted and not stalled
+        a.intent_attentive, a.intent_k_rate, a.intent_stalled = True, None, stalled
+        a.intent_commit = True
+
+    def gui(self):
+        return {}
+
+
 def would_hit(world, params, pose, v, servo, k, c, horizon=2.0, direction=1):
     """Ground truth: does holding this command (in its direction of travel) for `horizon` s hit anything?"""
     x, y, th = pose
@@ -237,6 +271,12 @@ def run(args):
     world, goal, rng = scenario(seed)
     from sim.hw_sim import PI_COMPUTE_FACTOR
     assist = RelayAssists(tun, plan_latency=PI_COMPUTE_FACTOR)   # plans arrive as late as they would on the Pi
+    if os.environ.get("RC_STUCKWAIT"):
+        assist.assists.cfg.stuck_wait_s = float(os.environ["RC_STUCKWAIT"])
+    if os.environ.get("RC_RESPECT"):
+        assist.assists.cfg.respect_driver_s = float(os.environ["RC_RESPECT"])
+    if os.environ.get("RC_DEFER"):                  # experiments: "1" = swerve stays back while the brake can still stop the car
+        assist.assists.cfg.intent_defer_to_brake = os.environ["RC_DEFER"] == "1"
     if os.environ.get("RC_EVADE_TTC"):             # sweep the evasive trigger: "<normal>,<attentive>" seconds
         a_n, a_a = (float(s) for s in os.environ["RC_EVADE_TTC"].split(","))
         assist.assists.cfg.evade_ttc, assist.assists.cfg.evade_ttc_attentive = a_n, a_a
@@ -246,7 +286,9 @@ def run(args):
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
     driver = HumanDriver(world, goal, np.random.default_rng(seed + 1000), p, K, assist.centre, style)
     rint = None
-    if variant == "adas+intent":                 # the relay's own intent code (pi/relay_assists.RelayIntent)
+    if variant == "adas+oracle":                 # upper bound for any learned intent model: it KNOWS the counterfactual
+        rint = OracleIntent(assist, car, driver)
+    elif variant == "adas+intent":               # the relay's own intent code (pi/relay_assists.RelayIntent)
         from pi.relay_assists import RelayIntent
         rint = RelayIntent(assist, os.environ.get("RC_INTENT_PATH") or os.path.join(HERE, "..", "models", "intent_net.json"),
                            trust=TRUST_THRESHOLD)
@@ -259,14 +301,15 @@ def run(args):
     vest = RelaySpeed(tun.speed_model, p.lidar_x)       # the relay's speed: throttle model + LiDAR EKF
     gate.delay_source = vest.latency
     assist.speed = vest
-    if variant in ("adas", "adas+intent"):
+    if variant in ("adas", "adas+intent", "adas+oracle"):
         assist.set("evasive", True)
         if os.environ.get("RC_NUDGE") == "1":        # opt-in: more (short) corrections, less time overridden
             assist.set("nudge", True)
     t, next_scan, seq = 0.0, 0.0, 0
     pts = []
     trace, events = [], []
-    interventions = fp = 0
+    interventions = fp = episodes = progress = 0
+    last_end_t = -99.0
     kind = None
     p_crash = None
     was_intervening = False
@@ -324,6 +367,8 @@ def run(args):
             # was decided, not an intervention (counting it made ~400 'needless brakes' appear, 28 Sep)
             kind = "evasive" if assist.assists.evading else ("gate:" + str(gate.info.get("action")) if abs(g_phys - phys) > 1.0 else
                                                                  ("steer" if abs(servo_out - d_servo) > 1.0 else None))
+            if kind == "evasive" and assist.assists.trigger_reason == "stuck":
+                kind = "progress"                    # unsticking a car that is held / going nowhere: not a protective takeover
             intervening = kind is not None
             act = str(gate.info.get("action") or "")
             g_phys = smoother.step(g_phys, DT, emergency=bool(g_brake) or act.startswith(("holding", "stopped")), v=vest.v)  # as the relay
@@ -333,6 +378,10 @@ def run(args):
         vest.command(t, DT, phys, servo_out)
         if intervening and not was_intervening:
             interventions += 1
+            if t - last_end_t >= EPISODE_GAP_S:
+                episodes += 1                        # one takeover episode = interventions less than EPISODE_GAP_S apart
+            if kind == "progress":
+                progress += 1
             # how deep inside its stopping envelope was the car on the DRIVER's own path: free distance / physical
             # stopping distance (1.0 = the last moment braking could still stop it)
             from pi.path_gate import BASE_M, DECEL, REACTION_S
@@ -356,6 +405,8 @@ def run(args):
             burden[key + "_s"] += DT
             burden[key + "_steer_s"] += DT * steer_taken
             burden[key + "_throttle_s"] += DT * min(1.0, cut)
+        if intervening:
+            last_end_t = t
         was_intervening = intervening
         car.command(f"A {servo_out:.1f} {servo_out:.1f}", now=t)
         car.command(f"M {-int(phys)}", now=t)
@@ -366,7 +417,7 @@ def run(args):
     x, y, th, v, *_ = car.pose()
     crashed = car.crash_count > 0
     return {"seed": seed, "variant": variant, "style": style, "crashed": crashed, "reached": reached, "min_clear": float(min_clear),
-            "interventions": interventions, "false_positives": fp, "lapses": len(driver.lapses),
+            "interventions": interventions, "false_positives": fp, "episodes": episodes, "progress": progress, "lapses": len(driver.lapses),
             "trace": trace, "events": events, "goal": goal, "burden": {k: round(v, 2) for k, v in burden.items()}}
 
 
@@ -411,6 +462,8 @@ def summarise(res, variants=VARIANTS):
         out[v] = {"runs": len(r), "crashes": sum(x["crashed"] for x in r),
                   "reached_goal": sum(x["reached"] is not None for x in r),
                   "interventions": sum(x["interventions"] for x in r),
+                  "episodes": sum(x.get("episodes", 0) for x in r),
+                  "progress_assists": sum(x.get("progress", 0) for x in r),
                   "needless": sum(x["false_positives"] for x in r),
                   "needless_takeovers": sum(1 for e in ev if e[2] == "fp" and e[3] in ("evasive", "steer")),
                   "needless_brakes": sum(1 for e in ev if e[2] == "fp" and str(e[3]).startswith("gate:")

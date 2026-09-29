@@ -389,3 +389,54 @@ obstacle, the intent model keeps trusting them, and the evasive steer then start
 The stuck-car release (trust withdrawn after 5 s within 0.8 m with the throttle on, evasive not cancelled by the stick)
 fixed most of these (goals 28 -> 32 of 36 in the first check) but not the retreat completely. Open: start the release earlier
 without adding needless takeovers (2.0-3.5 s windows did add needless takeovers: 44-49 vs 33-46 on the tuning drives).
+
+## 12. How far can the intent-aware ADAS go? Bound, changes and honest result (TODO V1; 29 Sep, late)
+
+**Target set by the user:** ADAS + intent always reaches the goal, >= 90 % fewer interventions than plain ADAS, no time lost, no
+retreating / stuck states. Everything below was measured with `sim/mc_bound.py` (driver alone, brake only, ADAS, ADAS + intent and an
+*oracle* intent on identical drives; seeds 24-47 were never used for tuning) - `models/mc_bound.json`.
+
+**Where the interventions come from** (72 drives, seeds 0-23, before the changes): plain ADAS made 139 interventions, 137 of them
+'needless' by the counterfactual definition (the same driver, left alone for 2 s, would not have come within 2 cm of anything);
+136 were evasive takeovers, many of them repeated attempts (up to 14 in one drive) that the simulated driver's steering or lifted
+pedal cancelled, followed by a new attempt seconds later. The intent-aware system had 103, of which 48 were *progress* assists: it
+deferred to the driver, the driver dithered in front of an obstacle with the brake gate holding the car, and the car had to be freed.
+
+**Upper bound.** Replacing the learned model by an oracle that knows the counterfactual (`OracleIntent` in `sim/relay_mc.py`) did
+NOT reduce interventions further (131 vs 132 for ADAS on seeds 24-47; 54 vs 87 takeover episodes) and it reached fewer goals
+(62/72): a perfect crash predictor is not what limits the system. What matters is how the assist arbitrates with a driver who
+is neither crashing nor progressing. A 90 % reduction cannot be reached in this scenario set by better prediction alone: in the
+~20 % of drives where the driver alone does not reach the goal (13 of 72; 5-6 crash), at least one takeover per drive is unavoidable.
+
+**Changes made** (all only for the intent-aware system; plain ADAS is unchanged as the baseline):
+1. *Commitment* (production evasive-steer practice): a manoeuvre is not dropped for a lifted pedal shorter than 0.9 s, and only
+   steering AGAINST it for 0.35 s cancels it; once the driver has really overridden it the assist stays back for 6 s unless the
+   brake's own envelope is reached (`intent_commit`, `respect_driver_s`).
+2. *Progress assists*: a car held at an obstacle with the throttle on is freed after a 2 s grace period (`stuck_wait_s`), or after
+   5 s within 0.8 m with the throttle on (`RelayIntent._progress`); the evasive steer then runs to the end. These are counted
+   separately ('progress assists') from safety takeovers.
+3. *Episodes*: takeovers less than 2.5 s apart are one episode - what a driver feels as one takeover.
+
+**Result on untouched seeds 24-47** (72 drives, paired one-sided Wilcoxon):
+
+| | driver alone | brake only | ADAS | ADAS + intent | oracle intent |
+|---|---|---|---|---|---|
+| crashes | 6 | 0 | 0 | **0** | 0 |
+| goals reached (of 72) | 60 | 59 | 70 | **70** | 62 |
+| median time to goal (s) | 10.2 | 10.6 | 12.1 | **11.6** | 10.7 |
+| interventions (all) | 0 | 102 | 132 | **83 (-37 %, p = 4e-4)** | 131 |
+| takeover episodes | 0 | 49 | 87 | **50 (-43 %, p = 4e-7)** | 54 |
+| safety interventions (excluding progress assists) | 0 | 102 | 130 | **65 (-50 %)** | 73 |
+| needless interventions | 0 | 81 | 127 | **75 (-41 %, p = 9e-5)** | 112 |
+| distance moved away from the goal (m, sum) | 45 | 50 | 17.7 | **15.0** | 41 |
+
+On seeds 0-23 (used while tuning) the same system reached 64/72 goals against 67 for ADAS, with 90 vs 131 interventions,
+55 vs 81 episodes and 30 vs 102 needless takeovers (p = 4e-10).
+
+**Verdict against the target.** Met: 0 crashes; goals equal to plain ADAS on the untouched seeds (70/70; 64 vs 67 on the tuning
+seeds - not 'always'); faster median time to goal; less retreat; needless takeovers -70 % (seeds 0-23). **Not met:** a >= 90 %
+reduction of interventions (achieved 37-50 %, 43 % of episodes) and reaching every goal (2 of 72 drives fail for both ADAS and
+intent). The oracle experiment shows why: the remaining interventions are needed to free a car the driver cannot free, or are
+brake-gate holds, not mistakes of the learned model. Reaching 90 % would need a scenario set without stuck geometry or a driver
+model that always recovers by itself. Timing is non-deterministic in the twin (planner compute time enters the simulated Pi
+delay); differences of a few drives between runs are noise.

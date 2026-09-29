@@ -50,6 +50,17 @@ class AssistConfig:
     # the trigger also scales with speed by DISTANCE (user, 28 Sep: planning failed at high speed): step in no later
     # than the last point to steer at this speed (below) plus this margin, even if the time to contact is longer
     trigger_lps_margin: float = 0.25
+    # intent-aware: hold the swerve back while the brake could still stop the car, whatever the stick is doing (an idle stick
+    # is not a threat by itself); the swerve starts only when the driver is in trouble for real (learned intent says so, or the
+    # brake's physical envelope is reached). Needless-takeover reduction, see RESEARCH.md section 12.
+    intent_defer_to_brake: bool = False
+    # intent-aware manoeuvre commitment (production evasive-steer practice: the manoeuvre is not dropped for a lifted pedal or a
+    # steering twitch, and once the driver has really overridden it the system stays back for a while)
+    evade_release_s: float = 0.9     # s the throttle must stay released before the manoeuvre is handed back
+    evade_fight_s: float = 0.35      # s the driver must steer AGAINST the manoeuvre (past the override) to cancel it
+    stuck_wait_s: float = 2.0        # s a held car waits before the assist frees it (the driver may sort it out first)
+    respect_driver_s: float = 6.0    # s after an override: no new swerve unless the brake's own envelope is reached
+    defer_fos: float = 1.15
     # last point to steer (Brannstrom, Coelingh & Sjoberg, IEEE T-ITS 2010): the intent model may hold a swerve back
     # for a driver who is NOT moving the stick only until the last point a swerve can still get round: the car needs
     # sqrt(2 * offset / kappa_max) of travel to move `lps_offset` sideways at its tightest turn, plus what it covers
@@ -178,6 +189,9 @@ class DrivingAssists:
         self.pose_fix = None            # (x, y, th) from scan matching, start frame, set from outside
         self.intent_k_rate = None       # driver's curvature rate (1/m/s) when attentive, else None; set from outside
         self.intent_hold = False        # learned intent: an attentive driver who will handle it - no swerve (outside)
+        self.trigger_reason = None      # 'threat' (a real contact course) or 'stuck' (the car is held / going nowhere): a progress assist
+        self.intent_commit = False      # set by RelayIntent: the commitment rules above apply
+        self._release_t, self._fight_t, self._respect_t, self._stuck_t = 0.0, 0.0, 0.0, 0.0
         self.intent_stalled = False     # the car is stuck (pi/relay_assists.RelayIntent): the evasive steer runs to the end
         self.intent_attentive = True    # the stick moved recently (outside); False limits the hold (last point to steer)
         self._planner = None
@@ -380,10 +394,22 @@ class DrivingAssists:
         stop = c.lps_fos * (c.lps_base + v * c.lps_reaction + v * v / (2 * c.lps_decel)) + v * (c.evade_confirm_s + 0.05)
         return max(steer, stop)
 
+    def _brake_envelope(self, v):
+        c = self.cfg
+        v = abs(v)
+        return c.defer_fos * (c.lps_base + v * c.lps_reaction + v * v / (2 * c.lps_decel)) + v * (c.evade_confirm_s + 0.05)
+
+    def _defer(self, v, d_drv):
+        """True: the intent model trusts this driver and the swerve stays back."""
+        if self.cfg.intent_defer_to_brake:
+            return d_drv > self._brake_envelope(v)
+        return self.intent_attentive or d_drv > self._last_point_to_steer(v)
+
     def _evasive(self, dt, pts, steer, pwm, v):
         c = self.cfg
         k_drv = _kappa(steer, self.p)
         self._pwm_hist = (self._pwm_hist + [pwm])[-12:]
+        self._respect_t = max(0.0, self._respect_t - dt)
         self.evade_pwm = None
         if self.phase is not None:                # pose in the frame where the manoeuvre began:
             if self.pose_fix is not None:          # scan matching (the relay feeds it) beats dead reckoning...
@@ -394,13 +420,26 @@ class DrivingAssists:
                 self.eth += k_now * v * dt
                 self.ex += v * math.cos(self.eth) * dt
                 self.ey += v * math.sin(self.eth) * dt
-            if pwm <= 0:
-                self._stop_evading("driver let go / braked - handed back")
-                return steer, None
-            if abs(steer) > c.evade_driver_override and not self.intent_stalled:
-                # (a stuck car: the driver's stick no longer cancels the way out - only letting go of the throttle does)
-                self._stop_evading("driver steered - handed back")
-                return steer, None
+            if self.intent_commit:
+                self._release_t = self._release_t + dt if pwm <= 0 else 0.0
+                against = abs(steer) > c.evade_driver_override and k_drv * self.evade_kappa < 0
+                self._fight_t = self._fight_t + dt if (against and not self.intent_stalled) else max(0.0, self._fight_t - 2 * dt)
+                if self._release_t > c.evade_release_s:
+                    self._stop_evading("driver let go - handed back")
+                    self._respect_t = c.respect_driver_s
+                    return steer, None
+                if self._fight_t > c.evade_fight_s:
+                    self._stop_evading("driver steered against it - handed back")
+                    self._respect_t = c.respect_driver_s
+                    return steer, None
+            else:
+                if pwm <= 0:
+                    self._stop_evading("driver let go / braked - handed back")
+                    return steer, None
+                if abs(steer) > c.evade_driver_override and not self.intent_stalled:
+                    # (a stuck car: the driver's stick no longer cancels the way out - only letting go of the throttle does)
+                    self._stop_evading("driver steered - handed back")
+                    return steer, None
         if pwm <= 0 or len(pts) == 0:
             self._trigger_for = 0.0
             return steer, None
@@ -419,6 +458,7 @@ class DrivingAssists:
                 d_drv = self._contact(pts, k_drv, look + 0.4, c.trigger_margin)   # a real contact course
             ttc = d_drv / max(v, 1e-3)
             stuck = v < 0.05 and d_drv < 0.35             # held at an obstacle with the throttle on
+            self._stuck_t = self._stuck_t + dt if stuck else 0.0
             attentive = self.intent_k_rate is not None and self.intent_attentive
             ttc_limit = c.evade_ttc_attentive if attentive else c.evade_ttc
             too_far = ttc > ttc_limit and d_drv > self._last_point_to_steer(v) + c.trigger_lps_margin
@@ -428,10 +468,17 @@ class DrivingAssists:
             self._trigger_for += dt
             if self._trigger_for < c.evade_confirm_s:
                 return steer, None
-            if self.intent_hold and (self.intent_attentive or d_drv > self._last_point_to_steer(v)):
+            if stuck and self.intent_commit and self._stuck_t < c.stuck_wait_s:
+                self.info["evasive"] = "held at an obstacle - giving the driver a moment"
+                return steer, None
+            if self.intent_commit and self._respect_t > 0 and not self.intent_stalled and not stuck and d_drv > self._brake_envelope(v):
+                self.info["evasive"] = "driver overrode it - staying back"
+                return steer, None
+            if self.intent_hold and not (stuck and self.intent_commit) and self._defer(v, d_drv):
                 # the driver is on it (learned intent) - the brake still watches
                 self.info["evasive"] = "driver is avoiding it - not intervening"
                 return steer, None
+            self.trigger_reason = "stuck" if (stuck or self.intent_stalled) else "threat"
             self.ex = self.ey = self.eth = 0.0      # the line frame: the car now, the driver's path straight ahead
             self._x_goal_v = self._x_goal(pts)
             self._submit_plan(pts, v, k_drv)        # off the control loop (adas/plan_service.py)

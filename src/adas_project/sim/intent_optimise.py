@@ -21,10 +21,11 @@ STYLES = ("lapsing", "aggressive", "late")
 
 def _job(args):
     seed, style, variant, model, trust = args[:5]
+    for k in ("RC_STALL", "RC_DEFER", "RC_EVADE_TTC", "RC_COMMIT", "RC_STUCKWAIT", "RC_RESPECT"):
+        os.environ.pop(k, None)
     if len(args) > 5 and args[5]:
-        os.environ["RC_STALL"] = args[5]
-    else:
-        os.environ.pop("RC_STALL", None)
+        env = args[5] if isinstance(args[5], dict) else {"RC_STALL": args[5]}
+        os.environ.update(env)
     if model:
         os.environ["RC_INTENT_PATH"] = model
     else:
@@ -35,6 +36,7 @@ def _job(args):
     return {"seed": seed, "style": style, "variant": variant, "crashed": r["crashed"], "reached": r["reached"],
             "interventions": r["interventions"], "needless": r["false_positives"],
             "takeovers": sum(1 for e in r["events"] if e[2] == "fp" and e[3] in ("evasive", "steer")),
+            "episodes": r["episodes"], "progress": r["progress"],
             "overridden_s": r["burden"]["needless_s"], "min_clear": r["min_clear"], "retreat": _retreat(r)}
 
 
@@ -50,6 +52,7 @@ def score(rows):
     return {"runs": len(rows), "crashes": sum(r["crashed"] for r in rows),
             "goals": sum(r["reached"] is not None for r in rows),
             "needless": sum(r["needless"] for r in rows), "takeovers": sum(r["takeovers"] for r in rows),
+            "episodes": sum(r["episodes"] for r in rows), "progress": sum(r["progress"] for r in rows),
             "overridden_s": round(sum(r["overridden_s"] for r in rows), 1),
             "retreat_m": round(sum(r["retreat"] for r in rows), 1),
             "median_time_s": float(np.median([r["reached"] for r in rows if r["reached"]] or [np.nan]))}
@@ -66,11 +69,31 @@ def sweep(configs, seeds, ex):
     return out
 
 
+def defer_sweep():
+    """Trade-off between waiting for the driver and freeing a held car / respecting an override (v2 decider, 72 drives)."""
+    res = {}
+    seeds = range(24)
+    with ProcessPoolExecutor(max_workers=8) as ex:
+        base = list(ex.map(_job, [(s, st, "adas", None, 0.5) for s in seeds for st in STYLES]))
+        res["adas"] = score(base)
+        print("adas", res["adas"], flush=True)
+        for name, env in (("wait 0 respect 6", {"RC_STUCKWAIT": "0", "RC_RESPECT": "6"}),
+                          ("wait 1.5 respect 6", {"RC_STUCKWAIT": "1.5", "RC_RESPECT": "6"}),
+                          ("wait 3 respect 6", {"RC_STUCKWAIT": "3", "RC_RESPECT": "6"}),
+                          ("wait 0 respect 2", {"RC_STUCKWAIT": "0", "RC_RESPECT": "2"}),
+                          ("wait 1.5 respect 2", {"RC_STUCKWAIT": "1.5", "RC_RESPECT": "2"}),
+                          ("wait 3 respect 0", {"RC_STUCKWAIT": "3", "RC_RESPECT": "0"})):
+            rows = list(ex.map(_job, [(s, st, "adas+intent", None, 0.5, env) for s in seeds for st in STYLES]))
+            res[name] = score(rows)
+            print(name, res[name], flush=True)
+    return res
+
+
 def stall_sweep():
     """Tune the stuck-car detector (seconds without progress, metres) with the v3 decider at trust 0.33."""
     v3 = os.path.join(HERE, "..", "pi", "intent_v3.json")
     res = {}
-    with ProcessPoolExecutor() as ex:
+    with ProcessPoolExecutor(max_workers=8) as ex:
         for st in ("8,1.0", "6,0.9", "5,0.8", "3.5,0.7"):
             rows = list(ex.map(_job, [(s, sty, "adas+intent", v3, 0.33, st) for s in range(12) for sty in STYLES]))
             res[st] = score(rows)
@@ -89,7 +112,7 @@ def confirm():
     configs = {"v2 trust 0.5 (current)": (None, 0.5), "v3 trust 0.2": (v3, 0.2), "v3 trust 0.33": (v3, 0.33)}
     seeds = range(12, 44)
     rows = {}
-    with ProcessPoolExecutor() as ex:
+    with ProcessPoolExecutor(max_workers=8) as ex:
         rows["adas"] = list(ex.map(_job, [(s, st, "adas", None, 0.5) for s in seeds for st in STYLES]))
         for name, (model, trust) in configs.items():
             rows[name] = list(ex.map(_job, [(s, st, "adas+intent", model, trust) for s in seeds for st in STYLES]))
@@ -117,6 +140,8 @@ def confirm():
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "confirm":
         return confirm()
+    if len(sys.argv) > 1 and sys.argv[1] == "defer":
+        return defer_sweep()
     if len(sys.argv) > 1 and sys.argv[1] == "stall":
         return stall_sweep()
     v2 = None                                                    # relay_mc default: models/intent_net.json
@@ -124,7 +149,7 @@ def main():
     configs = {f"v2 trust {t}": (v2, t) for t in (0.3, 0.5, 0.7)}
     configs.update({f"v3 trust {t}": (v3, t) for t in (0.05, 0.1, 0.2, 0.33, 0.5)})
     res = {}
-    with ProcessPoolExecutor() as ex:
+    with ProcessPoolExecutor(max_workers=8) as ex:
         print("tuning seeds 0-11", flush=True)
         res["tune"] = sweep(configs, range(12), ex)
         print("adas", res["tune"]["adas"], flush=True)
