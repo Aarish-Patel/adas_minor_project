@@ -1,0 +1,85 @@
+{
+ "tune": {
+  "adas": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 31,
+   "needless": 57,
+   "takeovers": 47,
+   "overridden_s": 151.7,
+   "median_time_s": 13.70000000000006
+  },
+  "v2 trust 0.3": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 31,
+   "needless": 49,
+   "takeovers": 33,
+   "overridden_s": 123.2,
+   "median_time_s": 11.900000000000034
+  },
+  "v2 trust 0.5": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 31,
+   "needless": 44,
+   "takeovers": 34,
+   "overridden_s": 125.5,
+   "median_time_s": 11.900000000000034
+  },
+  "v2 trust 0.7": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 29,
+   "needless": 50,
+   "takeovers": 37,
+   "overridden_s": 133.8,
+   "median_time_s": 11.60000000000003
+  },
+  "v3 trust 0.05": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 34,
+   "needless": 58,
+   "takeovers": 49,
+   "overridden_s": 158.7,
+   "median_time_s": 13.825000000000061
+  },
+  "v3 trust 0.1": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 32,
+   "needless": 49,
+   "takeovers": 43,
+   "overridden_s": 133.6,
+   "median_time_s": 11.950000000000035
+  },
+  "v3 trust 0.2": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 33,
+   "needless": 39,
+   "takeovers": 33,
+   "overridden_s": 145.8,
+   "median_time_s": 12.000000000000036
+  },
+  "v3 trust 0.33": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 34,
+   "needless": 45,
+   "takeovers": 35,
+   "overridden_s": 127.7,
+   "median_time_s": 13.00000000000005
+  },
+  "v3 trust 0.5": {
+   "runs": 36,
+   "crashes": 0,
+   "goals": 31,
+   "needless": 49,
+   "takeovers": 32,
+   "overridden_s": 129.6,
+   "median_time_s": 11.900000000000034
+  }
+ }
+}

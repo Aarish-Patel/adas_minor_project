@@ -586,3 +586,4 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
 - [ ] U4. Other TODO items that need neither the car nor the Pi (N1 closed-loop speed control in the twin, N4 uncertainty-aware margins, N11 architecture
   doc, D6 flicker check, F1 autonomy list in the GUI, J3 figures restyle, H1 idea list).
 - [ ] U5. Keep docs/REPORT.md, RESEARCH.md and TODO.md current; commit per milestone.
+- [ ] U6. (user, 29 Sep) The map cannot be scrolled / zoomed - fixed size is not practical: wheel zoom at cursor, middle-drag / Shift-drag pan, Zoom in/out, Fit all, Follow car toggle (default on), zones/map keep working with clicks. Same for the mini-map if useful.

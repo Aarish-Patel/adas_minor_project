@@ -798,7 +798,7 @@ class MapZonesPanel(QtWidgets.QWidget):
         self.plot.setAspectLocked(True)
         self.plot.showGrid(x=True, y=True, alpha=0.12)
         self.plot.getPlotItem().hideButtons()
-        self.plot.getPlotItem().vb.setMouseEnabled(x=False, y=False)
+        self.plot.getPlotItem().vb.setMouseEnabled(x=False, y=False)      # zoom / pan are handled in eventFilter
         self.plot.setXRange(-3, 3)
         self.plot.setYRange(-2, 4)
         self.plot.setBackground(C["bg1"])
@@ -812,6 +812,24 @@ class MapZonesPanel(QtWidgets.QWidget):
         self.zone_items = []
         frame.body.addWidget(self.plot)
         lay.addWidget(frame, 1)
+        vrow = QtWidgets.QGridLayout()
+        vrow.setSpacing(8)
+        for i, (glyph, text, fn) in enumerate((("\uff0b", "Zoom in", lambda: self.zoom(1.4)),
+                                               ("\uff0d", "Zoom out", lambda: self.zoom(1 / 1.4)),
+                                               ("\u26f6", "Fit all", self.fit))):
+            t = FeatureTile(glyph, text, state=False, momentary=True, compact=True)
+            t.clicked.connect(fn)
+            vrow.addWidget(t, 0, i)
+        self.follow_btn = FeatureTile("\u25ce", "Follow car", "keeps the car in the middle of the map", compact=True)
+        self.follow_btn.setChecked(True)
+        vrow.addWidget(self.follow_btn, 0, 3)
+        lay.addLayout(vrow)
+        tip = QtWidgets.QLabel("Mouse wheel = zoom at the cursor \u00b7 middle-drag or Shift + drag = pan \u00b7 Fit all frames the map, "
+                               "the zones and the car")
+        tip.setWordWrap(True)
+        tip.setFont(theme.font(11))
+        tip.setStyleSheet(f"color: {C['dim']};")
+        lay.addWidget(tip)
         lay.addWidget(section_label("Drive"))
         g1 = QtWidgets.QGridLayout()
         g1.setSpacing(8)
@@ -883,8 +901,47 @@ class MapZonesPanel(QtWidgets.QWidget):
         xy = np.asarray(xy, float).reshape(-1, 2)
         return -xy[:, 1], xy[:, 0]
 
+    def zoom(self, factor, centre=None):
+        vb = self.plot.getPlotItem().vb
+        c = vb.viewRect().center() if centre is None else centre
+        vb.scaleBy((1 / factor, 1 / factor), center=c)
+        self.follow_btn.setChecked(False)
+
+    def fit(self):
+        """Frame the map points, the zones and the car."""
+        pts = [self._sc(self.store.points())] if len(self.store.points()) else []
+        for z in self.zones:
+            out = zone_outline(z)
+            if len(out) >= 3:
+                pts.append(self._sc(out))
+        x, y, _ = self.pose
+        pts.append(self._sc(np.array([[x, y]])))
+        xs = np.concatenate([np.asarray(p[0], float) for p in pts])
+        ys = np.concatenate([np.asarray(p[1], float) for p in pts])
+        pad = 0.6
+        self.plot.setXRange(xs.min() - pad, xs.max() + pad)
+        self.plot.setYRange(ys.min() - pad, ys.max() + pad)
+
     def eventFilter(self, obj, ev):
         t = ev.type()
+        vb = self.plot.getPlotItem().vb
+        if t == QtCore.QEvent.GraphicsSceneWheel:
+            self.zoom(1.25 if ev.delta() > 0 else 0.8, vb.mapSceneToView(ev.scenePos()))
+            return True
+        if t == QtCore.QEvent.GraphicsSceneMousePress and (ev.button() == QtCore.Qt.MiddleButton or
+                                                          (ev.button() == QtCore.Qt.LeftButton and
+                                                           ev.modifiers() & QtCore.Qt.ShiftModifier)):
+            self._pan = ev.scenePos()
+            self.follow_btn.setChecked(False)
+            return True
+        if t == QtCore.QEvent.GraphicsSceneMouseMove and getattr(self, "_pan", None) is not None:
+            a, b = vb.mapSceneToView(self._pan), vb.mapSceneToView(ev.scenePos())
+            vb.translateBy(x=-(b.x() - a.x()), y=-(b.y() - a.y()))
+            self._pan = ev.scenePos()
+            return True
+        if t == QtCore.QEvent.GraphicsSceneMouseRelease and getattr(self, "_pan", None) is not None:
+            self._pan = None
+            return True
         if t == QtCore.QEvent.GraphicsSceneMousePress:
             w = self._world(ev.scenePos())
             mode = self.current_mode()
@@ -979,8 +1036,9 @@ class MapZonesPanel(QtWidgets.QWidget):
 
     def centre(self):
         x, y, _ = self.pose
-        self.plot.setXRange(-y - 3, -y + 3)
-        self.plot.setYRange(x - 2, x + 4)
+        vb = self.plot.getPlotItem().vb
+        r = vb.viewRect()
+        vb.translateBy(x=-y - r.center().x(), y=x - r.center().y())
 
     def _draw_zones(self):
         for it in self.zone_items:
@@ -1030,6 +1088,11 @@ class MapZonesPanel(QtWidgets.QWidget):
         body = np.array([[GEO["rear"], -hw], [GEO["front"], -hw], [GEO["front"] + 0.05, 0], [GEO["front"], hw],
                          [GEO["rear"], hw], [GEO["rear"], -hw]])
         self.car.setData(*self._sc(vehicle_to_world(body, self.pose)))
+        if self.follow_btn.isChecked():
+            vb = self.plot.getPlotItem().vb
+            r = vb.viewRect()
+            cx, cy = -self.pose[1], self.pose[0]
+            vb.translateBy(x=cx - r.center().x(), y=cy - r.center().y())
 
 
 class RearCameraPanel(QtWidgets.QWidget):

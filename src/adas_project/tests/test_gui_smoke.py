@@ -87,6 +87,29 @@ class GuiSmoke(unittest.TestCase):
         self.assertGreaterEqual(lo[2], -eps)
         self.assertLess(hi[2], 0.25)                               # low: a hot rod, LiDAR on top
 
+    def test_map_zoom_pan_fit(self):
+        from gui.ev import EVWindow
+        w = EVWindow(Link(STATE))
+        w.show()
+        mp = w.panels["map"][1]
+        vb = mp.plot.getPlotItem().vb
+        w0 = vb.viewRect().width()
+        mp.zoom(2.0)
+        self.assertLess(vb.viewRect().width(), w0 * 0.6)
+        self.assertFalse(mp.follow_btn.isChecked())                # zooming by hand ends 'follow car'
+        c0 = vb.viewRect().center().x()
+        vb.translateBy(x=1.5, y=0)
+        self.assertAlmostEqual(vb.viewRect().center().x(), c0 + 1.5, places=3)
+        mp.fit()                                                   # frames the zones and the car
+        r = vb.viewRect()
+        for z in mp.zones:
+            from gui.ev import zone_outline
+            out = zone_outline(z)
+            xs = -out[:, 1]
+            self.assertLessEqual(r.left(), xs.min() + 1e-6)
+            self.assertGreaterEqual(r.right(), xs.max() - 1e-6)
+        w.close()
+
     def test_theme_switch_rebuilds_the_window(self):
         from gui import theme
         from gui.ev import EVWindow
