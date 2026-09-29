@@ -504,3 +504,16 @@ Real-EV style software:
   states, all drawers at once) and make each degrade gracefully with a clear message; add a GUI smoke test (J1).
 - [x] Q8. Palette changed to HarmonyOS-style (Night Black, Snow Gray text, luminous Cosmic Blue accent used for lines/text only, status red #E84026 / orange #ED6F21 / green #64BB5C - the status hex values are from memory, not verified against the official spec); Assists drawer rebuilt as icon tiles + segmented drive mode (gui/controls.py).
 - [ ] Q9. Apply the tile/segmented layout and type scale to the other drawers (Map & zones, Car setup, Diagnostics, Rear camera buttons) and the lab windows; redraw the car model (currently a white block).
+
+## R. Session of 29 Sep (afternoon): labs + finish TODO + algorithm-research report (user)
+- [ ] R1. Lab windows (Monte Carlo, ML training) redesigned as a research console: live 3D simulator with several cars actually moving
+  (system under test vs baselines, twins), per-car live status cards (speed, risk, intervention, clearance), progress, event
+  timeline, results next to it; tile/segmented controls; theme consistent with the main window.
+- [ ] R2. Finish the rest of the TODO that needs neither Pi nor car (list in R3-R9); mark car/Pi-only items as waiting.
+- [ ] R3. Q5 rest: accel/decel path shading, neutral unclassified blocks.  Q9: restyle other drawers, redraw the car model.
+- [ ] R4. P16 report docs/REPORT.md; P17 clean-up; commit (no push until a remote exists).
+- [ ] R5. P19 intent improvements (audit needless interventions, learn 'is this intervention needless', RSS/conformal risk).
+- [ ] R6. N3 adaptive/Huber EKF, N4 uncertainty-aware margins, latency estimation; N1 closed-loop speed control (sim-testable parts).
+- [ ] R7. J1 GUI smoke test, D6 flicker check, N11 architecture doc, D7/J3 figures restyle.
+- [ ] R8. Tick off / reword stale TODO items (P6-P8, P13, B-section duplicates).
+- [ ] R9. Final summary to the user: new algorithm research done (list with sources) and what is waiting on the car.
