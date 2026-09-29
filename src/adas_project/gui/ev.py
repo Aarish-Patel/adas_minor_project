@@ -86,6 +86,25 @@ def box(x0, x1, y0, y1, z0, z1):
     return v, f
 
 
+def loft(sections):
+    """A closed body from cross-sections along x: [(x, half_width, z_bottom, z_top, half_width_top)] - each section is a
+    trapezoid (narrower at the top), consecutive sections are joined, the two ends capped. Gives the EV silhouette
+    (tapered nose and tail, tumblehome cabin) instead of a box."""
+    V = []
+    for x, hw, zb, zt, hwt in sections:
+        V += [[x, -hw, zb], [x, hw, zb], [x, hwt, zt], [x, -hwt, zt]]
+    V = np.array(V, float)
+    F = []
+    for i in range(len(sections) - 1):
+        a, b = 4 * i, 4 * (i + 1)
+        for k in range(4):
+            k2 = (k + 1) % 4
+            F += [[a + k, a + k2, b + k2], [a + k, b + k2, b + k]]
+    n = len(sections)
+    F += [[0, 1, 2], [0, 2, 3], [4 * (n - 1), 4 * (n - 1) + 2, 4 * (n - 1) + 1], [4 * (n - 1), 4 * (n - 1) + 3, 4 * (n - 1) + 2]]
+    return V, np.array(F)
+
+
 def merge(parts):
     V, F, n = [], [], 0
     for v, f in parts:
@@ -159,8 +178,14 @@ class CarModel:
                                         antialias=True)
         view.addItem(self.parent)
         L = f - r
-        parts = [(merge([box(r, f, -w, w, 0.035, 0.085)]), colour),
-                 (merge([box(r + 0.28 * L, r + 0.78 * L, -w * 0.82, w * 0.82, 0.085, 0.13)]), (0.07, 0.08, 0.10, 1)),
+        at = lambda u: r + u * L
+        body = loft([(at(0.00), w * 0.80, 0.045, 0.070, w * 0.70), (at(0.06), w * 0.94, 0.038, 0.082, w * 0.86),
+                     (at(0.50), w, 0.035, 0.090, w * 0.90), (at(0.90), w * 0.95, 0.038, 0.078, w * 0.82),
+                     (at(1.00), w * 0.78, 0.046, 0.062, w * 0.66)])
+        cabin = loft([(at(0.30), w * 0.80, 0.085, 0.088, w * 0.70), (at(0.40), w * 0.78, 0.088, 0.128, w * 0.58),
+                      (at(0.62), w * 0.76, 0.088, 0.130, w * 0.56), (at(0.76), w * 0.78, 0.085, 0.100, w * 0.66)])
+        parts = [(body, colour),
+                 (cabin, (0.06, 0.075, 0.10, 1)),
                  (merge([box(-0.03, 0.03, s * w - 0.02, s * w + 0.02, 0.0, 0.06) for s in (-1, 1)] +
                         [box(wb - 0.03, wb + 0.03, s * w - 0.02, s * w + 0.02, 0.0, 0.06) for s in (-1, 1)]),
                   (0.04, 0.045, 0.05, 1)),
