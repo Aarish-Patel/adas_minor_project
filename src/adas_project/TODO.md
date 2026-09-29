@@ -519,7 +519,7 @@ Real-EV style software:
 - [ ] R9. Final summary to the user: new algorithm research done (list with sources) and what is waiting on the car.
 
 ## S. User feedback, 29 Sep (afternoon, screenshots)
-- [ ] S1. **ADAS + intent got stuck in a corner while plain ADAS drove on** (Monte Carlo lab replay, brake-only and ADAS + intent side
+- [x] S1. (fixed 29 Sep: RelayIntent withdraws trust when the car has stayed within ~0.9 m for 6 s with the throttle on, and the evasive steer then runs to the end instead of being cancelled by the driver's stick; Monte Carlo 36 paired drives: goals ADAS + intent 28 -> 32 (ADAS 32), needless takeovers 30 vs 49 for plain ADAS, needless interventions 43 vs 54, 0 crashes. Two drives (seed 0 lapsing/late) are still stuck because the simulated driver keeps releasing the throttle, which by design hands the evasive back)  **ADAS + intent got stuck in a corner while plain ADAS drove on** (Monte Carlo lab replay, brake-only and ADAS + intent side
   by side at a wall/box gap). Expected: with intent the evasive steer / Hybrid A* must still get out (intent may only hold back
   needless takeovers, never leave the car stuck). Find the failure in models/mc_live runs, fix generally (a stuck car under
   intent-hold must release the evasive planner), add a scenario + a Monte Carlo check of goals reached (ADAS 31, +intent 28 of 36).
@@ -572,3 +572,4 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
 - [ ] T13. Dark/light switch must exist in the top bar and persist (QSettings), and the labs follow it. -> S2.
 - [ ] T14. Behaviour the user reported next to the looks: ADAS + intent stuck in a corner while ADAS drove on. -> S1 (in progress: progress-based
   release of intent trust added, see below).
+- [ ] T15. (user, 29 Sep, later) The Assists drawer as it is now is APPROVED - "looks good, you can change colour around it, build on it". It is the template: tiles with icon + name + ON/OFF, segmented control, small-caps section labels, hint line. Keep layout/type; only recolour with the new dark/light themes (drawer background and tile background must match - currently the drawer is lighter grey than the tiles). All other drawers are rebuilt from these controls.

@@ -178,6 +178,7 @@ class DrivingAssists:
         self.pose_fix = None            # (x, y, th) from scan matching, start frame, set from outside
         self.intent_k_rate = None       # driver's curvature rate (1/m/s) when attentive, else None; set from outside
         self.intent_hold = False        # learned intent: an attentive driver who will handle it - no swerve (outside)
+        self.intent_stalled = False     # the car is stuck (pi/relay_assists.RelayIntent): the evasive steer runs to the end
         self.intent_attentive = True    # the stick moved recently (outside); False limits the hold (last point to steer)
         self._planner = None
         from .plan_service import PlanService
@@ -396,7 +397,8 @@ class DrivingAssists:
             if pwm <= 0:
                 self._stop_evading("driver let go / braked - handed back")
                 return steer, None
-            if abs(steer) > c.evade_driver_override:
+            if abs(steer) > c.evade_driver_override and not self.intent_stalled:
+                # (a stuck car: the driver's stick no longer cancels the way out - only letting go of the throttle does)
                 self._stop_evading("driver steered - handed back")
                 return steer, None
         if pwm <= 0 or len(pts) == 0:

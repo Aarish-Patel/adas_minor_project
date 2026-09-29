@@ -260,7 +260,7 @@ class RelayIntent:
         # sat in a corner for 25 s where plain ADAS drove out)
         self.track, self.release_until, self.stalled = [], -1.0, False
 
-    STALL_S, STALL_M, RELEASE_S = 5.0, 0.45, 8.0
+    STALL_S, STALL_M, RELEASE_S = 6.0, 0.9, 10.0
 
     def _progress(self, now, physical):
         sp = getattr(self.assist, "speed", None)
@@ -318,6 +318,7 @@ class RelayIntent:
         k_rate = driver_intent(self.hist, 0.05, a.centre)
         self.attentive = k_rate is not None            # the stick moved in the last second
         a.assists.intent_hold = self.trusted
+        a.assists.intent_stalled = self.stalled
         a.assists.intent_attentive = self.attentive
         a.assists.intent_k_rate = (k_rate or 0.0) if self.trusted else None
 
