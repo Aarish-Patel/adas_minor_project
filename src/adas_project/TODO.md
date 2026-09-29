@@ -163,9 +163,9 @@ current state in the note. Algorithm choices and paper citations are in `RESEARC
   when the object is coming AT the car; 3 twin scenarios pass (yield / no needless wait / head-on swerve); the
   relay feeds clr.read_raw_tracks(); Assists toggle added; not yet in the Monte Carlo counterfactual or on the Pi) Wire the crossing planner (adas/crossing.py, done + unit-tested) into the relay: moving-obstacle tracks ->
   pass / yield / stop / back away; twin scenario with a moving obstacle; Monte Carlo counterfactual for it.
-- [ ] P16. Report (docs/REPORT.md): methods, problems faced and solved, research used, why it is unique in ADAS
+- [x] P16. Report (docs/REPORT.md): methods, problems faced and solved, research used, why it is unique in ADAS
   for small vehicles; updated at every session end / major milestone.
-- [ ] P17. Repository clean-up (old files, backups, junk) and consistent pushes to GitHub (remote to be confirmed).
+- [x] P17. Repository clean-up (old files, backups, junk) and consistent pushes to GitHub (remote to be confirmed).
 - [ ] P18. The rest of the TODO list (open items in A, B, C, D, F, H, I, J).
 - [ ] P19. (user, 29 Sep) Keep improving the intent-aware ADAS: fewer useless interventions, better on difficult AND
   everyday cases; use the real car logs (logs/car_20260928/) and any real test data as evidence; look into more
@@ -510,10 +510,10 @@ Real-EV style software:
   (system under test vs baselines, twins), per-car live status cards (speed, risk, intervention, clearance), progress, event
   timeline, results next to it; tile/segmented controls; theme consistent with the main window.
 - [ ] R2. Finish the rest of the TODO that needs neither Pi nor car (list in R3-R9); mark car/Pi-only items as waiting.
-- [ ] R3. Q5 rest: accel/decel path shading, neutral unclassified blocks.  Q9: restyle other drawers, redraw the car model.
-- [ ] R4. P16 report docs/REPORT.md; P17 clean-up; commit (no push until a remote exists).
+- [~] R3. (car model redrawn as a lofted EV body; Q5 rest and Q9 other drawers still open)  Q5 rest: accel/decel path shading, neutral unclassified blocks.  Q9: restyle other drawers, redraw the car model.
+- [x] R4. docs/REPORT.md written (methods, problems solved, research, results, uniqueness, limitations - update at milestones); repository cleaned (backups, one-off files removed, 18 early scripts archived in pi/legacy); committed locally, no push (no remote yet).
 - [ ] R5. P19 intent improvements (audit needless interventions, learn 'is this intervention needless', RSS/conformal risk).
 - [ ] R6. N3 adaptive/Huber EKF, N4 uncertainty-aware margins, latency estimation; N1 closed-loop speed control (sim-testable parts).
-- [ ] R7. J1 GUI smoke test, D6 flicker check, N11 architecture doc, D7/J3 figures restyle.
+- [~] R7. (J1 GUI smoke test done: tests/test_gui_smoke.py)  J1 GUI smoke test, D6 flicker check, N11 architecture doc, D7/J3 figures restyle.
 - [ ] R8. Tick off / reword stale TODO items (P6-P8, P13, B-section duplicates).
 - [ ] R9. Final summary to the user: new algorithm research done (list with sources) and what is waiting on the car.
