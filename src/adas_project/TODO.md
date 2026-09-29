@@ -535,3 +535,40 @@ Real-EV style software:
 - [~] N3. Robust adaptive speed EKF: implemented as `SpeedEKF(robust=True)` (Huber weights + innovation-based noise scaling) and
   evaluated in sim/ekf_robust_eval.py - first result: no difference under injected bad measurements (the existing Mahalanobis gate
   already rejects them, or the injection is caught earlier). Inconclusive; do not enable on the car until shown to help.
+- [ ] S6. (user) The "path clear" pill at the bottom of the 3D view looks bad - redesign as a Huawei/Tesla-style status pill (icon, coloured state dot, larger type, glass background) incl. RSS/free-distance readout.
+
+## T. UI complaints ledger (user, 29 Sep) - everything that looks bad, with the user's problem; tick only when the user would accept it
+References the user gave: Huawei ADS screenshots (dark slate-blue and light modes, blue path ribbon, glow ring, grey car models,
+split ADS-3D / map, valet-parking view with floor selector), Tesla instrument cluster (grey/blue, speed limit sign, lane ribbons,
+power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/yellow edges). The user likes the Assists drawer.
+- [ ] T1. "The pitch black looks bad" - backgrounds, drawers, cards, scene floor all near #000. -> S2 (slate blue-grey dark, light mode, switch).
+- [ ] T2. "Font size changes, colour code and overall design still not good enough" - inconsistent type scale across drawers/labs (some
+  11 px dim text, some 15 px), mixed fonts, inconsistent colour meaning. -> one type scale + colour tokens applied everywhere.
+- [ ] T3. "The buttons also look bad... think of a better layout for these selections, take inspiration from real companies" - plain rows
+  of wide buttons in drawers. Assists drawer fixed and APPROVED (tiles + segmented); still to convert: Map & zones, Car setup,
+  Diagnostics, Rear camera buttons (REVERSE GUIDELINES / GHOST CAR), lab RUN tabs, lab window buttons (PAUSE / 1x / RESTART).
+- [ ] T4. "The button bg is blue which looks bad" - checked/active buttons had a flat bright-blue fill (Rear camera panel, some default Qt
+  controls). Active state = thin border + faint tint only; no flat blue fills anywhere (check every QPushButton:checked, QComboBox, QSlider).
+- [ ] T5. Map & zones drawer "is still shit": toolbar buttons overflow and are cut off (the last button shows only "E"), the help text is
+  cut off at the right edge ("...to choose the direction t"), the map is cropped with no border/frame and no legend, zone shapes only
+  outlined, the Events drawer stacked under it has a huge empty box. -> S3.
+- [ ] T6. Car setup drawer "is also shit": a wall of identical wide buttons, "Control panel not reachable" as plain text, an empty results box,
+  a row of four Apply buttons, STOP styled like a normal button. -> S4 (calibration tiles, status card, result cards, proper STOP).
+- [ ] T7. "This path clear also looks shit": the bottom pill in the 3D view is a plain rounded rectangle with plain text, no icon or state
+  colour. -> S6.
+- [ ] T8. Main window: the "DRIVER RISK" card shows an empty dark bar that looks broken when there is no data; the mini-map at the bottom right is an
+  empty dark rounded box when there is no data; the top "NO DATA" chip is a red outlined box; the gear strip P R N D is tiny and floats beside the
+  gauge; the 3D scene is an empty dark grid with a white block car; the ground ring is a plain outline. Empty states must look designed
+  (skeleton / message), and the scene must look like the references (glow ring, soft floor, blue path ribbon, grey object cars).
+- [ ] T9. Monte Carlo lab: objects are flat grey slabs; all cars start on top of each other so the first seconds look like one blob;
+  the legend pill is plain; the results table has an empty dark corner header; the Wilcoxon statistics are unstyled plain text; the bar chart
+  at the bottom is tiny with unreadable labels; ADAS + intent cars should show their status. (Layout and status cards done; look not done.)
+- [ ] T10. ML training lab: chart legends overlap the curves ("mlp3-128x128" over the lines), axis text small, the top area still reads as
+  one big black stage; twin cards are plain text; the pipeline stepper could show progress detail. Charts must use the theme fonts/colours.
+- [ ] T11. Rear camera drawer: big empty rounded box with text when no camera; the two toggle buttons were bright blue. Needs an
+  illustrated empty state and tile toggles.
+- [ ] T12. Text that is cut off or clipped anywhere (bottom bar labels at narrow widths, drawer help text, table headers) - audit all widgets at
+  1100x700, 1366x768, 1920x1080, 2560x1440 in BOTH themes with a screenshot test.
+- [ ] T13. Dark/light switch must exist in the top bar and persist (QSettings), and the labs follow it. -> S2.
+- [ ] T14. Behaviour the user reported next to the looks: ADAS + intent stuck in a corner while ADAS drove on. -> S1 (in progress: progress-based
+  release of intent trust added, see below).

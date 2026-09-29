@@ -254,6 +254,30 @@ class RelayIntent:
         self.hist, self.pwm_hist, self.last_t = [], [], None
         self.zhist = []                                 # v3 models: the last 1.6 s of tick vectors
         self.p_crash, self.trusted, self.attentive = None, False, False
+        # progress monitor: intent may hold the evasive steer back only while the driver is getting somewhere. A driver the
+        # model trusts but who has been pushing the throttle for STALL_S without leaving a ~STALL_M patch is stuck (a corner,
+        # a gap that will not fit), and trust ends - the evasive planner then takes over (Monte Carlo 29 Sep: ADAS + intent
+        # sat in a corner for 25 s where plain ADAS drove out)
+        self.track, self.release_until, self.stalled = [], -1.0, False
+
+    STALL_S, STALL_M, RELEASE_S = 5.0, 0.45, 8.0
+
+    def _progress(self, now, physical):
+        sp = getattr(self.assist, "speed", None)
+        if sp is None:
+            return
+        x, y = sp.pose[0], sp.pose[1]
+        if not self.track or now - self.track[-1][0] >= 0.25:
+            self.track.append((now, x, y, abs(physical) > 40))
+        self.track = [r for r in self.track if now - r[0] <= self.STALL_S]
+        if len(self.track) < 12 or now - self.track[0][0] < self.STALL_S - 0.6:
+            return
+        xs, ys = np.array([r[1] for r in self.track]), np.array([r[2] for r in self.track])
+        active = np.mean([r[3] for r in self.track])
+        spread = float(np.hypot(xs.max() - xs.min(), ys.max() - ys.min()))
+        if active >= 0.6 and spread < self.STALL_M:
+            self.release_until = now + self.RELEASE_S
+            self.track = []
 
     def update(self, now, servo, physical, v, points):
         """servo: the driver's servo command, physical: the driver's throttle (+ forward), points: relay format."""
@@ -286,6 +310,11 @@ class RelayIntent:
                 self.profile.update(self.hist, free_now(f))
                 self.p_crash = self.net.crash_probability(f)
                 self.trusted = self.p_crash < self.trust_threshold
+        self._progress(now, physical)
+        self.stalled = now < self.release_until
+        if self.stalled:                                 # stuck: the model's trust is withdrawn for a while
+            self.trusted = False
+            self.p_crash = None if self.p_crash is None else max(self.p_crash, self.trust_threshold)
         k_rate = driver_intent(self.hist, 0.05, a.centre)
         self.attentive = k_rate is not None            # the stick moved in the last second
         a.assists.intent_hold = self.trusted
@@ -307,7 +336,8 @@ class RelayIntent:
         shown = self.p_risk if self.p_risk is not None else self.p_crash
         return {"p_crash": None if shown is None else round(shown, 3),
                 "p_decision": None if self.p_crash is None else round(self.p_crash, 3), "trusted": self.trusted,
-                "attentive": self.attentive, "reaction_m": round(self.profile.reaction_distance, 2)}
+                "attentive": self.attentive, "reaction_m": round(self.profile.reaction_distance, 2),
+                "stalled": self.stalled}
 
 
 class RelayAssists:
