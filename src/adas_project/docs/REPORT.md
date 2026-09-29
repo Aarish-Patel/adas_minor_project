@@ -1,6 +1,6 @@
 # Intent-aware ADAS for a 1:14-scale electric car - project report
 
-*Living document. Updated at session ends and at milestones (last update: 29 Sep 2026, afternoon). Every number below was
+*Living document. Updated at session ends and at milestones (last update: 29 Sep 2026, evening). Every number below was
 produced by code in this repository; where something was not measured on the real car, it says so.*
 
 ## 1. What was built
@@ -45,7 +45,9 @@ Full derivations and the reasons for each choice are in `RESEARCH.md`; this is t
 7. **Speed-limit zones** - polygon/circle/rectangle zones in the world frame, km/h scaled 1:14, look-ahead 0.5 s.
 8. **Formal safe distance** - Responsibility-Sensitive Safety (Shalev-Shwartz, Shammah, Shashua 2017) as an independent yardstick shown in the HMI (`adas/rss.py`).
 9. **Rear camera vision** - ground-plane inverse perspective mapping visual odometry, plane+parallax residual blobs with looming time-to-contact (Lee 1976 tau), image-quality and camera-measured vibration (Laplacian variance, phase correlation - Kuglin & Hines 1975), LiDAR-camera late fusion, reversing guidelines, the **ghost car** (swept-body prediction) and a floor-patch warning.
-10. **HMI design** - HarmonyOS-style palette (Night Black / Snow Gray / Cosmic Blue used for lines, never flat fills), DIN-style typography, tile-grid settings as in production cockpits; visualisation elements from Tesla's FSD display reference; NHTSA L2/L3 human-factors guidance for glance time and staged warnings.
+10. **Conformal risk control** of the intent warning threshold (Angelopoulos et al., arXiv 2208.02814): a stated bound on late warnings that holds on average on held-out drives (`adas/conformal.py`, `sim/conformal_intent.py`).
+11. **Online scan-latency estimation** (least-squares time-delay estimation between the LiDAR range-flow speed and the throttle-model speed; Knapp & Carter 1976, Kelly & Sukhatme 2011) widening the brake margin when the picture is stale (`adas/latency.py`).
+12. **HMI design** - Huawei-ADS-style slate blue-grey dark theme and a pale light theme with a switch (blue for the path ribbon and active lines, never flat fills), DIN-style typography, tile-grid settings as in production cockpits; visualisation elements from Tesla's FSD display reference; NHTSA L2/L3 human-factors guidance for glance time and staged warnings.
 
 ## 3. Problems faced and how they were solved
 
@@ -63,14 +65,17 @@ Full derivations and the reasons for each choice are in `RESEARCH.md`; this is t
 | Trees exported from sklearn disagreed with the car's copy | fitted on float32, evaluated in float64 | car copy casts to float32 | 14/400 ticks previously took the other branch |
 | ESP32 not responding | dead chip; USB flakiness | replaced board, supervised link with PING/reboot detection | `tests/test_esp_link.py` |
 | Vision on the synthetic camera | non-periodic floor seam, mask-edge features, weak parallax, 180-deg ambiguity | erode mask, longer baseline, try both board orientations | `tests/test_vision.py` |
+| ADAS + intent stuck in a corner while plain ADAS drove on | intent kept holding back the evasive steer for a driver who was going nowhere, and the driver's stick cancelled each attempt | trust withdrawn after ~6 s without progress with the throttle on; the evasive steer then runs to the end | 36 paired drives: goals 28 -> 32 (ADAS 32), needless takeovers 30 vs 49, 0 crashes |
+| Brake gate touched the wall when scans arrived > 0.15 s late | fixed 0.2 s reaction budget | delay measured online, margin = speed x excess | safe up to 0.3 s extra latency (was contact from 0.15 s) |
 | GUI drawer clipped at full screen; pressing Rear camera hid the bottom bar | drawer contents forced a minimum size larger than the screen | scrolling drawers with wrapping text, bars that never widen the window, size clamped to the screen | `tests/test_gui_smoke.py` (1100x700, 1366x768, 1920x1080) |
 
 ## 4. Results (digital twin; the car was not available for new runs)
 
 - **Scenarios:** 20/20 pass on the relay code (wall, box, doorway, reversing, corridor, moving obstacles, fault cases).
 - **Repeatability on randomised twins** (20 draws x 15 scenarios): 100 % safe (no contact), 90.7 % meet the nominal spec. The steering nudge is the weak assist at 55 % (fails when the servo-centre error drifts the car toward the 3 cm clip box) - a known limitation.
-- **Monte Carlo, four systems, same drives** (12 seeds x 3 driver styles = 36 paired drives, `models/mc_live`): driver only 3 crashes; brake only, ADAS and ADAS + intent 0 crashes. Needless interventions: brake only 43, ADAS 69, **ADAS + intent 45**; needless takeovers 58 -> 25 with intent (paired Wilcoxon p = 0.001). The earlier 96-drive comparison of ADAS vs ADAS + intent gave 123 -> 84 needless interventions.
-- **Fault injection:** LiDAR dropout, frozen scan, 30 % command loss and spurious points are all safe. Scan latency: safe up to ~0.1 s extra at full throttle; contact from ~0.15 s (the car would need online latency estimation - open).
+- **Monte Carlo, four systems, same drives** (12 seeds x 3 driver styles = 36 paired drives, `models/mc_live`, after the stuck-car fix): driver only 3 crashes; brake only, ADAS and ADAS + intent 0 crashes. Goals reached: 27 / 29 / 32 / 32. Needless interventions: brake only 43, ADAS 54, **ADAS + intent 43**; needless takeovers 49 -> 30 with intent (paired Wilcoxon p = 0.003). The earlier 96-drive comparison of ADAS vs ADAS + intent gave 123 -> 84 needless interventions.
+- **Fault injection:** LiDAR dropout, frozen scan, 30 % command loss and spurious points are all safe. Scan latency: contact from 0.15 s extra at full throttle before the online delay estimate; with it, safe up to 0.3 s (21/21 scenarios pass).
+- **Conformal warning threshold:** a 10 % / 15 % / 20 % / 30 % late-warning target gives 9.1 % / 13.8 % / 19.0 % / 28.6 % on held-out twin drives and 11.1 % / 14.3 % / 19.9 % / 30.4 % on unseen wider cars; the price of the strictest target is a false alarm on 48 % of safe drives (RESEARCH.md section 9).
 - **Real-log replay** (identical recorded scans through the current code): see section 3 for reverse-brake and hold reductions.
 - **Vision (synthetic camera with ground truth):** visual odometry within 0.5 % speed / 1 % yaw; pipeline 3.6 ms/frame on the laptop (~13 ms Pi estimate); calibration recovers height/pitch/yaw.
 
@@ -90,7 +95,7 @@ uncommon, and can be defended with the evidence above:
 
 - The latest code (drivetrain protection, moving-obstacle assist, vision, EV GUI, drive modes) is **not yet deployed to the Pi**; the last on-car test was the 22:15 deploy on 28 Sep. The rear shaft of the car is broken, so no on-car results exist after that.
 - The rear camera code is tested against a synthetic camera only; no real webcam has been connected. The floor-patch (puddle) warning is a brightness/texture heuristic, not a learned detector.
-- Scan latency above ~0.15 s defeats the gate at full throttle (see section 4).
+- The online latency estimate needs the speed to change; at a constant speed it holds the last value. Two Monte Carlo drives are still stuck (the simulated driver keeps releasing the throttle, which by design hands the evasive steer back). The robust adaptive EKF (`SpeedEKF(robust=True)`) showed no gain over the covariance gate in the twin and is not enabled.
 - The steering nudge is unreliable when the servo centre is mis-set (55 % in the randomised test).
 - HarmonyOS status colours (red, orange, green) were taken from memory, not from the official spec; Huawei's exact ADS screens are not public, so the HMI follows the documented Tesla/generic patterns plus the HarmonyOS palette.
 - Calibrations (LiDAR offset, servo centre, braking) were deliberately not re-run; they happen only when requested.
