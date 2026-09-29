@@ -493,5 +493,14 @@ Real-EV style software:
   as possible into the EV GUI (bird's-eye scene with lane/path ribbons, object classes, threat colouring, ACC/AEB/LKA status
   icons, surround/rear view, parking view, driver-monitor style state, trip cards) and make it look like them.
   Do proper research first (web), then implement.
-- [ ] Q5. From the HMI research: planned-path ribbon accel/decel shading; objects coloured by path relevance (grey/blue/red);
+- [~] Q5. (done: objects coloured by path relevance, proximity arcs; still: accel/decel ribbon shading, neutral unclassified blocks) From the HMI research: planned-path ribbon accel/decel shading; objects coloured by path relevance (grey/blue/red);
   neutral blocks for unclassified LiDAR clusters; proximity arcs around the car (grey->amber->red); pulse on collision warning.
+- [x] Q6. (drawers now scroll/wrap and never exceed the window; bottom bar goes icon-only under 1500 px; window size clamped to the screen; audited at 1100x700, 1366x768, 1920x1080, 2560x1440 - 0 problems; still to review: Map/Setup/Diagnostics content design) (user, 29 Sep, screenshot) In full screen the Assists drawer is cut off on the right (text/buttons run off-screen, the drive
+  mode row is clipped). Check every drawer and the whole EV GUI at full screen and other sizes (1366x768, 1920x1080, 2560x1440,
+  windowed small); fix layout (drawer must fit inside the window, scroll if needed). Also user says font sizes, colour code
+  and overall design still not good enough - redo the type scale/colour use against the HMI research (Q4).
+- [x] Q7. (root cause: drawer contents' minimum height/width forced the window past the screen; fixed in Q6. Still to add: GUI smoke test in tests/) (user, 29 Sep) Pressing 'Rear camera' with no camera connected made the whole bottom panel (app bar) disappear - the panel's
+  size forced the window taller than the screen. Find every such size/error case (panels with no data, service down, empty
+  states, all drawers at once) and make each degrade gracefully with a clear message; add a GUI smoke test (J1).
+- [x] Q8. Palette changed to HarmonyOS-style (Night Black, Snow Gray text, luminous Cosmic Blue accent used for lines/text only, status red #E84026 / orange #ED6F21 / green #64BB5C - the status hex values are from memory, not verified against the official spec); Assists drawer rebuilt as icon tiles + segmented drive mode (gui/controls.py).
+- [ ] Q9. Apply the tile/segmented layout and type scale to the other drawers (Map & zones, Car setup, Diagnostics, Rear camera buttons) and the lab windows; redraw the car model (currently a white block).

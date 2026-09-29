@@ -13,17 +13,18 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 # ---------------------------------------------------------------- colour
 C = {
-    # surfaces (graphite, warm)
-    "bg": "#0C0D0F", "bg1": "#111316", "surface": "#16181C", "raised": "#1D2025", "hair": "#2A2D33",
-    "hair2": "#3A3E46",
+    # surfaces: Night Black with cool glass layers (HarmonyOS "Night Black / Snow Gray")
+    "bg": "#08090B", "bg1": "#0F1114", "surface": "#15181C", "raised": "#1B1F24", "hair": "#262A31",
+    "hair2": "#39404A",
     # content
     "text": "#F1F3F5", "text2": "#B4BAC3", "dim": "#7B818B", "faint": "#4B5058",
-    # brand accent: brass
-    "accent": "#D9B45A", "accent_dim": "#8C7439", "accent_bg": "rgba(217,180,90,28)",
+    # brand accent: luminous Cosmic Blue (HarmonyOS accent, lifted for legibility on black) - used for lines, text and glow,
+    # never as a flat button fill
+    "accent": "#4C8DFF", "accent_dim": "#2C5CB0", "accent_bg": "rgba(76,141,255,28)",
     # status (automotive convention)
-    "ok": "#43C97F", "warn": "#F2A93B", "bad": "#EF5350", "info": "#DCE3EA",
+    "ok": "#64BB5C", "warn": "#ED6F21", "bad": "#E84026", "info": "#DCE3EA",
     # data series on dark
-    "s1": "#E8ECEF", "s2": "#D9B45A", "s3": "#7BA7C7", "s4": "#9AA0A8", "s5": "#43C97F", "s6": "#EF5350",
+    "s1": "#E8ECEF", "s2": "#4C8DFF", "s3": "#7BA7C7", "s4": "#9AA0A8", "s5": "#64BB5C", "s6": "#E84026",
 }
 # the same in 0-1 floats for OpenGL
 def rgb(name, a=1.0):

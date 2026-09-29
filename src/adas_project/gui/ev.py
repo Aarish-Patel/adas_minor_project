@@ -24,6 +24,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 
+from gui.controls import FeatureTile, Segmented, section_label
 from gui.dashboard import ASSISTS, CTRL_PORT, GEO, polar_xy
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -262,15 +263,54 @@ class DriveScene(Scene):
             else:
                 t.setVisible(False)
 
+    ARC_SECTORS = [(-150, -110), (-105, -75), (-70, -30), (-25, 25), (30, 70), (75, 105), (110, 150), (155, 205)]
+
+    def _proximity_arcs(self, pts):
+        """Parking-sensor style arcs round the car: hidden when clear, grey -> amber -> red as an obstacle gets closer
+        (ultrasonic arcs of production HMIs, drawn from the LiDAR)."""
+        if len(pts):
+            ang = np.degrees(np.arctan2(pts[:, 1], pts[:, 0]))
+            dist = np.hypot(pts[:, 0] - 0.10, pts[:, 1])
+        for i, (a0, a1) in enumerate(self.ARC_SECTORS):
+            near = None
+            if len(pts):
+                a = np.where(ang < 0, ang + 360, ang) if a0 > 150 else ang
+                m = (a >= a0) & (a <= a1)
+                near = dist[m].min() if m.any() else None
+            key = f"arc{i}"
+            if near is None or near > 0.9:
+                self.mesh(key, None, (0, 0, 0, 0))
+                continue
+            col = rgb('bad') if near < 0.25 else rgb('warn') if near < 0.5 else (0.62, 0.65, 0.70, 0.8)
+            r0 = 0.32
+            t = np.radians(np.linspace(a0, a1, 14))
+            xy = np.column_stack([0.10 + r0 * np.cos(t), r0 * np.sin(t)])
+            self.mesh(key, ribbon(xy, 0.025 + 0.03 * (1 - min(near, 0.9) / 0.9), 0.012), col)
+
     def show(self, st):
         pts = polar_xy(st.get("_pts"))
-        self.mesh("obstacles", point_walls(pts), (0.72, 0.75, 0.80, 0.80))
+        plan = st.get("plan") or {}
+        # objects coloured by relevance, as production displays do: grey = ignored, blue = on the planned path,
+        # red = the point the car will hit (Tesla FSD visualisation reference, RESEARCH.md section 8)
+        pred_xy = polar_xy(plan.get("pred"))
+        on_path = np.zeros(len(pts), bool)
+        if len(pts) and len(pred_xy) >= 2:
+            d = np.hypot(pts[:, None, 0] - pred_xy[None, :, 0], pts[:, None, 1] - pred_xy[None, :, 1]).min(axis=1)
+            on_path = d < GEO["width"] / 2 + 0.05
+        hit = polar_xy([plan["hit"]])[0] if plan.get("hit") else None
+        red = np.zeros(len(pts), bool)
+        if hit is not None and len(pts):
+            red = np.hypot(pts[:, 0] - hit[0], pts[:, 1] - hit[1]) < 0.15
+        idle = ~(on_path | red)
+        self.mesh("obstacles", point_walls(pts[idle]), (0.72, 0.75, 0.80, 0.80))
+        self.mesh("obst_path", point_walls(pts[on_path & ~red]), (*rgb('accent')[:3], 0.95))
+        self.mesh("obst_hit", point_walls(pts[red]), (*rgb('bad')[:3], 0.95))
+        self._proximity_arcs(pts)
         segs = []
         for poly in ((st.get("sim") or {}).get("walls") or []):
             xy = polar_xy(poly)
             segs += [[*xy[i], *xy[i + 1]] for i in range(len(xy) - 1)]
         self.mesh("walls", walls_mesh(segs, 0.05), (0.5, 0.52, 0.56, 0.10))     # simulator ground truth, faint
-        plan = st.get("plan") or {}
         state = plan.get("state", "clear")
         col = {"collision": rgb('bad')[:3], "limited": rgb('warn')[:3]}.get(state, (0.93, 0.94, 0.95))
         self.mesh("pred", ribbon(polar_xy(plan.get("pred")), GEO["width"] * 0.9, 0.004), (*col, 0.30))
@@ -839,7 +879,7 @@ class RearCameraPanel(QtWidgets.QWidget):
         self.hazards, self.speed = None, 0.0
         lay = QtWidgets.QVBoxLayout(self)
         self.view = QtWidgets.QLabel()
-        self.view.setMinimumSize(480, 360)
+        self.view.setMinimumSize(320, 240)
         self.view.setAlignment(QtCore.Qt.AlignCenter)
         self.view.setStyleSheet(f"background: {C['bg1']}; border: 1px solid {C['hair']}; border-radius: 12px;")
         self.placeholder()
@@ -955,75 +995,79 @@ class RearCameraPanel(QtWidgets.QWidget):
 
 
 class AssistsPanel(QtWidgets.QWidget):
+    GLYPH = {"evasive": "\u2934", "nudge": "\u21c6", "centring": "\u2b1a", "limiter": "\u25d4", "narrow": "\u27f7",
+             "proximity": "\u25c9", "moving": "\u27a4"}
+
     def __init__(self, link):
         super().__init__()
         self.link = link
         lay = QtWidgets.QVBoxLayout(self)
-        info = QtWidgets.QLabel("The path-predicted brake, the realistic speed-dependent steering limit and the "
-                                "speed-limit zones are always on. These assists can be switched on and off:")
-        info.setWordWrap(True)
-        info.setStyleSheet(f"color: {EV['dim']};")
-        lay.addWidget(info)
+        lay.setContentsMargins(14, 8, 14, 14)
+        lay.setSpacing(8)
+        lay.addWidget(section_label("Driver assists"))
+        grid = QtWidgets.QGridLayout()
+        grid.setSpacing(8)
         self.btns = {}
-        for name, label, desc in ASSISTS:
-            b = QtWidgets.QPushButton(label)
-            b.setCheckable(True)
-            b.clicked.connect(lambda checked, n=name: self.link.send(f"ASSIST {n} {'ON' if checked else 'OFF'}"))
-            d = QtWidgets.QLabel(desc)
-            d.setWordWrap(True)
-            d.setStyleSheet(f"color: {EV['dim']}; font-size: 11px;")
-            lay.addWidget(b)
-            lay.addWidget(d)
-            self.btns[name] = b
-        lay.addWidget(QtWidgets.QLabel("DRIVE MODE"))
-        mrow = QtWidgets.QHBoxLayout()
-        self.mode_btns = {}
-        grp = QtWidgets.QButtonGroup(self)
-        for key, text in (("eco", "ECO"), ("normal", "NORMAL"), ("sport", "SPORT")):
-            b = QtWidgets.QPushButton(text)
-            b.setCheckable(True)
-            b.setChecked(key == "normal")
-            grp.addButton(b)
-            b.clicked.connect(lambda _=False, k=key: self.link.send(f"MODE {k}"))
-            mrow.addWidget(b)
-            self.mode_btns[key] = b
-        lay.addLayout(mrow)
+        for i, (name, label, desc) in enumerate(ASSISTS):
+            t = FeatureTile(self.GLYPH.get(name, "\u25cf"), label, desc)
+            t.toggled.connect(lambda on, n=name: self.link.send(f"ASSIST {n} {'ON' if on else 'OFF'}"))
+            t.hovered.connect(self._detail)
+            grid.addWidget(t, i // 2, i % 2)
+            self.btns[name] = t
+        lay.addLayout(grid)
+        row = QtWidgets.QHBoxLayout()
+        for text, cmd in (("ALL ON", "ASSIST all ON"), ("ALL OFF", "ASSIST all OFF")):
+            bt = QtWidgets.QPushButton(text)
+            bt.setFont(theme.semibold(11, spacing=1.4))
+            bt.clicked.connect(lambda _=False, c=cmd: self.link.send(c))
+            row.addWidget(bt)
+        lay.addLayout(row)
+        self.detail = QtWidgets.QLabel("Hover a tile to see what it does. The path-predicted brake, the speed-dependent "
+                                       "steering limit and the speed-limit zones are always on.")
+        self.detail.setWordWrap(True)
+        self.detail.setFont(theme.font(12))
+        self.detail.setMinimumHeight(48)
+        self.detail.setStyleSheet(f"color: {C['dim']}; padding: 4px 2px;")
+        lay.addWidget(self.detail)
+        lay.addWidget(section_label("Drive mode"))
+        self.modes = Segmented((("eco", "ECO"), ("normal", "NORMAL"), ("sport", "SPORT")))
+        self.modes.select("normal")
+        self.modes.changed.connect(lambda k: self.link.send(f"MODE {k}"))
+        lay.addWidget(self.modes)
         md = QtWidgets.QLabel("Eco limits the throttle to 55 % and eases it in; Sport responds faster. The safety margins "
                               "are the same in every mode.")
         md.setWordWrap(True)
-        md.setStyleSheet(f"color: {EV['dim']}; font-size: 11px;")
+        md.setFont(theme.font(12))
+        md.setStyleSheet(f"color: {C['dim']};")
         lay.addWidget(md)
-        self.follow = QtWidgets.QPushButton("Follow the leader")
-        self.follow.setCheckable(True)
-        self.follow.clicked.connect(lambda c: self.link.send("FOLLOW_ON" if c else "FOLLOW_OFF"))
-        self.override = QtWidgets.QPushButton("ADAS override - no safety (careful)")
-        self.override.setCheckable(True)
-        self.override.clicked.connect(lambda c: self.link.send("ADAS_OVERRIDE_ON" if c else "ADAS_OVERRIDE_OFF"))
-        row = QtWidgets.QHBoxLayout()
-        for text, cmd in (("All on", "ASSIST all ON"), ("All off", "ASSIST all OFF")):
-            b = QtWidgets.QPushButton(text)
-            b.clicked.connect(lambda _=False, c=cmd: self.link.send(c))
-            row.addWidget(b)
-        lay.addLayout(row)
-        lay.addWidget(self.follow)
-        lay.addWidget(self.override)
+        lay.addWidget(section_label("Autonomy and safety"))
+        g2 = QtWidgets.QGridLayout()
+        g2.setSpacing(8)
+        self.follow = FeatureTile("\u2b95", "Follow the leader", "keeps a set distance behind whatever is in front")
+        self.follow.toggled.connect(lambda c: self.link.send("FOLLOW_ON" if c else "FOLLOW_OFF"))
+        self.follow.hovered.connect(self._detail)
+        self.override = FeatureTile("\u26a0", "ADAS override", "switches EVERY safety function off - the car will hit things",
+                                    danger=True)
+        self.override.toggled.connect(lambda c: self.link.send("ADAS_OVERRIDE_ON" if c else "ADAS_OVERRIDE_OFF"))
+        self.override.hovered.connect(self._detail)
+        g2.addWidget(self.follow, 0, 0)
+        g2.addWidget(self.override, 0, 1)
+        lay.addLayout(g2)
         lay.addStretch(1)
+
+    def _detail(self, text):
+        if text:
+            self.detail.setText(text)
 
     def show_state(self, st):
         enabled = (st.get("assist") or {}).get("enabled") or {}
-        for name, b in self.btns.items():
-            b.blockSignals(True)
-            b.setChecked(bool(enabled.get(name)))
-            b.blockSignals(False)
+        for name, c in self.btns.items():
+            c.setChecked(bool(enabled.get(name)))
         m = (st.get("world") or {}).get("mode")
-        if m in self.mode_btns and not self.mode_btns[m].isChecked():
-            self.mode_btns[m].blockSignals(True)
-            self.mode_btns[m].setChecked(True)
-            self.mode_btns[m].blockSignals(False)
-        for b, on in ((self.follow, st.get("follow_enabled")), (self.override, st.get("mode") == "override")):
-            b.blockSignals(True)
-            b.setChecked(bool(on))
-            b.blockSignals(False)
+        if m:
+            self.modes.select(m)
+        self.follow.setChecked(bool(st.get("follow_enabled")))
+        self.override.setChecked(st.get("mode") == "override")
 
 
 class CarSetupPanel(QtWidgets.QWidget):
@@ -1197,7 +1241,9 @@ class EVWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.link = link
         self.setWindowTitle(f"RC-ADAS - {link.host}")
-        self.resize(1600, 950)
+        scr = QtGui.QGuiApplication.primaryScreen().availableGeometry()
+        self.resize(min(1600, int(scr.width() * 0.94)), min(950, int(scr.height() * 0.92)))
+        self.setMinimumSize(900, 560)
         self.store = WorldStore()
         self.last_msgs = {}
         self.labs = {}
@@ -1237,9 +1283,21 @@ class EVWindow(QtWidgets.QMainWindow):
         self.docks = {}
         for key, (title, w) in self.panels.items():
             d = QtWidgets.QDockWidget(title, self)
-            d.setWidget(w)
+            # a drawer must never be wider than the window: long texts wrap, and what still does not fit scrolls
+            for lb in w.findChildren(QtWidgets.QLabel):
+                if lb.pixmap() is None and not lb.wordWrap() and lb.minimumWidth() == 0 and lb.minimumHeight() == 0:
+                    lb.setWordWrap(True)
+            if isinstance(w, QtWidgets.QListWidget):
+                d.setWidget(w)
+            else:
+                sa = QtWidgets.QScrollArea()
+                sa.setWidgetResizable(True)
+                sa.setFrameShape(QtWidgets.QFrame.NoFrame)
+                sa.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+                sa.setWidget(w)
+                d.setWidget(sa)
             d.setFeatures(QtWidgets.QDockWidget.DockWidgetClosable | QtWidgets.QDockWidget.DockWidgetFloatable)
-            d.setMinimumWidth(520 if key != "map" else 640)
+            d.setMinimumWidth(360)
             self.addDockWidget(QtCore.Qt.RightDockWidgetArea, d)
             d.hide()
             d.visibilityChanged.connect(lambda vis, k=key: self.app_btns[k].setChecked(vis))
@@ -1278,6 +1336,7 @@ class EVWindow(QtWidgets.QMainWindow):
             c = QtWidgets.QLabel("")
             lay.addWidget(c)
             self.chips[k] = c
+        f.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
         return f
 
     def _appbar(self):
@@ -1293,6 +1352,8 @@ class EVWindow(QtWidgets.QMainWindow):
             b.setObjectName("app")
             b.setCheckable(True)
             b.clicked.connect(lambda checked, k=key: self.toggle(k, checked))
+            b.setProperty("full", text.replace("&&", "&"))
+            b.setToolTip(text.split("  ", 1)[-1].replace("&&", "&"))
             lay.addWidget(b)
             self.app_btns[key] = b
         lay.addStretch(1)
@@ -1300,7 +1361,10 @@ class EVWindow(QtWidgets.QMainWindow):
             b = QtWidgets.QPushButton(text)
             b.setObjectName("app")
             b.clicked.connect(lambda _=False, k=key: self.open_lab(k))
+            b.setProperty("full", text)
+            b.setToolTip(text.split("  ", 1)[-1])
             lay.addWidget(b)
+            self.app_btns[key + "_lab"] = b
         lay.addSpacing(20)
         for cam in ("chase", "top", "orbit"):
             b = QtWidgets.QPushButton(cam.title())
@@ -1312,7 +1376,18 @@ class EVWindow(QtWidgets.QMainWindow):
         self.reset_btn.clicked.connect(lambda: self.link.http_post("/api/sim/reset"))
         self.reset_btn.hide()
         lay.addWidget(self.reset_btn)
+        f.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)   # never widen the window
         return f
+
+    def resizeEvent(self, ev):
+        """Narrow windows: the bottom bar shows icons only (tooltips carry the names) instead of forcing the window wider."""
+        super().resizeEvent(ev)
+        QtCore.QTimer.singleShot(0, self._place)
+        compact = self.width() < 1500
+        for b in self.app_btns.values():
+            full = b.property("full")
+            if full:
+                b.setText(full.split("  ", 1)[0] if compact else full.replace("&", "&&"))
 
     def toggle(self, key, on):
         self.docks[key].setVisible(on)
@@ -1330,10 +1405,6 @@ class EVWindow(QtWidgets.QMainWindow):
         self.events.insertItem(0, f"{time.strftime('%H:%M:%S')}  {text}")
         if self.events.count() > 500:
             self.events.takeItem(500)
-
-    def resizeEvent(self, ev):
-        super().resizeEvent(ev)
-        QtCore.QTimer.singleShot(0, self._place)
 
     def _place(self):
         w, h = self.scene.width(), self.scene.height()
