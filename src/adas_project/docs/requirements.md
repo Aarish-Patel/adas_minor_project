@@ -8,7 +8,7 @@
 | Status | Baseline - single source of truth for scope, requirements and acceptance |
 | Platform | 1:14-scale electric RC car, Raspberry Pi 5, RPLIDAR A3, ESP32, optional rear USB camera |
 
-This document states **what** the system shall do and how that is accepted. How it is done is described in `docs/ARCHITECTURE.md`,
+This document states **what** the system shall do and how that is accepted. How it is done is described in `docs/architecture.md`,
 the reasons for each method in `docs/RESEARCH.md`, measured results in `docs/REPORT.md`, and open work in `docs/TODO.md`. Where
 those documents disagree with this one, this one governs and the others are corrected.
 

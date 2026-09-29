@@ -299,7 +299,7 @@ Real-EV style software:
   SOTIF (ISO 21448) scenario testing; ASAM OpenSCENARIO-like scenario files; CI running scenarios + tests.
 - [x] N10. (drive modes, speed zones on the map, follow the leader, trip card (distance, driving time, top speed, brake events); energy log needs a current sensor - not available) Driver-facing EV features: adaptive cruise / follow distance setting, speed-limit zones on the map,
   park assist with distance bars, drive modes (Eco/Normal/Sport = throttle maps + margins), trip/energy log.
-- [x] N11. (docs/ARCHITECTURE.md, 29 Sep)  Architecture: ROS 2-style layering (perception / prediction / planning / control / HMI) with logged,
+- [x] N11. (docs/architecture.md, 29 Sep)  Architecture: ROS 2-style layering (perception / prediction / planning / control / HMI) with logged,
   replayable message streams (rosbag-like), A/B deploy with rollback on the Pi (OTA-style).
 
 ## K. User requests (28 Sep, second round)
