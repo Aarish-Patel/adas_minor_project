@@ -357,3 +357,35 @@ fallback longitudinal controller with a time-independent design (arXiv 2509.1664
 The estimate is biased high at large delays (the search is limited to 0.5 s), which errs on the safe side. No margin is
 added when nothing is wrong (0.00 s), so normal driving is not slowed. Limitation: the estimator needs the speed to change
 (a ramp-up or a slow-down); at a constant speed it holds the last estimate. Not tested on the real car.
+
+## 11. Optimising the intent-aware ADAS: which model decides, how much it trusts (TODO U2/U3; 29 Sep evening)
+
+**Question.** Does a different decider - the twin-trained v3 trees (held-out AP 0.86) instead of v2 - or a different trust
+threshold reduce needless interventions further, and what does the stuck-car release cost? Script: `sim/intent_optimise.py`
+(sweep, stall-detector sweep, paired confirmation), results in `models/intent_optimise.json`.
+
+**Method.** Same drives for every configuration, tuned on seeds 0-11 (36 drives = 12 seeds x 3 driver styles), confirmed on
+untouched seeds 12-43 (96 drives), paired one-sided Wilcoxon tests. The Monte Carlo is not bit-deterministic (planner compute
+time enters the simulated Pi delay), so the same 36-drive configuration moved by up to +-3 goals between runs - small
+differences on 36 drives are noise and only the 96-drive paired numbers were used to decide.
+
+**Result** (seeds 12-43, 96 drives per system):
+
+| system | crashes | goals | needless interventions | needless takeovers | overridden needlessly (s) | retreat from goal (m) |
+|---|---|---|---|---|---|---|
+| ADAS | 0 | 92 | 174 | 150 | 473 | 26.5 |
+| ADAS + intent, v2 decider, trust 0.5 (current) | 0 | 88 | 155 | 95 | 375 | 32.9 |
+| ADAS + intent, v3 decider, trust 0.2 | 0 | 90 | 147 | 113 | 424 | 28.1 |
+| ADAS + intent, v3 decider, trust 0.33 | 0 | 87 | 158 | 120 | 397 | 34.4 |
+
+Versus plain ADAS the intent-aware system removes needless interventions (0.0006), needless takeovers (3e-6) and overridden time
+(0.003), paired. No v3 configuration beats the current v2 decider with any significance (needless interventions differ by
+<= 8 of ~155, p >= 0.94 in the direction v3 better), so **the decider stays v2**; v3 keeps supplying the displayed risk and the
+warnings. The v3 trust-0.2 variant is the closest alternative if goals reached / retreat matter more than overridden time.
+
+**What the user saw ("intent-aware ADAS goes backwards").** The intent-aware car retreats from the goal ~24 % more than plain
+ADAS on average (0.34 vs 0.28 m per drive), concentrated in a few drives: the simulated driver dithers in front of an
+obstacle, the intent model keeps trusting them, and the evasive steer then starts late and sometimes ends with a back-off.
+The stuck-car release (trust withdrawn after 5 s within 0.8 m with the throttle on, evasive not cancelled by the stick)
+fixed most of these (goals 28 -> 32 of 36 in the first check) but not the retreat completely. Open: start the release earlier
+without adding needless takeovers (2.0-3.5 s windows did add needless takeovers: 44-49 vs 33-46 on the tuning drives).

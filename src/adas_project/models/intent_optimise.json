@@ -83,41 +83,129 @@
   }
  },
  "confirm": {
-  "adas": {
-   "runs": 96,
-   "crashes": 0,
-   "goals": 89,
-   "needless": 188,
-   "takeovers": 155,
-   "overridden_s": 463.4,
-   "median_time_s": 11.750000000000032
+  "scores": {
+   "adas": {
+    "runs": 96,
+    "crashes": 0,
+    "goals": 92,
+    "needless": 174,
+    "takeovers": 150,
+    "overridden_s": 473.1,
+    "retreat_m": 26.5,
+    "median_time_s": 11.975000000000035
+   },
+   "v2 trust 0.5 (current)": {
+    "runs": 96,
+    "crashes": 0,
+    "goals": 88,
+    "needless": 155,
+    "takeovers": 95,
+    "overridden_s": 374.5,
+    "retreat_m": 32.9,
+    "median_time_s": 11.100000000000023
+   },
+   "v3 trust 0.2": {
+    "runs": 96,
+    "crashes": 0,
+    "goals": 90,
+    "needless": 147,
+    "takeovers": 113,
+    "overridden_s": 424.1,
+    "retreat_m": 28.1,
+    "median_time_s": 11.100000000000023
+   },
+   "v3 trust 0.33": {
+    "runs": 96,
+    "crashes": 0,
+    "goals": 87,
+    "needless": 158,
+    "takeovers": 120,
+    "overridden_s": 397.4,
+    "retreat_m": 34.4,
+    "median_time_s": 11.150000000000023
+   }
   },
-  "v2 trust 0.5 (current)": {
-   "runs": 96,
-   "crashes": 0,
-   "goals": 86,
-   "needless": 154,
-   "takeovers": 106,
-   "overridden_s": 362.7,
-   "median_time_s": 11.100000000000023
-  },
-  "v3 trust 0.2": {
-   "runs": 96,
-   "crashes": 0,
-   "goals": 88,
-   "needless": 139,
-   "takeovers": 112,
-   "overridden_s": 426.9,
-   "median_time_s": 11.100000000000023
-  },
-  "v3 trust 0.33": {
-   "runs": 96,
-   "crashes": 0,
-   "goals": 90,
-   "needless": 138,
-   "takeovers": 106,
-   "overridden_s": 367.1,
-   "median_time_s": 11.275000000000025
+  "paired": {
+   "adas vs v2 trust 0.5 (current): needless": {
+    "mean_a": 1.8125,
+    "mean_b": 1.6145833333333333,
+    "p_a_greater": 0.0005825770441251582
+   },
+   "adas vs v2 trust 0.5 (current): takeovers": {
+    "mean_a": 1.5625,
+    "mean_b": 0.9895833333333334,
+    "p_a_greater": 2.8338624968724753e-06
+   },
+   "adas vs v2 trust 0.5 (current): overridden_s": {
+    "mean_a": 4.9281250000000005,
+    "mean_b": 3.9010416666666665,
+    "p_a_greater": 0.003416933432493935
+   },
+   "adas vs v2 trust 0.5 (current): retreat": {
+    "mean_a": 0.27576224639926405,
+    "mean_b": 0.34290128861718333,
+    "p_a_greater": 0.8903582777192466
+   },
+   "adas vs v3 trust 0.33: needless": {
+    "mean_a": 1.8125,
+    "mean_b": 1.6458333333333333,
+    "p_a_greater": 0.011837999130609548
+   },
+   "adas vs v3 trust 0.33: takeovers": {
+    "mean_a": 1.5625,
+    "mean_b": 1.25,
+    "p_a_greater": 0.0028490020878610277
+   },
+   "adas vs v3 trust 0.33: overridden_s": {
+    "mean_a": 4.9281250000000005,
+    "mean_b": 4.1390625000000005,
+    "p_a_greater": 0.0036005569310694776
+   },
+   "adas vs v3 trust 0.33: retreat": {
+    "mean_a": 0.27576224639926405,
+    "mean_b": 0.35783522983741256,
+    "p_a_greater": 0.9618556921319439
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.33: needless": {
+    "mean_a": 1.6145833333333333,
+    "mean_b": 1.6458333333333333,
+    "p_a_greater": 0.9439594642073094
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.33: takeovers": {
+    "mean_a": 0.9895833333333334,
+    "mean_b": 1.25,
+    "p_a_greater": 0.9987696519793228
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.33: overridden_s": {
+    "mean_a": 3.9010416666666665,
+    "mean_b": 4.1390625000000005,
+    "p_a_greater": 0.9747145371653798
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.33: retreat": {
+    "mean_a": 0.34290128861718333,
+    "mean_b": 0.35783522983741256,
+    "p_a_greater": 0.7097227597918023
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.2: needless": {
+    "mean_a": 1.6145833333333333,
+    "mean_b": 1.53125,
+    "p_a_greater": 0.9672161930492187
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.2: takeovers": {
+    "mean_a": 0.9895833333333334,
+    "mean_b": 1.1770833333333333,
+    "p_a_greater": 0.9930459212823698
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.2: overridden_s": {
+    "mean_a": 3.9010416666666665,
+    "mean_b": 4.4171875,
+    "p_a_greater": 0.9921015120919033
+   },
+   "v2 trust 0.5 (current) vs v3 trust 0.2: retreat": {
+    "mean_a": 0.34290128861718333,
+    "mean_b": 0.292390619231105,
+    "p_a_greater": 0.266100406438223
+   }
   }
  }
 }

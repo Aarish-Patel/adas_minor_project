@@ -260,7 +260,9 @@ class RelayIntent:
         # sat in a corner for 25 s where plain ADAS drove out)
         self.track, self.release_until, self.stalled = [], -1.0, False
 
-    STALL_S, STALL_M, RELEASE_S = 3.5, 0.7, 10.0
+    STALL_S, STALL_M, RELEASE_S = 5.0, 0.8, 10.0
+    if __import__('os').environ.get('RC_STALL'):           # experiments only (sim/intent_optimise.py): 'seconds,metres'
+        STALL_S, STALL_M = (float(v) for v in __import__('os').environ['RC_STALL'].split(','))
 
     def _progress(self, now, physical):
         sp = getattr(self.assist, "speed", None)
