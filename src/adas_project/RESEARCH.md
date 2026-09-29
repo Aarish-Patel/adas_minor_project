@@ -260,3 +260,37 @@ with a digital twin that is (1) identified from the real system, (2) randomised 
 7. *Real-to-sim loop (next, when the car runs again).* Real drive logs are scored by the model. The twin's
    randomisation ranges are then re-centred on what the logs show, following SimOpt / BayesSim. The model is
    retrained, and the sim-vs-real agreement of candidate models is reported, as in Kadian et al. (TODO B15).
+
+## 8. What production ADAS displays show, and what this HMI takes from them (TODO Q4, 29 Sep)
+
+Sources read (web, 29 Sep): Tesla FSD visualisation reference (notateslaapp.com, "All Tesla FSD Visualizations and What
+They Mean"); Tesla FSD architecture write-ups (thinkautonomous.ai, occupancy networks); Huawei Qiankun ADS 3.0 and
+HarmonyOS cockpit coverage (carnewschina.com 2024-04-24, huaweicentral.com); XPeng XNGP (electrek.co, xpeng.com);
+NHTSA *Human Factors Design Guidance for Level 2 and Level 3 Automated Driving Concepts* (DOT HS 812 555, 2018 - the PDF
+returned 403, so only its abstract-level points are used); ISO 15005 / UN R157 (10 s takeover time) as cited in the
+review literature; Wikipedia "Surround-view system" and "Backup camera".
+Limits of this research: Huawei and XPeng publish capabilities (LiDAR + 3 mm-wave radars + 11 cameras + 12 ultrasonics,
+BEV + GOD obstacle network, CAS 2.0 front/rear/side collision avoidance, parking-space-to-parking-space navigation,
+AR-HUD, DMS) but no public description of the pixel-level UI; what is copied below is therefore the *common pattern*
+documented for Tesla and the generic surround-view / reversing camera practice, not Huawei's exact screens.
+
+Features documented, and what this project does with each:
+
+| Feature seen in production HMIs | Source | Here |
+|---|---|---|
+| Planned path as a ribbon; darker where the car will accelerate, faded where it will decelerate/stop; chevrons when slowing | Tesla | planned-path ribbon in the 3D scene (done); accel/decel shading (Q5) |
+| Other objects coloured by relevance: grey normal, blue in the planned path, red = action required, brake-light cue | Tesla | object colouring by path relevance and RSS/TTC (Q5) |
+| Unclassified obstacle shown as a neutral 'debris' pile rather than hidden | Tesla | LiDAR clusters drawn as neutral blocks, moving ones flagged (Q5) |
+| Proximity arcs around the car, grey -> yellow -> red with distance (ultrasonic arcs) | Tesla, all parking assists | proximity arcs from the LiDAR ring (Q5) |
+| Reversing camera with steering-dependent guidelines, distance bars and a warning strip | Backup-camera standard practice (US FMVSS 111, 2018) | done (guidelines, `adas/vision/guidelines.py`) |
+| **Predicted-position 'ghost' of the car while reversing, hazards in the swept path, STOP strip, puddle/hole warning** | user request 29 Sep; production 'trajectory + object in path' | done: ghost footprints at 0.3/0.6/1.0 m, swept-body contact distance and time, floor-patch warning (Q1-Q2) |
+| Surround/bird's-eye and 'transparent chassis' parking views | Huawei, all 360 systems | needs several cameras; one rear webcam only - the LiDAR map already gives the top-down view |
+| Collision avoidance front/rear/side; stability control at speed | Huawei CAS 2.0 / XMotion | emergency braking + evasive steer + steering envelope (existing) |
+| Parking-to-parking navigation; valet | Huawei | click-to-go with orientation, return to start (existing / new) |
+| Driver-state and takeover escalation: staged warnings, takeover within a defined time | NHTSA L2/L3 guidance, UN R157 | intent-based risk -> staged warning -> intervention (existing); takeover-time is not applicable (driver always in control) |
+| Speed-limit sign and system-status icons | all | done (cluster limit sign, mode chips, safety pill) |
+| Formal safe-distance readout | Mobileye RSS | RSS distance in the safety pill (done, N7) |
+
+Design rules taken from the NHTSA/ISO guidance: keep glance time short (few, large elements on the main view), show
+system mode and limits at all times (mode chips, limit sign, steering range), colour escalation green -> amber -> red
+with one meaning per colour, and keep detail (diagnostics, tuning) in drawers away from the driving view.

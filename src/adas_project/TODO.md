@@ -481,3 +481,17 @@ Real-EV style software:
   README.md leads with the digital twin and its checks, the older simulator kept below) Update `STATUS.md` and `README.md`.
 - [ ] J3. Results/slides from sim + car logs.
 - [ ] J4. Calibrations only when the user asks (LiDAR yaw 45.7 deg since 28 Sep 21:21 - user-requested front calibration with the object centred: bearing -17.7 deg, sd 0.07, at 0.46 m, was 63.4; the mount probably turned during the ESP32 swap).
+
+## Q. Reverse camera ghost + assists (user, 29 Sep)
+- [x] Q1. Ghost car on the reverse cam: the car's footprint drawn on the floor at the positions it will reach if reversing continues
+  (now, +0.3, +0.6, +1.0 m along the steering arc) - helps avoid puddles and objects.
+- [x] Q2. Reverse-cam assists: objects/LiDAR points inside the swept path highlighted, distance + time-to-contact to the first one,
+  a 'STOP' banner when the ghost hits something, optional camera-based floor-patch (puddle/dark-wet) warning in the path.
+- [x] Q3. Tests (tests/test_reverse_assist.py, 5) + Rear camera panel has GHOST CAR & ASSIST toggle; commit.
+- [~] Q4. (research done: RESEARCH.md section 8; implementing Q5 below) (user, 29 Sep) Research advanced ADAS HMIs (Huawei ADS / HarmonyOS cockpit, Tesla FSD visualisation, Mercedes MBUX, Xpeng
+  XNGP, NIO, Volvo, Mobileye) - list their features and look, cite sources in RESEARCH.md - then bring as many of those features
+  as possible into the EV GUI (bird's-eye scene with lane/path ribbons, object classes, threat colouring, ACC/AEB/LKA status
+  icons, surround/rear view, parking view, driver-monitor style state, trip cards) and make it look like them.
+  Do proper research first (web), then implement.
+- [ ] Q5. From the HMI research: planned-path ribbon accel/decel shading; objects coloured by path relevance (grey/blue/red);
+  neutral blocks for unclassified LiDAR clusters; proximity arcs around the car (grey->amber->red); pulse on collision warning.

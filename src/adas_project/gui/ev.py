@@ -638,7 +638,8 @@ class MapZonesPanel(QtWidgets.QWidget):
         self.zone_items = []
         lay.addWidget(self.plot, 1)
         row = QtWidgets.QHBoxLayout()
-        for text, fn in (("Send zones to the car", self.send_zones), ("Delete all zones", self.clear_zones),
+        for text, fn in (("Return to start", lambda: (self.link.send("HOME"), self.on_event("return to start"))),
+                         ("Send zones to the car", self.send_zones), ("Delete all zones", self.clear_zones),
                          ("Reset origin here", self.reset_origin), ("Clear map", self.store.clear),
                          ("Centre on car", self.centre), ("Cancel autonomy", lambda: self.link.send("GOTO CANCEL"))):
             b = QtWidgets.QPushButton(text)
@@ -835,6 +836,7 @@ class RearCameraPanel(QtWidgets.QWidget):
         super().__init__()
         self.url, self.state_url = f"http://{host}:{port}/stream", f"http://{host}:{port}/state"
         self.kappa, self.running, self.have = 0.0, False, False
+        self.hazards, self.speed = None, 0.0
         lay = QtWidgets.QVBoxLayout(self)
         self.view = QtWidgets.QLabel()
         self.view.setMinimumSize(480, 360)
@@ -851,6 +853,10 @@ class RearCameraPanel(QtWidgets.QWidget):
         self.guides.setCheckable(True)
         self.guides.setChecked(True)
         row.addWidget(self.guides)
+        self.ghost = QtWidgets.QPushButton("GHOST CAR && ASSIST")
+        self.ghost.setCheckable(True)
+        self.ghost.setChecked(True)
+        row.addWidget(self.ghost)
         row.addStretch(1)
         lay.addLayout(row)
         self.frame_ready.connect(self._on_frame)
@@ -862,6 +868,10 @@ class RearCameraPanel(QtWidgets.QWidget):
 
     def set_steering(self, kappa):
         self.kappa = kappa
+
+    def set_hazards(self, xy, speed):
+        """LiDAR points behind the car (vehicle frame) and the signed speed, for the ghost car and the reverse assists."""
+        self.hazards, self.speed = xy, speed
 
     def showEvent(self, ev):
         super().showEvent(ev)
@@ -905,13 +915,23 @@ class RearCameraPanel(QtWidgets.QWidget):
             self.placeholder()
             return
         self.have = True
-        if self.guides.isChecked():
+        if self.guides.isChecked() or self.ghost.isChecked():
             try:
-                from adas.vision.guidelines import draw_guidelines
+                from adas.vision import guidelines as gl
                 from tools.camera_calibrate import load_camera
                 cam = load_camera()
                 cam = type(cam)(**{**cam.__dict__, "width": f.shape[1], "height": f.shape[0]})
-                f = draw_guidelines(f, cam, self.kappa, GEO["width"], GEO["rear"])
+                if self.ghost.isChecked():
+                    haz = self.hazards
+                    if haz is not None and len(haz):
+                        haz = haz[haz[:, 0] < GEO["rear"] + 0.02]              # only what is behind the bumper
+                    import cv2
+                    patches = gl.floor_patches(cv2.cvtColor(f, cv2.COLOR_BGR2GRAY), cam, self.kappa, GEO["width"], GEO["rear"])
+                    f, info = gl.draw_reverse_assist(f, cam, self.kappa, GEO["width"], GEO["rear"], GEO["front"], haz, patches,
+                                                     speed=max(0.0, -self.speed))
+                    self.assist_info = info
+                else:
+                    f = gl.draw_guidelines(f, cam, self.kappa, GEO["width"], GEO["rear"])
             except Exception:
                 pass
         h, w = f.shape[:2]
@@ -955,6 +975,24 @@ class AssistsPanel(QtWidgets.QWidget):
             lay.addWidget(b)
             lay.addWidget(d)
             self.btns[name] = b
+        lay.addWidget(QtWidgets.QLabel("DRIVE MODE"))
+        mrow = QtWidgets.QHBoxLayout()
+        self.mode_btns = {}
+        grp = QtWidgets.QButtonGroup(self)
+        for key, text in (("eco", "ECO"), ("normal", "NORMAL"), ("sport", "SPORT")):
+            b = QtWidgets.QPushButton(text)
+            b.setCheckable(True)
+            b.setChecked(key == "normal")
+            grp.addButton(b)
+            b.clicked.connect(lambda _=False, k=key: self.link.send(f"MODE {k}"))
+            mrow.addWidget(b)
+            self.mode_btns[key] = b
+        lay.addLayout(mrow)
+        md = QtWidgets.QLabel("Eco limits the throttle to 55 % and eases it in; Sport responds faster. The safety margins "
+                              "are the same in every mode.")
+        md.setWordWrap(True)
+        md.setStyleSheet(f"color: {EV['dim']}; font-size: 11px;")
+        lay.addWidget(md)
         self.follow = QtWidgets.QPushButton("Follow the leader")
         self.follow.setCheckable(True)
         self.follow.clicked.connect(lambda c: self.link.send("FOLLOW_ON" if c else "FOLLOW_OFF"))
@@ -977,6 +1015,11 @@ class AssistsPanel(QtWidgets.QWidget):
             b.blockSignals(True)
             b.setChecked(bool(enabled.get(name)))
             b.blockSignals(False)
+        m = (st.get("world") or {}).get("mode")
+        if m in self.mode_btns and not self.mode_btns[m].isChecked():
+            self.mode_btns[m].blockSignals(True)
+            self.mode_btns[m].setChecked(True)
+            self.mode_btns[m].blockSignals(False)
         for b, on in ((self.follow, st.get("follow_enabled")), (self.override, st.get("mode") == "override")):
             b.blockSignals(True)
             b.setChecked(bool(on))
@@ -1390,7 +1433,15 @@ class EVWindow(QtWidgets.QMainWindow):
             self.pill.set(f"contact in {plan.get('hit_m', 0):.2f} m / {ttc:.1f} s on this path", c)
         else:
             free = gate.get("free_m")
-            self.pill.set("path clear" + (f" - {free:.1f} m free" if free else ""), EV["ok"])
+            rss = (world or {}).get("rss_min_m")
+            txt = "path clear" + (f" \u00b7 {free:.1f} m free" if free else "")
+            col = EV["ok"]
+            if free and rss is not None and abs(v) > 0.05:
+                txt += f" \u00b7 RSS needs {rss:.2f} m"
+                if free < rss:
+                    col = EV["warn"]
+                    txt += " (inside)"
+            self.pill.set(txt, col)
         p = intent.get("p_crash")
         self.intent_txt.setText(f"driver risk {100 * p:.0f} %  -  " + ("attentive" if intent.get("attentive") else "stick idle")
                                 if p is not None else "driver risk -")
@@ -1403,5 +1454,6 @@ class EVWindow(QtWidgets.QMainWindow):
         cal = (st.get("drive") or {}).get("steer_cal") or {}
         kap = -(cal.get("k", 0.0656)) * (float(drive.get("servo", 87)) - float(drive.get("centre", 87)))
         self.panels["rear"][1].set_steering(kap)
+        self.panels["rear"][1].set_hazards(polar_xy(st.get("_pts")), float(drive.get("v", 0.0) or 0.0))
         self.panels["diag"][1].add(now, st)
         self._place()

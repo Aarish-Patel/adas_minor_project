@@ -864,6 +864,25 @@ def main():
                 sock.sendto(b"OK", addr)
                 continue
 
+            if len(parts) == 2 and parts[0] == "MODE":              # eco / normal / sport
+                ok = assist.set_mode(parts[1].lower())
+                if ok:
+                    from pi.relay_assists import DRIVE_MODES
+                    smoother.RISE_PWM_S = DRIVE_MODES[assist.drive_mode]["rise"]
+                    dlog.event("drive mode", mode=assist.drive_mode)
+                sock.sendto(b"OK" if ok else b"BAD MODE", addr)
+                continue
+
+            if text.strip() == "HOME":                              # return to the world origin, original heading
+                from pi.relay_assists import home_goal
+                hx, hy, hh = home_goal(vest.pose)
+                gpts, _ = clr.read_points_seq()
+                assist.goto(hx, hy, gpts, heading_deg=hh)
+                dlog.event("return to start", x=round(hx, 3), y=round(hy, 3), heading_deg=round(hh, 1),
+                           state=assist.nav.state, result=assist.nav.msg)
+                sock.sendto(b"OK", addr)
+                continue
+
             if text.startswith("ZONES "):                        # speed-limit zones (pi/zones.py) as JSON, world frame
                 try:
                     n = assist.zones.set(text[6:])
@@ -1187,8 +1206,10 @@ def main():
                                               "servo": last_servo_cmd, "centre": assist.centre, "t": time.time(),
                                               "steer_max_deg": round(assist.steer_limit_kappa(vest.v) / assist.k, 1),
                                               "steer_cal": assist.steer_est.status()}
+                from adas.rss import longitudinal_min_distance
                 GUI_STATE["data"]["world"] = {"pose": [round(c, 3) for c in vest.pose], "zones": assist.zones.zones,
-                                              "zone_kph": assist.zone_kph}
+                                              "zone_kph": assist.zone_kph, "mode": assist.drive_mode,
+                                              "rss_min_m": round(longitudinal_min_distance(abs(vest.v)), 3)}
             stages.mark("GUI path + state (after write)")
             # what the driver asked for vs what the ADAS let through - the raw material for intent learning
             dlog.driver(inp=driver_text.strip(), assisted=text.strip() if assist.changed else None,

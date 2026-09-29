@@ -176,6 +176,23 @@ def _stick_of(kappa, p):
     return delta_to_steer(math.atan(kappa * p.wheelbase), p)
 
 
+DRIVE_MODES = {
+    # throttle cap (fraction of full), how fast the throttle may rise (PWM / s), label - the safety margins do NOT change
+    "eco": {"cap": 0.55, "rise": 320.0, "label": "ECO"},
+    "normal": {"cap": 1.00, "rise": 600.0, "label": "NORMAL"},
+    "sport": {"cap": 1.00, "rise": 950.0, "label": "SPORT"},
+}
+
+
+def home_goal(pose):
+    """The world origin (where the car started / the last ORIGIN reset) as a click-to-go goal in the vehicle frame now:
+    (x ahead, y left, heading to arrive with in degrees relative to the car's heading now = the original heading)."""
+    px, py, th = pose
+    c, s = math.cos(th), math.sin(th)
+    x, y = -px, -py
+    return (c * x + s * y, -s * x + c * y, math.degrees(math.remainder(-th, 2 * math.pi)))
+
+
 class ThrottleSmoother:
     """Rate limit on the throttle actually sent (user, 28 Sep: the car jumped forward / backward when a manoeuvre
     re-planned or switched direction). Up gently, down quickly, and through zero when changing direction; a cut
@@ -315,6 +332,7 @@ class RelayAssists:
         self.centre0, self.k0 = self.centre, self.k
         self.steer_est = OnlineSteering(self.centre, self.k, prior_weight=2)
         self.steer_adapt = True
+        self.drive_mode = "normal"     # eco / normal / sport (DRIVE_MODES): throttle cap and response only
         self.steer_envelope = True     # realistic, speed-dependent steering limit (steer_limit_kappa)
         self.steer_limited = None      # (asked, allowed) servo offsets when the envelope clipped the steering
         self.nudge_on = False          # steering correction instead of braking (see nudge())
@@ -554,6 +572,7 @@ class RelayAssists:
         out = self._process(lines, points, seq, now)
         out = self._crossing(out, time.time() if now is None else now)
         out = self._zone_cap(out)
+        out = self._mode_cap(out)
         if not self.steer_envelope:
             return out
         v = self.v
@@ -572,6 +591,32 @@ class RelayAssists:
                     ln = f"A {lim:.0f} {lim:.0f}"
                 else:
                     self.steer_limited = None
+            res.append(ln)
+        return res
+
+    def set_mode(self, name):
+        if name in DRIVE_MODES:
+            self.drive_mode = name
+            return True
+        return False
+
+    def _mode_cap(self, out):
+        """Eco caps the throttle at 55 % of full; normal and sport do not (sport also responds faster - the relay's
+        ThrottleSmoother uses DRIVE_MODES[mode]['rise']). Safety margins are identical in every mode."""
+        cap = DRIVE_MODES[self.drive_mode]["cap"]
+        if cap >= 1.0:
+            return out
+        res = []
+        for ln in out:
+            q = ln.split()
+            if len(q) == 2 and q[0] == "M":
+                try:
+                    w = float(q[1])
+                    if abs(w) > 255 * cap:
+                        ln = f"M {int(math.copysign(255 * cap, w))}"
+                        self.info.setdefault("mode", "ECO: throttle limited")
+                except ValueError:
+                    pass
             res.append(ln)
         return res
 
