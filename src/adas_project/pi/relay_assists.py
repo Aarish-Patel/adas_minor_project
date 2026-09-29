@@ -97,6 +97,8 @@ class RelaySpeed:
                             k_curv_per_deg=cm.get("k_curv_per_deg", K_CURV_PER_SERVO_DEG),
                             servo_centre=cm.get("servo_centre", 87.0), lidar_x=lidar_x)
         self.rf = RangeFlow()
+        from adas.latency import DelayEstimator
+        self.latency = DelayEstimator()        # how late the scans are (adas/latency.py); the gate reads .excess
         self.seq = None
         self.meas = None
         # world pose (rear axle; x, y m, heading rad), the frame of the speed zones and the world map: scan matching
@@ -133,6 +135,7 @@ class RelaySpeed:
     def command(self, t, dt, physical, servo):
         """What was actually sent: physical throttle (+ forward) and servo degrees, at time t."""
         self.model_est.update(dt, physical)
+        self.latency.push_model(t, self.model_est.v)
         self.ekf.command(t, physical, servo)
         self.ekf.predict(t)
         x, y, th = self.pose
@@ -152,6 +155,7 @@ class RelaySpeed:
         self.meas = self.rf.update(xy, t, guess=(e.v, e.w * e.lx, e.w))
         if self.meas is not None:
             e.correct(t, self.meas)
+            self.latency.push_flow(t, self.meas[0])
         self._scan_pose(points, t)
 
     @property

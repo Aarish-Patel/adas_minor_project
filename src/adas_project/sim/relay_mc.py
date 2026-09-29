@@ -257,6 +257,7 @@ def run(args):
     smoother = ThrottleSmoother()
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(tun.speed_model, p.lidar_x)       # the relay's speed: throttle model + LiDAR EKF
+    gate.delay_source = vest.latency
     assist.speed = vest
     if variant in ("adas", "adas+intent"):
         assist.set("evasive", True)

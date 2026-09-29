@@ -326,3 +326,34 @@ the v2 model plus the path brake): the warning is cheap, the takeover is not.
 
 **Not done:** the car still uses 0.5. Switching the displayed-risk colours to a conformal threshold is a display change; it
 is left for when the model has been checked on real logs.
+
+## 10. Measuring the scan latency online and widening the brake margin (TODO N4; 29 Sep)
+
+**Problem found by fault injection.** The brake gate budgets 0.2 s from scan to motor. With scans arriving more than ~0.1 s
+later than that, the car touched the wall at full throttle (0.15 s late: contact). Nothing on the car could tell that the
+picture was stale, and the Pi's USB/WiFi is known to stall.
+
+**Method.** Time-delay estimation between two views of the same quantity - the relay already has the throttle model's speed
+(current) and the LiDAR range-flow speed (describes the car when the scan was taken). Over a 1.4 s window, the delay d that
+minimises the squared difference between the flow speed and the model speed shifted by d is taken (least-squares form of
+cross-correlation delay estimation, Knapp & Carter 1976; online temporal calibration of sensors, Kelly & Sukhatme 2011, Qin &
+Shen 2018), with a parabola refinement, only when the speed actually changed in the window. The part above the budget
+(`excess`, capped at 0.4 s) is added to the gate's reaction time: stopping distance grows by speed x excess exactly when the
+picture is late. Related work read on delay-robust safety: Control Barrier Functions for Linear Continuous-Time Input-Delay
+Systems (arXiv 2403.04243); Barrier-certificate control for LiDAR systems under sensor faults (arXiv 2208.05944); a LiDAR-driven
+fallback longitudinal controller with a time-independent design (arXiv 2509.16642). Code: `adas/latency.py`, gate
+(`pi/path_gate.py: reaction_s`), tests `tests/test_latency.py`, scenario "scans 0.25 s late, latency measured online".
+
+**Result** (twin, full throttle at a wall 3.4 m away, extra scan latency injected):
+
+| extra latency | before | with online estimate (estimated delay, margin) |
+|---|---|---|
+| 0.00 s | safe | safe, margin 0.00 s |
+| 0.10 s | safe | safe (0.24 s, +0.08 s) |
+| 0.15 s | **contact** | safe (0.35 s, +0.19 s) |
+| 0.20 s | **contact** | safe (0.46 s, +0.30 s) |
+| 0.30 s | - | safe (0.50 s, +0.34 s) |
+
+The estimate is biased high at large delays (the search is limited to 0.5 s), which errs on the safe side. No margin is
+added when nothing is wrong (0.00 s), so normal driving is not slowed. Limitation: the estimator needs the speed to change
+(a ramp-up or a slow-down); at a constant speed it holds the last estimate. Not tested on the real car.

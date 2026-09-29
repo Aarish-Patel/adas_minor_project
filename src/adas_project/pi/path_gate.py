@@ -74,6 +74,7 @@ NUDGE_GAIN_M = 0.5         # m: a correction must add at least this much free wa
 class PathGate:
     def __init__(self, params, speed_model):
         self.p, self.model = params, speed_model
+        self.delay_source = None        # an object with .excess (s): extra scan latency measured online (adas/latency.py)
         self.memory = ObstacleMemory(params, blind_radius=0.27, keep_radius=1.2, max_age=60.0, max_points=700,
                                      max_travel=1.5)
         self.pts = np.empty((0, 2))
@@ -252,7 +253,7 @@ class PathGate:
         # act while a small correction can still get round (the brake's envelope is too late for steering: at
         # 0.5 m/s it is ~0.2 m, a 6 cm sideways slide needs ~0.4 m) - a time-to-contact trigger as in production
         # evasive steering support, or the brake envelope if that is larger
-        envelope = FOS * (BASE_M + v * REACTION_S + v * v / (2 * DECEL))
+        envelope = FOS * (BASE_M + v * self.reaction_s() + v * v / (2 * DECEL))
         if not math.isfinite(free0) or free0 > max(v * NUDGE_TTC_S, envelope):
             return None
         need = max(free0 + NUDGE_GAIN_M, envelope)        # the corrected path must really get past it
@@ -271,13 +272,16 @@ class PathGate:
                     return math.atan(k * wb)
         return None
 
-    @staticmethod
-    def allowed_speed(free, fos=FOS):
+    def reaction_s(self):
+        """The delay the stopping distance budgets: the design value plus the extra scan latency measured online."""
+        return REACTION_S + (self.delay_source.excess if self.delay_source is not None else 0.0)
+
+    def allowed_speed(self, free, fos=FOS):
         """Largest v with fos * (BASE + v*REACTION + v^2/2a) <= free."""
         room = free / fos - BASE_M
         if room <= 0:
             return 0.0
-        a, r = DECEL, REACTION_S
+        a, r = DECEL, self.reaction_s()
         return -a * r + math.sqrt((a * r) ** 2 + 2 * a * room)
 
     def decide(self, dt, physical, delta, v_est, closing=0.0, intent_k_rate=None, trusted=False, leg=None):

@@ -2,7 +2,7 @@
  {
   "name": "Evasive steer around a block",
   "pass": true,
-  "detail": "with evasive: around the box (x 4.9 m), closest 6 cm, handed back; without: braked to a stop at x 1.74 m"
+  "detail": "with evasive: around the box (x 4.8 m), closest 9 cm, handed back; without: braked to a stop at x 1.74 m"
  },
  {
   "name": "Steering correction instead of braking (nudge)",
@@ -77,26 +77,31 @@
  {
   "name": "Fault: LiDAR dropout burst",
   "pass": true,
-  "detail": "LiDAR dropout 0.6 s at full throttle: closest 7 cm, stopped at x 3.04 m (wall at 3.4 m)"
+  "detail": "LiDAR dropout 0.6 s at full throttle: closest 7 cm, stopped at x 3.05 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: frozen (stale) scan",
   "pass": true,
-  "detail": "frozen scan 0.6 s at full throttle: closest 7 cm, stopped at x 3.04 m (wall at 3.4 m)"
+  "detail": "frozen scan 0.6 s at full throttle: closest 7 cm, stopped at x 3.05 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: scans arrive 0.1 s late (design envelope)",
   "pass": true,
-  "detail": "scans 0.1 s late at full throttle: closest 6 cm, stopped at x 3.06 m (wall at 3.4 m)"
+  "detail": "scans 0.1 s late at full throttle: closest 5 cm, stopped at x 3.06 m (wall at 3.4 m)"
+ },
+ {
+  "name": "Fault: scans 0.25 s late, latency measured online",
+  "pass": true,
+  "detail": "scans 0.25 s late at full throttle (estimated delay 0.42 s, margin +0.26 s): closest 4 cm, stopped at x 3.08 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: 30 % of ESP32 commands lost",
   "pass": true,
-  "detail": "30 % of ESP32 commands lost: closest 6 cm, stopped at x 3.05 m (wall at 3.4 m)"
+  "detail": "30 % of ESP32 commands lost: closest 7 cm, stopped at x 3.05 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: spurious LiDAR points",
   "pass": true,
-  "detail": "12 random spurious points per scan: closest 28 cm, stopped at x 2.86 m (wall at 3.4 m)"
+  "detail": "12 random spurious points per scan: closest 38 cm, stopped at x 2.75 m (wall at 3.4 m)"
  }
 ]

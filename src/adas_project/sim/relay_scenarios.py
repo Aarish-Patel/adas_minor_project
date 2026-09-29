@@ -74,6 +74,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     smoother = ThrottleSmoother()
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(tun.speed_model, p.lidar_x)
+    gate.delay_source = vest.latency
     assist.speed = vest                          # as in the relay: the assists use the brake's speed
     t, next_scan, seq, pts = 0.0, 0.0, 0, []
     lossrng = np.random.default_rng(seed + 77)
@@ -139,6 +140,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     x, y, th, v, *_ = car.pose()
     rec.update(collided=car.crash_count > 0, x=x, y=y, th=th, v=v, evading_end=assist.assists.evading, p=p,
                assist=assist, t_end=t)
+    rec["latency"] = (vest.latency.delay, vest.latency.excess, vest.latency.tested)
     RANDOMISE.setdefault("log", []).append((tuple(assists), rec["collided"], rec["min_clear"]))   # safety bookkeeping
     return rec
 
@@ -426,6 +428,21 @@ def fault_latency():
     return (not r["collided"]), "scans 0.1 s late at full throttle: " + _tail(r)
 
 
+def fault_latency_high():
+    """Every scan arrives 0.25 s late - beyond what the gate budgets. The car measures its own latency online
+    (adas/latency.py: scan range-flow speed vs the throttle model) and widens the stopping distance by speed x excess.
+    Without it the car hit the wall from ~0.15 s (29 Sep)."""
+    q = []
+
+    def f(t, pts):
+        q.append((t, pts))
+        old = [p for tt, p in q if tt <= t - 0.25]
+        return old[-1] if old else []
+    r = _fault_scene(f, pwm=255)
+    d, ex, n = r["latency"]
+    return (not r["collided"]), f"scans 0.25 s late at full throttle (estimated delay {d:.2f} s, margin +{ex:.2f} s): " + _tail(r)
+
+
 def fault_command_loss():
     """30 % of the commands to the ESP32 are lost (the ESP32's own 0.5 s failsafe is the last line)."""
     r = _fault_scene(None, cmd_loss=0.3)
@@ -461,6 +478,7 @@ SCENARIOS = [("Evasive steer around a block", evasive_box),
              ("Fault: LiDAR dropout burst", fault_dropout),
              ("Fault: frozen (stale) scan", fault_frozen),
              ("Fault: scans arrive 0.1 s late (design envelope)", fault_latency),
+             ("Fault: scans 0.25 s late, latency measured online", fault_latency_high),
              ("Fault: 30 % of ESP32 commands lost", fault_command_loss),
              ("Fault: spurious LiDAR points", fault_outliers)]
 

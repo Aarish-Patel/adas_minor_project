@@ -273,7 +273,7 @@ Consistency on a vibrating car:
 - [ ] N3. Adaptive noise in the speed EKF (innovation-based adaptive estimation, Mehra 1970) + robust (Huber)
   weights in ICP/RF2O so vibration-induced outliers don't jerk the estimate; LiDAR motion deskew (LOAM, Zhang &
   Singh 2014) and a temporal scan filter / log-odds occupancy grid.
-- [ ] N4. Uncertainty-aware safety: margins scaled by the measured spread (e.g. braking distance 95th percentile),
+- [~] N4. (scan-latency part done 29 Sep: adas/latency.py measures the delay online and the gate widens its margin; safe at 0.3 s extra latency in the twin, was contact from 0.15 s; uncertainty-aware margins for the rest still open)  Uncertainty-aware safety: margins scaled by the measured spread (e.g. braking distance 95th percentile),
   calibrated intent probabilities (temperature scaling, Guo et al. 2017), conformal prediction bounds (Angelopoulos
   & Bates 2021) or a small deep ensemble (Lakshminarayanan et al. 2017).
 - [x] N5. (done 29 Sep: sim/repeat_scenarios.py - every relay scenario on N randomised twins; 300 runs: 100 % safe, closest

@@ -765,6 +765,7 @@ def main():
     assist.memory = pgate.memory                        # the planners avoid what the gate remembers
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(TUNING.speed_model, assist.p.lidar_x)   # throttle model + EKF with LiDAR range flow
+    pgate.delay_source = vest.latency                          # brake margin grows when the scans are late
     assist.speed = vest                                        # the assists use the same speed as the brake
     last_pkt_t = time.time()
     last_seq, last_seq_t = None, time.time()
