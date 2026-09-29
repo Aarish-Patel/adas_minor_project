@@ -610,3 +610,6 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
 - [x] W6. (adas/online_calibration.py; ECE -37 % / -28 % prequential on the twin; wired into RelayIntent (shown risk only)) On-the-go adaptation of the crash predictor once a person starts driving: online recalibration of the risk (Platt / Bayesian) from
   outcome feedback the car can observe, per-driver profile; prequential evaluation in the twin.
 - [~] W7. (RUN tabs use chips and outlined primary / danger buttons; lab headers flat; progress bars slim and tinted) Restyle the labs' RUN tab and window buttons; finish the training-lab chart polish.
+
+## X. Requirements
+- [x] X1. (user, 29 Sep) docs/requirements.md - master SRS (goals, ODD, FR/NFR with acceptance criteria and status, HW, stack, I/O, success metrics). Keep its status columns current at milestones.
