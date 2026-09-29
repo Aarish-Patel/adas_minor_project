@@ -824,8 +824,8 @@ class MapZonesPanel(QtWidgets.QWidget):
         self.follow_btn.setChecked(True)
         vrow.addWidget(self.follow_btn, 0, 3)
         lay.addLayout(vrow)
-        tip = QtWidgets.QLabel("Mouse wheel = zoom at the cursor \u00b7 middle-drag or Shift + drag = pan \u00b7 Fit all frames the map, "
-                               "the zones and the car")
+        tip = QtWidgets.QLabel("Ctrl + mouse wheel = zoom at the cursor \u00b7 middle-drag or Shift + drag = pan \u00b7 the plain wheel scrolls this "
+                               "panel \u00b7 Fit all frames the map, the zones and the car")
         tip.setWordWrap(True)
         tip.setFont(theme.font(11))
         tip.setStyleSheet(f"color: {C['dim']};")
@@ -865,6 +865,7 @@ class MapZonesPanel(QtWidgets.QWidget):
             b.toggled.connect(self._update_hint)
         self._update_hint()
         self.plot.scene().installEventFilter(self)
+        self._wheel = WheelToScroll(self.plot, self._wheel_zoom)      # plain wheel scrolls the drawer, Ctrl + wheel zooms
         self._draw_zones()
 
     # --- zones on disk (so they survive restarts of the GUI and are re-sent to a restarted relay)
@@ -907,6 +908,11 @@ class MapZonesPanel(QtWidgets.QWidget):
         vb.scaleBy((1 / factor, 1 / factor), center=c)
         self.follow_btn.setChecked(False)
 
+    def _wheel_zoom(self, ev):
+        vb = self.plot.getPlotItem().vb
+        pos = self.plot.mapToScene(ev.position().toPoint())
+        self.zoom(1.25 if ev.angleDelta().y() > 0 else 0.8, vb.mapSceneToView(pos))
+
     def fit(self):
         """Frame the map points, the zones and the car."""
         pts = [self._sc(self.store.points())] if len(self.store.points()) else []
@@ -925,9 +931,6 @@ class MapZonesPanel(QtWidgets.QWidget):
     def eventFilter(self, obj, ev):
         t = ev.type()
         vb = self.plot.getPlotItem().vb
-        if t == QtCore.QEvent.GraphicsSceneWheel:
-            self.zoom(1.25 if ev.delta() > 0 else 0.8, vb.mapSceneToView(ev.scenePos()))
-            return True
         if t == QtCore.QEvent.GraphicsSceneMousePress and (ev.button() == QtCore.Qt.MiddleButton or
                                                           (ev.button() == QtCore.Qt.LeftButton and
                                                            ev.modifiers() & QtCore.Qt.ShiftModifier)):
@@ -1461,28 +1464,102 @@ class CarSetupPanel(QtWidgets.QWidget):
             self.log.setPlainText("\n".join(tail))
 
 
+class WheelToScroll(QtCore.QObject):
+    """Plots inside a scrolling drawer must not eat the mouse wheel (the drawer would stop scrolling over them): the wheel
+    goes to the enclosing scroll area; with Ctrl held it is passed to `on_ctrl(event)` instead (map zoom)."""
+
+    def __init__(self, plot, on_ctrl=None):
+        super().__init__(plot)
+        self.plot, self.on_ctrl = plot, on_ctrl
+        plot.viewport().installEventFilter(self)
+
+    def eventFilter(self, obj, ev):
+        if ev.type() != QtCore.QEvent.Wheel:
+            return False
+        if ev.modifiers() & QtCore.Qt.ControlModifier and self.on_ctrl is not None:
+            self.on_ctrl(ev)
+            return True
+        w = self.plot.parentWidget()
+        while w is not None and not isinstance(w, QtWidgets.QScrollArea):
+            w = w.parentWidget()
+        if w is not None:
+            sb = w.verticalScrollBar()
+            sb.setValue(sb.value() - ev.angleDelta().y())
+            return True
+        return False
+
+
+class StatCard(Card):
+    """A small status card: caption, a big value and a detail line (Diagnostics header row)."""
+
+    def __init__(self, caption):
+        super().__init__(padding=12)
+        cap = QtWidgets.QLabel(caption.upper())
+        cap.setFont(theme.semibold(10, spacing=1.4))
+        cap.setStyleSheet(f"color: {C['dim']};")
+        self.value = QtWidgets.QLabel("\u2014")
+        self.value.setFont(theme.light(22))
+        self.detail = QtWidgets.QLabel("")
+        self.detail.setWordWrap(True)
+        self.detail.setFont(theme.font(11))
+        self.detail.setStyleSheet(f"color: {C['dim']};")
+        self.body.setSpacing(2)
+        self.body.addWidget(cap)
+        self.body.addWidget(self.value)
+        self.body.addWidget(self.detail)
+
+    def set(self, value, detail="", colour=None):
+        self.value.setText(str(value))
+        self.value.setStyleSheet(f"color: {colour or C['text']};")
+        self.detail.setText(detail)
+
+
+class EmptyList(QtWidgets.QListWidget):
+    """A list that says so when it is empty instead of showing a blank box."""
+
+    def __init__(self, text):
+        super().__init__()
+        self.empty_text = text
+
+    def paintEvent(self, ev):
+        super().paintEvent(ev)
+        if self.count() == 0:
+            p = QtGui.QPainter(self.viewport())
+            p.setPen(QtGui.QColor(C["dim"]))
+            p.setFont(theme.font(13))
+            p.drawText(self.viewport().rect(), QtCore.Qt.AlignCenter | QtCore.Qt.TextWordWrap, self.empty_text)
+
+
 class DiagnosticsPanel(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         lay = QtWidgets.QVBoxLayout(self)
-        self.health = QtWidgets.QLabel("")
-        self.health.setWordWrap(True)
-        lay.addWidget(self.health)
-        w = pg.GraphicsLayoutWidget()
-        w.setBackground(C["bg1"])
-        self.p1 = w.addPlot(title="speed m/s: estimate (cyan) vs throttle model (grey)")
-        self.c_v = self.p1.plot(pen=pg.mkPen(EV["cyan"], width=2))
-        self.c_vm = self.p1.plot(pen=pg.mkPen(EV["dim"], width=1))
-        w.nextRow()
-        self.p2 = w.addPlot(title="throttle PWM: driver (grey) vs sent (green)")
-        self.c_in = self.p2.plot(pen=pg.mkPen(EV["dim"], width=1))
-        self.c_out = self.p2.plot(pen=pg.mkPen(EV["ok"], width=2))
-        w.nextRow()
-        self.p3 = w.addPlot(title="free way on the path (m, amber) and crash risk (red)")
-        self.c_free = self.p3.plot(pen=pg.mkPen(EV["warn"], width=2))
-        self.c_risk = self.p3.plot(pen=pg.mkPen(EV["bad"], width=1))
-        lay.addWidget(w, 1)
+        lay.setContentsMargins(14, 8, 14, 14)
+        lay.setSpacing(8)
+        row = QtWidgets.QHBoxLayout()
+        row.setSpacing(8)
+        self.c_health, self.c_lidar, self.c_esp = StatCard("Health"), StatCard("LiDAR and link"), StatCard("ESP32")
+        for c in (self.c_health, self.c_lidar, self.c_esp):
+            row.addWidget(c, 1)
+        lay.addLayout(row)
         self.hist = collections.deque(maxlen=900)
+        self.curves = {}
+        for title, specs in (("Speed (m/s): estimate vs throttle model", (("v", "cyan", 2), ("vm", "dim", 1))),
+                             ("Throttle PWM: driver vs sent", (("in", "dim", 1), ("out", "ok", 2))),
+                             ("Free way on the path (m) and crash risk", (("free", "warn", 2), ("risk", "bad", 1)))):
+            lay.addWidget(section_label(title))
+            card = Card(padding=6)
+            pw = theme.style_plot(pg.PlotWidget())
+            pw.setMinimumHeight(170)
+            pw.setBackground(C["bg1"])
+            pw.getPlotItem().hideButtons()
+            pw.getPlotItem().vb.setMouseEnabled(x=False, y=False)
+            for key, col, wd in specs:
+                self.curves[key] = pw.plot(pen=pg.mkPen(EV[col], width=wd))
+            WheelToScroll(pw)
+            card.body.addWidget(pw)
+            lay.addWidget(card)
+        lay.addStretch(1)
 
     def add(self, now, st):
         d = st.get("drive") or {}
@@ -1495,12 +1572,16 @@ class DiagnosticsPanel(QtWidgets.QWidget):
             return
         h = np.array(self.hist, float)
         t = h[:, 0] - h[-1, 0]
-        for c, i in ((self.c_v, 1), (self.c_vm, 2), (self.c_in, 3), (self.c_out, 4), (self.c_free, 5), (self.c_risk, 6)):
-            c.setData(t, np.nan_to_num(h[:, i], nan=0.0))
+        for key, i in (("v", 1), ("vm", 2), ("in", 3), ("out", 4), ("free", 5), ("risk", 6)):
+            self.curves[key].setData(t, np.nan_to_num(h[:, i], nan=0.0))
         hl, esp = st.get("health") or {}, st.get("esp32") or {}
-        self.health.setText(f"health: <b>{hl.get('state', '?')}</b> {'; '.join(hl.get('causes') or [])} - LiDAR "
-                            f"{hl.get('lidar_hz')} Hz, link {hl.get('link_hz')} packets/s, Pi {hl.get('temp_c')} C<br>"
-                            f"ESP32: <b>{esp.get('state', '?')}</b> {esp.get('detail', '')}, reboots {esp.get('reboots', 0)}")
+        state = hl.get("state", "?")
+        self.c_health.set(str(state).upper(), "; ".join(hl.get("causes") or []) or "all systems normal",
+                          {"normal": EV["ok"], "limp": EV["warn"], "fault": EV["bad"]}.get(state))
+        self.c_lidar.set(f"{hl.get('lidar_hz') or '\u2014'} Hz", f"link {hl.get('link_hz') or '\u2014'} packets/s \u00b7 Pi "
+                         f"{hl.get('temp_c') or '\u2014'} \u00b0C")
+        self.c_esp.set(str(esp.get("state", "?")).upper(), f"{esp.get('detail', '')} \u00b7 reboots {esp.get('reboots', 0)}",
+                       EV["ok"] if esp.get("state") == "ok" else None)
 
 
 # ====================================================================== the main window
@@ -1543,7 +1624,7 @@ class EVWindow(QtWidgets.QMainWindow):
         il.addWidget(self.intent_txt)
         il.addWidget(self.intent_bar)
         # drawers
-        self.events = QtWidgets.QListWidget()
+        self.events = EmptyList("No events yet.\nCommands you send from the map and the car's notices appear here.")
         self.panels = {"map": ("Map and zones", MapZonesPanel(link, self.store, self.add_event)),
                        "assists": ("Assists", AssistsPanel(link)), "setup": ("Car setup", CarSetupPanel(link.host)),
                        "rear": ("Rear camera", RearCameraPanel(link.host)),

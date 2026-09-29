@@ -110,6 +110,36 @@ class GuiSmoke(unittest.TestCase):
             self.assertGreaterEqual(r.right(), xs.max() - 1e-6)
         w.close()
 
+    def test_wheel_scrolls_the_drawer_and_ctrl_wheel_zooms_the_map(self):
+        from PySide6 import QtGui
+        from gui.ev import EVWindow
+        w = EVWindow(Link(STATE))
+        w.resize(1100, 700)
+        w.show()
+        w.toggle("map", True)
+        self.app.processEvents()
+        mp = w.panels["map"][1]
+        sa = w.docks["map"].widget()
+        sb = sa.verticalScrollBar()
+        self.assertGreater(sb.maximum(), 0)                        # the drawer is taller than the window: it scrolls
+        vp = mp.plot.viewport()
+        pos = QtCore.QPointF(vp.width() / 2, vp.height() / 2)
+
+        def wheel(mods):
+            ev = QtGui.QWheelEvent(pos, vp.mapToGlobal(pos), QtCore.QPoint(0, 0), QtCore.QPoint(0, -120), QtCore.Qt.NoButton,
+                                   mods, QtCore.Qt.NoScrollPhase, False)
+            QtWidgets.QApplication.sendEvent(vp, ev)
+        r0 = mp.plot.getPlotItem().vb.viewRect().width()
+        v0 = sb.value()
+        wheel(QtCore.Qt.NoModifier)
+        self.app.processEvents()
+        self.assertGreater(sb.value(), v0)                         # scrolled
+        self.assertAlmostEqual(mp.plot.getPlotItem().vb.viewRect().width(), r0, places=6)   # not zoomed
+        wheel(QtCore.Qt.ControlModifier)
+        self.app.processEvents()
+        self.assertNotAlmostEqual(mp.plot.getPlotItem().vb.viewRect().width(), r0, places=3)   # zoomed
+        w.close()
+
     def test_theme_switch_rebuilds_the_window(self):
         from gui import theme
         from gui.ev import EVWindow

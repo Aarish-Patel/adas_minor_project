@@ -121,7 +121,9 @@ def small_label(text, dim=True):
 def plot(title, left=None, bottom=None):
     p = pg.PlotWidget(title=title)
     theme.style_plot(p, title)
-    p.addLegend(offset=(5, 5), labelTextSize="8pt")
+    lg = p.addLegend(offset=(-10, 8), labelTextSize="9pt")            # top-right, on a card, not over the curves' start
+    lg.setBrush(pg.mkBrush(theme.C["surface"]))
+    lg.setPen(pg.mkPen(theme.C["hair"]))
     for ax in ("left", "bottom"):
         p.getAxis(ax).enableAutoSIPrefix(False)
     if left:

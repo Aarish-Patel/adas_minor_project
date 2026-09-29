@@ -81,5 +81,43 @@
    "overridden_s": 129.6,
    "median_time_s": 11.900000000000034
   }
+ },
+ "confirm": {
+  "adas": {
+   "runs": 96,
+   "crashes": 0,
+   "goals": 89,
+   "needless": 188,
+   "takeovers": 155,
+   "overridden_s": 463.4,
+   "median_time_s": 11.750000000000032
+  },
+  "v2 trust 0.5 (current)": {
+   "runs": 96,
+   "crashes": 0,
+   "goals": 86,
+   "needless": 154,
+   "takeovers": 106,
+   "overridden_s": 362.7,
+   "median_time_s": 11.100000000000023
+  },
+  "v3 trust 0.2": {
+   "runs": 96,
+   "crashes": 0,
+   "goals": 88,
+   "needless": 139,
+   "takeovers": 112,
+   "overridden_s": 426.9,
+   "median_time_s": 11.100000000000023
+  },
+  "v3 trust 0.33": {
+   "runs": 96,
+   "crashes": 0,
+   "goals": 90,
+   "needless": 138,
+   "takeovers": 106,
+   "overridden_s": 367.1,
+   "median_time_s": 11.275000000000025
+  }
  }
 }

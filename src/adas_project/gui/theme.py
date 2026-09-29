@@ -186,7 +186,7 @@ QComboBox QAbstractItemView {{ background: {C['surface']}; border: 1px solid {C[
 QCheckBox {{ spacing: 8px; }}
 QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {C['hair2']};
                         background: {C['bg1']}; }}
-QCheckBox::indicator:checked {{ background: {C['accent']}; border-color: {C['accent']}; }}
+QCheckBox::indicator:checked {{ background: {css_rgba('accent', 0.30)}; border: 2px solid {C['accent']}; }}
 QProgressBar {{ background: {C['bg1']}; border: none; border-radius: 3px; height: 6px; text-align: center; }}
 QProgressBar::chunk {{ background: {C['accent']}; border-radius: 3px; }}
 QTabWidget::pane {{ border: 1px solid {C['hair']}; border-radius: 8px; top: -1px; }}

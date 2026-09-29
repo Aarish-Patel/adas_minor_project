@@ -456,6 +456,7 @@ class MonteCarloWindow(QtWidgets.QMainWindow):
             lg.addWidget(lab)
         self.legend.move(20, 16)
         self.cars, self.trails, self.runs, self.key = {}, {}, [], None
+        self._n_runs = 0
         self.scrubbing = False
         self.scrub.sliderPressed.connect(lambda: setattr(self, "scrubbing", True))
         self.scrub.sliderReleased.connect(lambda: setattr(self, "scrubbing", False))
@@ -523,6 +524,14 @@ class MonteCarloWindow(QtWidgets.QMainWindow):
         self._kpis()
         for k in self.kpis.values():
             k.tick(0.033)
+        if len(self.tab.runs) != self._n_runs:               # a Monte Carlo is running: pick up systems as they finish
+            self._n_runs = len(self.tab.runs)
+            have = {x[0] for x in self.runs}
+            now = {r["variant"] for r in self.tab.runs if (r["seed"], r["style"]) == self.key and r["trace"]}
+            if now != have:
+                t_keep = self.stage.t
+                self.load()
+                self.stage.t = t_keep
         if not self.runs:
             return
         n_max = max(len(tr) for _, _, tr, _ in self.runs)

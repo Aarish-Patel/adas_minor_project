@@ -260,7 +260,7 @@ class RelayIntent:
         # sat in a corner for 25 s where plain ADAS drove out)
         self.track, self.release_until, self.stalled = [], -1.0, False
 
-    STALL_S, STALL_M, RELEASE_S = 6.0, 0.9, 10.0
+    STALL_S, STALL_M, RELEASE_S = 3.5, 0.7, 10.0
 
     def _progress(self, now, physical):
         sp = getattr(self.assist, "speed", None)

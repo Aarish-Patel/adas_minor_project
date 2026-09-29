@@ -53,7 +53,22 @@ def sweep(configs, seeds, ex):
     return out
 
 
+def confirm():
+    """Untuned seeds 12-43 (96 drives per configuration) for the leading configurations."""
+    v3 = os.path.join(HERE, "..", "pi", "intent_v3.json")
+    configs = {"v2 trust 0.5 (current)": (None, 0.5), "v3 trust 0.2": (v3, 0.2), "v3 trust 0.33": (v3, 0.33)}
+    with ProcessPoolExecutor() as ex:
+        res = sweep(configs, range(12, 44), ex)
+    print("adas", res["adas"], flush=True)
+    path = os.path.join(HERE, "..", "models", "intent_optimise.json")
+    d = json.load(open(path)) if os.path.exists(path) else {}
+    d["confirm"] = res
+    json.dump(d, open(path, "w"), indent=1)
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "confirm":
+        return confirm()
     v2 = None                                                    # relay_mc default: models/intent_net.json
     v3 = os.path.join(HERE, "..", "pi", "intent_v3.json")
     configs = {f"v2 trust {t}": (v2, t) for t in (0.3, 0.5, 0.7)}
