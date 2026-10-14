@@ -770,8 +770,9 @@ away stay on the map until the car comes closer. Dashboard cost ~11 ms per updat
 car pushed into such a wall for seconds (the drivetrain was damaged); in the twin ROOM the dark box was hit on the way back to the start
 and pushed against up to 7 times. ADR-045 catches a front that is mostly blind, not an object that covers only part of the view.
 
-**Decision.** `adas/contact.ContactDetector`, run inside `PathGate.decide` (so car and twin share it): throttle clearly above the dead-band
-(at least the PWM for 0.07 m/s - exploration creeps at PWM 40, ~0.10 m/s, just under a 0.10 threshold) for 0.6 s while the scan-matched pose (only poses of new scans - between scans it is dead-reckoned and moves
+**Decision.** `adas/contact.ContactDetector`, run inside `PathGate.decide` (so car and twin share it): throttle above the dead-band (at
+least the PWM for 0.05 m/s, ~26; creeping pushes run at PWM 30-40) for 0.4 s, or longer for a slow creep (2 x 1.5 cm at the commanded
+speed + 0.15 s lag: 0.74 s at PWM 26, so a slow start is not taken for a contact), while the scan-matched pose (only poses of new scans - between scans it is dead-reckoned and moves
 with the command) moved less than 1.5 cm and the gate was not braking = contact ahead / behind. The bumper line goes into the obstacle
 memory at full score (`ObstacleMemory.add_bumper`) - nothing returns there, so only a scan that sees through it removes it - and the gate
 latches as after an emergency stop, released only when the driver lets go or reverses. Contact points count at any distance up to 3 m and are kept for 20 m of driving (the LiDAR never
@@ -782,4 +783,4 @@ ticks (-83 %), contacts unchanged (it cannot be avoided before the first touch).
 ignored the flag, and objects in hand-built worlds were never marked dark) and `sim.relay_scenarios.run(after_contact=True)` can go on
 after a contact.
 Exploring the twin ROOM (dark box now truly invisible): coverage 100 %, 0 contacts with anything the LiDAR sees, 3 brief touches of the
-dark box in 100 s (20 before contact points counted beyond the blind ring, the bumper never fired at PWM 40 before the threshold change).
+dark box (with back-up-first re-plans and the speed-dependent window: 95-100 % coverage, 2-3 touches, 48-101 s across runs) (20 before contact points counted beyond the blind ring, the bumper never fired at PWM 40 before the threshold change).

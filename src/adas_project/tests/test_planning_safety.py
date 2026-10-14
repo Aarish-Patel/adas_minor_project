@@ -311,7 +311,8 @@ class GateTests(unittest.TestCase):
         g.decide(0.05, 200, 0.0, 0.6)                        # brakes
         out, _ = g.decide(0.05, 200, 0.0, 0.0)               # just stopped: still inside the brake pulse - held
         self.assertEqual(out, 0)                              # (no brake/release hammering, drive log 28 Sep)
-        for _ in range(4):                                    # the pulse is over and the car stands still:
+        for _ in range(8):                                    # the pulse is over, the car stands still and the way stays clear for
+                                                              # RELEASE_HOLD_S (brake hysteresis, AK3):
             out, _ = g.decide(0.05, 200, 0.0, 0.0)           # the path is clear at a creep
         self.assertGreater(out, 0)
         self.assertLessEqual(out, g.model.pwm_for_speed(CREEP_V) + 1)

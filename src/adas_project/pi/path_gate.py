@@ -58,6 +58,7 @@ BRAKE_GAIN = 300.0         # PWM per m/s over
 BRAKE_PWM_MAX = 80         # peak reverse pulse (was 140: the car stops within 1-2 cm on a throttle cut alone, and
                            # reverse pulses at speed shock-load the drivetrain - the rear shaft broke on 28 Sep)
 BRAKE_MAX_S = 0.2          # s of active braking per event (never enough to drive the car backwards)
+RELEASE_HOLD_S = 0.25       # s the way must stay clear before a hold lets go (~3 LiDAR scans; brake hysteresis)
 LATCH_RELEASE_M = 0.08     # the hold after braking lets go once the free distance grows this much
 # ...or, once the brake pulse is over and the car stands still, when the commanded path is clear at SOME speed (user,
 # 28 Sep: a manoeuvre steering round the obstacle must not stay held because the old path was blocked - go at the
@@ -125,9 +126,10 @@ class PathGate:
         # virtual bumper (adas/contact.py): pushing without moving while the gate is not braking = contact with something the LiDAR
         # cannot see; the bumper line goes into the memory, so the gate stops pushing and the planners route round it
         from adas.contact import ContactDetector, MIN_SPEED
-        self.contact = ContactDetector(speed_model.pwm_for_speed(MIN_SPEED))
+        self.contact = ContactDetector(speed_model.pwm_for_speed(MIN_SPEED), speed_of=speed_model.speed)
         self._t = 0.0
         self._contact_latch = False      # the latch was set by a contact: released only by the driver (let go / reverse)
+        self._release_t = 0.0            # s the way has been clear while holding (RELEASE_HOLD_S)
         self.blind_t = 0.0         # s the travel direction has been blind while driving that way
 
     def on_scan(self, pts_vehicle, seq):
@@ -460,8 +462,13 @@ class PathGate:
             # that shock-loads the drivetrain - seen in the 28 Sep drive log before the rear shaft broke)
             settled = self.brake_t >= BRAKE_MAX_S and abs(v_est) < 0.05
             new_way = v_ok > 0 and settled
-            if l_dir != direction or (not self._contact_latch and (free > l_free + LATCH_RELEASE_M or new_way)):
+            clear_now = not self._contact_latch and (free > l_free + LATCH_RELEASE_M or new_way)
+            # hysteresis (research AK3, docs/research_lidar_navigation.md section 3): the way must stay clear for RELEASE_HOLD_S (~3 scans)
+            # before the hold lets go - a single clear scan near a wall released it, and the car crept, braked and held again
+            self._release_t = self._release_t + dt if clear_now else 0.0
+            if l_dir != direction or (clear_now and self._release_t >= RELEASE_HOLD_S):
                 self._contact_latch = False                # (a contact latch only lets go when the driver does or reverses)
+                self._release_t = 0.0
                 self.latch = None
                 if new_way:
                     self.info["released"] = "the new steering is clear at a slower speed - going on slowly"

@@ -978,7 +978,13 @@ the car finds the gaps with its LiDAR and parks in the viable part of the strip 
       (Virtual bumper deployed 14 Oct with AK1/AK2 (commit 55900d6, relay restarted via the panel): car check through the dashboard -
       gate-only brake held the car 5.8 cm from an object after a 19 cm crawl, no false contact, steering unchanged. Pi 80 C (limp)
       again after ~1 h: the fan (AH5) is still missing.)
-- [ ] AK3. Brake hysteresis (release at d + 3-5 cm after 2-3 clear scans) and a speed-dependent protective field.
+- [x] AK3. Brake hysteresis (release at d + 3-5 cm after 2-3 clear scans) and a speed-dependent protective field.
+      (AK3 done 14 Oct: pi/path_gate.py RELEASE_HOLD_S 0.25 - a hold lets go only after the way stayed clear ~3 scans; the speed-
+      dependent field is already the gate's allowed_speed(v). With it, adas/autonav.py re-plans after a stall with reversing allowed
+      first (the twin ROOM run planned the same full-lock forward turn 9 cm from a wall three times). goto_and_home x5, idle machine:
+      home 3.0 / 10.5 / 314 / 7.0 / 3.8 cm, 0 contacts in all (before: ~1/3 home, up to 6 contacts); brake onsets 0/0/7/5/0.
+      Click-to-go suite unchanged. Open (AK12): the remaining failure stalls 11 cm from a wall where the reverse re-plan's creep
+      (PWM 30) or a rear block did not move the car - check the creep PWM vs the dead-band and the rear check.)
 - [ ] AK4. Follower: RPP-style proximity and curvature slow-down, minimum speed above the dead-band, velocity-scaled lookahead.
 - [ ] AK5. Online steering bias/gain (RLS on scan-matched yaw rate) + backlash compensation (adas/online_steering.py exists - review vs RLS).
 - [ ] AK6. Speed loop: feedforward map + dead-band jump + PI anti-windup, battery-voltage scheduling (adas/speed_control.py - review).

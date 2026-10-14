@@ -700,6 +700,9 @@ class AutoNav:
                 return None
             self.replans += 1
             self.msg = f"stopped on the path - re-planning from here ({self.stalls}/3)"
+            # stopped close in front of something with a path that cannot clear it (twin ROOM, 14 Oct: 9 cm from a wall, the same full-lock
+            # forward turn planned three times, then 'stuck'): plan the way a driver would - backing up is allowed first
+            self.reverse_first = True
             self._launch(self.to_start(pts_vehicle), (self.x, self.y, self.th))
             if self.state != "driving":
                 return (0.0, 0.0) if self.state == "planning" else None

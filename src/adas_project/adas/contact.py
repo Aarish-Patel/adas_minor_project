@@ -10,14 +10,17 @@ the gate then stops pushing (no hammering of the drivetrain) and the planners ro
 """
 import math
 
-WINDOW_S = 0.6          # pushing this long without moving = contact
+WINDOW_S = 0.4          # pushing this long without moving = contact (5 scans at 12 Hz; pushes are often cut after ~0.6 s)
 MIN_MOVE_M = 0.015      # moved less than this over the window
-MIN_SPEED = 0.07        # the throttle commands at least this speed (m/s) - clearly above the dead-band (exploration creeps at ~0.10)
+LAG_S = 0.15            # motor + servo lag before a commanded speed shows in the pose
+MIN_SPEED = 0.05        # the throttle commands at least this speed (m/s) - above the dead-band (~11 PWM); creeping pushes run at PWM 30-40
 
 
 class ContactDetector:
-    def __init__(self, pwm_min, window_s=WINDOW_S, min_move_m=MIN_MOVE_M):
-        self.pwm_min, self.window_s, self.min_move_m = pwm_min, window_s, min_move_m
+    def __init__(self, pwm_min, window_s=WINDOW_S, min_move_m=MIN_MOVE_M, speed_of=None):
+        """speed_of(pwm) -> m/s (the car's throttle model): a slow creep gets the time it needs to move 2 x min_move_m plus LAG_S
+        before it counts as stuck, so a slow start is not taken for a contact."""
+        self.pwm_min, self.window_s, self.min_move_m, self.speed_of = pwm_min, window_s, min_move_m, speed_of
         self.since, self.ref, self.dir = None, None, 0
         self.contacts = 0
 
@@ -40,7 +43,10 @@ class ContactDetector:
         if math.hypot(pose[0] - self.ref[0], pose[1] - self.ref[1]) > self.min_move_m:
             self.since, self.ref = t, (pose[0], pose[1])        # it moves: no contact
             return 0
-        if t - self.since >= self.window_s:
+        window = self.window_s
+        if self.speed_of is not None:
+            window = max(window, 2.0 * self.min_move_m / max(abs(self.speed_of(abs(physical))), 0.02) + LAG_S)
+        if t - self.since >= window:
             self.since, self.ref = t, (pose[0], pose[1])        # (one report per window while it keeps pushing)
             self.contacts += 1
             return d
