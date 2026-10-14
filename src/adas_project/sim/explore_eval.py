@@ -60,7 +60,18 @@ def explore(world_name, t_max=150.0, seed=0):
         return 0.0, (0.0 if st["finished"] else 150.0)
 
     r = run(world, operator, t_max, start=start, seed=seed, hook=hook,
-            stop_when=lambda t, x, y, th, v: st["finished"] and abs(v) < 0.02)
+            stop_when=lambda t, x, y, th, v: st["finished"] and abs(v) < 0.02, after_contact=True)
+    # contacts: with something the LiDAR sees (a failure) or only with a dark object it cannot see (unavoidable before the first touch -
+    # the virtual bumper, ADR-047, must then stop the car pushing): at each contact pose, is the body clear of every non-dark object?
+    from sim.world import World
+    visible = World()
+    for o in world.objects:
+        if not getattr(o, "dark", False):
+            visible.add(o)
+    p = r["p"]
+    log = r.get("crash_log") or []
+    visible_hits = [c for c in log if visible.clearance(c[1], c[2], c[3], p) <= 0.005]
+    episodes = sum(1 for i, c in enumerate(log) if i == 0 or c[0] - log[i - 1][0] > 0.5)   # touches, not contact flickers
     ex = _EX
     free = true_free_cells(world, ex.grid)
     known = ex.grid.state() == 1
@@ -68,7 +79,7 @@ def explore(world_name, t_max=150.0, seed=0):
     tr = np.array([(row[1], row[2]) for row in r["trace"]])
     dist = float(np.sum(np.hypot(*np.diff(tr, axis=0).T))) if len(tr) > 1 else 0.0
     return {"world": world_name, "coverage": cov, "t": round(r["t_end"], 1), "distance_m": round(dist, 1),
-            "crashed": bool(r["collided"]), "min_clear_cm": round(r["min_clear"] * 100, 1), "goals": ex.goals_sent,
+            "crashed": bool(r["collided"]), "contacts": len(log), "touches": episodes, "visible_contacts": len(visible_hits), "min_clear_cm": round(r["min_clear"] * 100, 1), "goals": ex.goals_sent,
             "finished": ex.done, "msg": ex.msg, "grid": ex.grid, "trace": tr, "true_free": free, "world_obj": world}
 
 

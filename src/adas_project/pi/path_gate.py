@@ -122,6 +122,12 @@ class PathGate:
         self.k_hist = []           # (age s, curvature) of recent steering commands: where the servo may still be
         self._v = 0.0              # speed estimate of the current decision (sizes the delay segment)
         self.cover = {1: 1.0, -1: 1.0}   # fraction of the front / rear sector with LiDAR returns in the last scan
+        # virtual bumper (adas/contact.py): pushing without moving while the gate is not braking = contact with something the LiDAR
+        # cannot see; the bumper line goes into the memory, so the gate stops pushing and the planners route round it
+        from adas.contact import ContactDetector, MIN_SPEED
+        self.contact = ContactDetector(speed_model.pwm_for_speed(MIN_SPEED))
+        self._t = 0.0
+        self._contact_latch = False      # the latch was set by a contact: released only by the driver (let go / reverse)
         self.blind_t = 0.0         # s the travel direction has been blind while driving that way
 
     def on_scan(self, pts_vehicle, seq):
@@ -343,6 +349,24 @@ class PathGate:
         return -a * r + math.sqrt((a * r) ** 2 + 2 * a * room)
 
     def decide(self, dt, physical, delta, v_est, closing=0.0, intent_k_rate=None, trusted=False, leg=None):
+        """The gate's decision (_decide) plus the virtual bumper on its result (adas/contact.py)."""
+        out, braking = self._decide(dt, physical, delta, v_est, closing, intent_k_rate, trusted, leg)
+        self._t += dt
+        held = braking or str(self.info.get("action", "")).startswith(("holding", "stopped", "LiDAR"))
+        m = self.memory
+        hit = self.contact.update(self._t, out, (m.x, m.y), held, stamp=getattr(m, "_pose_stamp", None))
+        if hit:
+            m.add_bumper(hit)
+            # hold as after an emergency stop (the latch below): no creeping back into it - released when the driver lets go or
+            # drives the other way
+            self.latch, self.brake_t = (hit, 0.0, delta), BRAKE_MAX_S
+            self._contact_latch = True
+            self.info["contact"] = "pushing without moving - obstacle marked (the LiDAR does not see it)"
+            self.info["action"] = "holding (contact - release the throttle)"
+            return 0, False
+        return out, braking
+
+    def _decide(self, dt, physical, delta, v_est, closing=0.0, intent_k_rate=None, trusted=False, leg=None):
         """physical: the throttle to be sent (+ forward). delta: commanded steering angle (rad). v_est: speed
         estimate (+ forward), closing: LiDAR-measured closing speed toward what is ahead in the travel direction.
         trusted: the learned intent model expects this (attentive) driver to handle it - later soft cap only.
@@ -359,6 +383,7 @@ class PathGate:
         self._v = v_est
         if physical == 0:
             self.latch = None                     # the driver let go: the hold is released
+            self._contact_latch = False
             self.blind_t = 0.0
             self.k_hist.append((0.0, k_now))
             return 0, False
@@ -435,7 +460,8 @@ class PathGate:
             # that shock-loads the drivetrain - seen in the 28 Sep drive log before the rear shaft broke)
             settled = self.brake_t >= BRAKE_MAX_S and abs(v_est) < 0.05
             new_way = v_ok > 0 and settled
-            if l_dir != direction or free > l_free + LATCH_RELEASE_M or new_way:
+            if l_dir != direction or (not self._contact_latch and (free > l_free + LATCH_RELEASE_M or new_way)):
+                self._contact_latch = False                # (a contact latch only lets go when the driver does or reverses)
                 self.latch = None
                 if new_way:
                     self.info["released"] = "the new steering is clear at a slower speed - going on slowly"

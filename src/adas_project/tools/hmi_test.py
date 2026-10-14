@@ -452,6 +452,7 @@ def goto_and_home(test, goal_sim=(4.2, -0.05)):
     test.shot("home_end")
     x, y, _ = test.state()["sim"]["pose"]
     e_home = math.hypot(x, y)
+    test.result["crash_log"] = (test.state().get("sim") or {}).get("crash_log")
     test.result.update(goto_msgs=msgs, goto_err_cm=round(e_goto * 100, 1), goto_path_shown_pct=shown, home_msgs=msgs2,
                        home_err_cm=round(e_home * 100, 1), crashes=crashes + crashes2,
                        ok=bool(crashes + crashes2 == 0 and e_goto <= 0.10 and e_home <= 0.10 and msgs and msgs[-1].startswith("arrived")

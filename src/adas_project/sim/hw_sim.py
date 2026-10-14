@@ -106,6 +106,7 @@ class VirtualCar:
         self.last_cmd_t = time.time()
         self.crashed = False
         self.crash_count = 0
+        self.crash_log = []                           # (t, x, y, th, v, servo, pwm) at each new contact, for diagnosis
         self.lock = threading.Lock()
         self.running = True
         self.clock = 0.0                    # simulated time when not threaded (Monte Carlo)
@@ -189,6 +190,8 @@ class VirtualCar:
         if self.world.clearance(nx, ny, nth, self.p) <= 0.0:
             if not self.crashed:
                 self.crash_count += 1
+                self.crash_log = (self.crash_log + [(round(self.clock, 2), round(self.x, 3), round(self.y, 3), round(self.th, 3),
+                                                     round(self.v, 3), round(self.servo_wheels, 1), round(self.pwm, 1))])[-20:]
             self.crashed = True
             self.v = 0.0                               # blocked by the obstacle, like the real car
             return
@@ -295,7 +298,7 @@ class SimLidar:
             j = tt.argmin(axis=1)
             best = tt[np.arange(self.n), j]
             dark_seg = getattr(world, "dark_segments", None)
-            if dark_seg is not None and len(dark_seg) != len(seg):      # objects were added after the world was built
+            if dark_seg is None or len(dark_seg) != len(seg):           # not marked yet, or objects added after the world was built
                 from sim.hw_worlds import _finish
                 dark_seg = _finish(world).dark_segments
             if dark_seg is not None and len(dark_seg):
@@ -371,5 +374,5 @@ def truth_overlay(car, lidar_x=0.12, max_range=4.0):
             pts.append([round(a, 1), round(d, 3)])
         if len(pts) > 1:
             polys.append(pts)
-    return {"walls": polys, "crashed": crashed, "crashes": car.crash_count, "v_true": round(v, 3),
+    return {"walls": polys, "crashed": crashed, "crashes": car.crash_count, "crash_log": list(getattr(car, "crash_log", [])), "v_true": round(v, 3),
             "pose": [round(x, 3), round(y, 3), round(math.degrees(th), 1)]}

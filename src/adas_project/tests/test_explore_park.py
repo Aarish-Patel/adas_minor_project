@@ -87,11 +87,14 @@ class ParallelTest(unittest.TestCase):
 
 class EndToEnd(unittest.TestCase):
     def test_explores_a_furnished_room_without_contact(self):
+        """No contact with anything the LiDAR sees. The room's dark box returns nothing (since 14 Oct the twin really hides it): it can be
+        touched - nothing could know it before - but the virtual bumper (ADR-047) keeps it to a few touches and exploring goes on."""
         from sim.explore_eval import explore
         r = explore("room")
-        self.assertFalse(r["crashed"])
+        self.assertEqual(r["visible_contacts"], 0)
+        self.assertLessEqual(r["touches"], 4)                     # brief touches of the dark box (14 Oct: 3 in 100 s), no pushing on
         self.assertGreater(r["coverage"], 0.9)
-        self.assertLess(r["t"], 90.0)
+        self.assertLess(r["t"], 120.0)                            # (was 90 s while the twin let the LiDAR see the dark box)
 
     def test_parallel_parks_between_two_objects(self):
         from sim.park_eval import parallel

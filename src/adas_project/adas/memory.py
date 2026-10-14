@@ -25,6 +25,7 @@ except ImportError:                    # pragma: no cover
     cKDTree = None
 
 VOXEL = 0.02                           # m: remembered points are de-duplicated on this grid
+CONTACT_TRAVEL_M = 20.0                # contact points (virtual bumper) are kept for this much driving
 SCORE_MAX = 8.0                        # clamped evidence score per point (adas/visibility.py): hits add 1, see-through misses subtract
 
 
@@ -44,6 +45,7 @@ class ObstacleMemory:
         self.pts = np.empty((0, 2))                   # remembered points, local frame
         self.age = np.empty(0)
         self.score = np.empty(0)                      # evidence per point (adas/visibility.py)
+        self.contact = np.empty(0, bool)              # from the virtual bumper (adas/contact.py): an object the LiDAR cannot see
         self._judged = False                         # this scan's evidence already applied (prune_contradicted before add_scan)
 
     def advance(self, dt, v, delta):
@@ -86,28 +88,37 @@ class ObstacleMemory:
                 self.age = np.concatenate([self.age, np.zeros(len(near))])
                 self.seen_at = np.concatenate([self.seen_at, np.full(len(near), self.travel)])
                 self.score = np.concatenate([self.score, np.ones(len(near))])
+                self.contact = np.concatenate([self.contact, np.zeros(len(near), bool)])
                 # one point per 2 cm cell, the newest (the scan repeats the same wall ten times a second), with the cell's best score
                 cells = np.floor(self.pts / VOXEL).astype(np.int64)
                 key = cells[:, 0] * 1_000_003 + cells[:, 1]
                 uk, inv = np.unique(key, return_inverse=True)
                 best = np.zeros(len(uk))
                 np.maximum.at(best, inv, self.score)
+                cbest = np.zeros(len(uk), bool)
+                np.logical_or.at(cbest, inv, self.contact)
                 _, last = np.unique(key[::-1], return_index=True)
                 idx = len(key) - 1 - last
-                self.pts, self.age, self.seen_at = self.pts[idx], self.age[idx], self.seen_at[idx]
-                self.score = best[inv[idx]]
+                self.score, self.contact = best[inv], cbest[inv]
+                self._take(idx)
 
         if self.max_travel is None:
             keep = self.age < self.max_age
         else:
             keep = (self.travel - self.seen_at < self.max_travel) & (self.age < self.max_age)
-        self.pts, self.age, self.seen_at, self.score = self.pts[keep], self.age[keep], self.seen_at[keep], self.score[keep]
+        keep |= self.contact & (self.travel - self.seen_at < CONTACT_TRAVEL_M)     # invisible to the LiDAR: kept much longer
+        self._take(keep)
         if len(self.pts) > self.max_points:
             # thin the points far from the car first; the ones in and near the blind ring matter most
             v = self._to_vehicle(self.pts)
             d = np.hypot(v[:, 0] - self.p.lidar_x, v[:, 1] - self.p.lidar_y)
-            order = np.argsort(d)[: self.max_points]
-            self.pts, self.age, self.seen_at, self.score = self.pts[order], self.age[order], self.seen_at[order], self.score[order]
+            order = np.argsort(np.where(self.contact, -1.0, d))[: self.max_points]     # contact points first, then the nearest
+            self._take(order)
+
+    def _take(self, idx):
+        """Keep the points idx (index array or mask) in every per-point array."""
+        self.pts, self.age, self.seen_at, self.score, self.contact = (self.pts[idx], self.age[idx], self.seen_at[idx], self.score[idx],
+                                                                      self.contact[idx])
 
     def prune_contradicted(self, scan_pts, **_):
         """The scan's evidence against the memory (judge); the add_scan for the same scan then does not apply it again."""
@@ -130,7 +141,7 @@ class ObstacleMemory:
         hit, miss = evidence(md, mb, sd, sb, min_range=self.blind_radius, half_width=width_from_neighbours(self.pts, VOXEL))
         self.score = np.minimum(SCORE_MAX, self.score + hit) - miss
         keep = self.score > 0
-        self.pts, self.age, self.seen_at, self.score = self.pts[keep], self.age[keep], self.seen_at[keep], self.score[keep]
+        self._take(keep)
 
     def correct_pose(self, pose, max_jump=0.25, max_turn_deg=15.0, stamp=None):
         """Take a better pose (x, y, theta; the scan-matched world pose) for the car in the memory's frame. A jump larger than a scan's
@@ -152,12 +163,25 @@ class ObstacleMemory:
 
     def clear(self):
         """Forget everything (the car was moved by hand / the simulator teleported it: nothing remembered is where it was)."""
-        self.pts, self.age, self.seen_at, self.score = np.empty((0, 2)), np.empty(0), np.empty(0), np.empty(0)
+        self.pts, self.age, self.seen_at, self.score, self.contact = np.empty((0, 2)), np.empty(0), np.empty(0), np.empty(0), np.empty(0, bool)
+
+    def add_bumper(self, direction, depth=0.02, n=9):
+        """A contact the LiDAR cannot see (adas/contact.ContactDetector): remember the bumper line just ahead of the front (direction
+        +1) or behind the rear (-1), at full score - nothing returned there, so only a scan that sees through it can remove it."""
+        x = self.p.front_x + depth if direction > 0 else self.p.rear_x - depth
+        hw = self.p.width / 2
+        pts = np.column_stack([np.full(n, x), np.linspace(-hw, hw, n)])
+        self.pts = np.vstack([self.pts, self._to_local(pts)])
+        self.age = np.concatenate([self.age, np.zeros(n)])
+        self.seen_at = np.concatenate([self.seen_at, np.full(n, self.travel)])
+        self.score = np.concatenate([self.score, np.full(n, SCORE_MAX)])
+        self.contact = np.concatenate([self.contact, np.ones(n, bool)])
 
     def blind_points(self):
-        """Remembered points that lie inside the blind ring right now, in the vehicle frame."""
+        """Remembered points the LiDAR cannot see right now, in the vehicle frame: inside the blind ring, and contact points (virtual
+        bumper) at any distance up to 3 m."""
         if not len(self.pts):
             return np.empty((0, 2))
         v = self._to_vehicle(self.pts)
         d = np.hypot(v[:, 0] - self.p.lidar_x, v[:, 1] - self.p.lidar_y)
-        return v[d < self.blind_radius]
+        return v[(d < self.blind_radius) | (self.contact & (d < 3.0))]      # contact points: invisible at any distance

@@ -36,7 +36,7 @@ RANDOMISE = {"level": None, "seed": 0}          # sim/repeat_scenarios.py sets t
 
 
 def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_when=None, hook=None, fault=None,
-        cmd_loss=0.0):
+        cmd_loss=0.0, after_contact=False):
     """fault(t, pts) -> pts: called with every fresh LiDAR scan (relay format) and returns what the relay is given -
     empty, stale, delayed, corrupted (fault injection, ISO 21448-style); cmd_loss: probability that a command line
     to the ESP32 is lost (WiFi / serial loss).
@@ -86,16 +86,16 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
     rec = {"trace": [], "infos": set(), "max_level": 0, "min_clear": 9.0}
     while t < seconds:
         x, y, th, v, *_r, crashed = car.pose()
-        if crashed:
+        if crashed and not after_contact:               # after_contact: go on (a contact the relay must notice and stop pushing)
             break
         if stop_when is not None and stop_when(t, x, y, th, v):
             break
         if t >= next_scan:
             next_scan += SCAN_DT
             ox, oy = x + p.lidar_x * math.cos(th), y + p.lidar_x * math.sin(th)
-            best, _ = lidar._raycast(ox, oy, th)
+            best, dark = lidar._raycast(ox, oy, th)             # dark (absorbing) objects return nothing, as in the HMI twin
             r = best + lidar.rng.normal(0, noise, len(best))
-            ok = np.isfinite(best) & (r >= 0.2) & (r < 12) & (lidar.rng.random(len(best)) > dropout)
+            ok = np.isfinite(best) & (r >= 0.2) & (r < 12) & (lidar.rng.random(len(best)) > dropout) & ~dark
             cw = (-np.degrees(lidar.ccw)) % 360
             cw = np.where(cw > 180, cw - 360, cw)
             pts = [(round(float(a), 1), round(float(d), 3)) for a, d, o in zip(cw, r, ok) if o]
@@ -142,7 +142,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
         world.update(DT)                         # moving obstacles walk on
         rec["min_clear"] = min(rec["min_clear"], world.clearance(x, y, th, p))
     x, y, th, v, *_ = car.pose()
-    rec.update(collided=car.crash_count > 0, x=x, y=y, th=th, v=v, evading_end=assist.assists.evading, p=p,
+    rec.update(crashes=car.crash_count, crash_log=list(car.crash_log), collided=car.crash_count > 0, x=x, y=y, th=th, v=v, evading_end=assist.assists.evading, p=p,
                assist=assist, t_end=t)
     rec["latency"] = (vest.latency.delay, vest.latency.excess, vest.latency.tested)
     RANDOMISE.setdefault("log", []).append((tuple(assists), rec["collided"], rec["min_clear"]))   # safety bookkeeping

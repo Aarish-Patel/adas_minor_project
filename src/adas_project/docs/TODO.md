@@ -970,6 +970,11 @@ the car finds the gaps with its LiDAR and parks in the viable part of the strip 
       clearance median 16.1 cm -> 26 / 0 / 13 / 9 / 324 s / 17.6 cm (neutral). Twin ROOM goto_and_home: go-to now arrives every run
       (3.4-6.9 cm, 7 runs); return-to-start still fails 4/5 (stall at the doorway, 3 quick re-plans, 0-4 contacts) - localisation is
       fine (0.5-1.3 cm off at the goal, new loc_err_at_goal_cm in tools/hmi_test.py) -> likely pure-pursuit corner cutting: AK4.)
+- [~] AK11. Return-to-start in the twin ROOM (AH6/AC25): the contacts were the ROOM's dark box (no LiDAR returns) on the way back - not
+      localisation (0.3-1.3 cm off at the goal) and not corner cutting (a curvature-regulated look-ahead, L = sqrt(2*0.02/k), changed
+      nothing: 1/5 home, 0-7 contacts; reverted). Virtual bumper (ADR-047, adas/contact.py in PathGate): pushing time -83 % at an
+      invisible box in the twin. Lesson: dashboard twin runs must not share the CPU with the test suite - the relay slows like the
+      Pi's did and drives worse (a 1/5 vs 4/5 home difference came from that, not from code).
 - [ ] AK3. Brake hysteresis (release at d + 3-5 cm after 2-3 clear scans) and a speed-dependent protective field.
 - [ ] AK4. Follower: RPP-style proximity and curvature slow-down, minimum speed above the dead-band, velocity-scaled lookahead.
 - [ ] AK5. Online steering bias/gain (RLS on scan-matched yaw rate) + backlash compensation (adas/online_steering.py exists - review vs RLS).

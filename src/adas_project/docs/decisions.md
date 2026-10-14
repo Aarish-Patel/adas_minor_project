@@ -762,3 +762,24 @@ Removert's visibility test (Kim & Kim 2020).
 **Consequences.** A 2 cm post seen at 0.4 m stays when the car backs to 1 m with the wall seen beside it; a removed 20 cm box goes within
 ~15 scans; a wall that moved 1 m clears in ~6 scans at 2 m (was 2). Objects that really were removed but are only ever seen again from far
 away stay on the map until the car comes closer. Dashboard cost ~11 ms per update at 13 000 cells.
+
+# ADR-047 Virtual bumper: contact with something the LiDAR cannot see, inferred from motion
+**Status:** Accepted
+
+**Context.** A dark, absorbing or very low object returns no LiDAR points: neither the gate nor the planners know it is there. On 1 Oct the
+car pushed into such a wall for seconds (the drivetrain was damaged); in the twin ROOM the dark box was hit on the way back to the start
+and pushed against up to 7 times. ADR-045 catches a front that is mostly blind, not an object that covers only part of the view.
+
+**Decision.** `adas/contact.ContactDetector`, run inside `PathGate.decide` (so car and twin share it): throttle clearly above the dead-band
+(at least the PWM for 0.07 m/s - exploration creeps at PWM 40, ~0.10 m/s, just under a 0.10 threshold) for 0.6 s while the scan-matched pose (only poses of new scans - between scans it is dead-reckoned and moves
+with the command) moved less than 1.5 cm and the gate was not braking = contact ahead / behind. The bumper line goes into the obstacle
+memory at full score (`ObstacleMemory.add_bumper`) - nothing returns there, so only a scan that sees through it removes it - and the gate
+latches as after an emergency stop, released only when the driver lets go or reverses. Contact points count at any distance up to 3 m and are kept for 20 m of driving (the LiDAR never
+sees them; blind-ring points only count within 0.27 m) - the planners and the gate keep avoiding them after the car backs off. Robot-vacuum bumpers and the bumper / range layers of ROS navigation feed contacts into the obstacle map the same way.
+
+**Consequences.** Twin, full throttle at an invisible box that catches the front-left corner: time spent pushing against it 88 -> 15
+ticks (-83 %), contacts unchanged (it cannot be avoided before the first touch). The twin's scenario LiDAR now honours dark objects (it
+ignored the flag, and objects in hand-built worlds were never marked dark) and `sim.relay_scenarios.run(after_contact=True)` can go on
+after a contact.
+Exploring the twin ROOM (dark box now truly invisible): coverage 100 %, 0 contacts with anything the LiDAR sees, 3 brief touches of the
+dark box in 100 s (20 before contact points counted beyond the blind ring, the bumper never fired at PWM 40 before the threshold change).
