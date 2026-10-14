@@ -975,6 +975,9 @@ the car finds the gaps with its LiDAR and parks in the viable part of the strip 
       nothing: 1/5 home, 0-7 contacts; reverted). Virtual bumper (ADR-047, adas/contact.py in PathGate): pushing time -83 % at an
       invisible box in the twin. Lesson: dashboard twin runs must not share the CPU with the test suite - the relay slows like the
       Pi's did and drives worse (a 1/5 vs 4/5 home difference came from that, not from code).
+      (Virtual bumper deployed 14 Oct with AK1/AK2 (commit 55900d6, relay restarted via the panel): car check through the dashboard -
+      gate-only brake held the car 5.8 cm from an object after a 19 cm crawl, no false contact, steering unchanged. Pi 80 C (limp)
+      again after ~1 h: the fan (AH5) is still missing.)
 - [ ] AK3. Brake hysteresis (release at d + 3-5 cm after 2-3 clear scans) and a speed-dependent protective field.
 - [ ] AK4. Follower: RPP-style proximity and curvature slow-down, minimum speed above the dead-band, velocity-scaled lookahead.
 - [ ] AK5. Online steering bias/gain (RLS on scan-matched yaw rate) + backlash compensation (adas/online_steering.py exists - review vs RLS).
