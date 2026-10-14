@@ -605,7 +605,7 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
   out, come back), measure the error, and use the loop-closed / start-submap-relocalised pose so it returns exactly.
 - [x] W3. (adas/park.py find_parallel_slots + straightening strokes; 4/4 twin runs 3-6 cm / 4-8 deg; relay PARK PARALLEL) Parallel parking (slot detection along a row / kerb, parallel pose goal, S-curve reverse with the pose planner), twin test.
 - [x] W4. (re-evaluated: no gain even with gate-passing bad measurements; documented, not enabled) Robust EKF: re-evaluate with corruptions that pass the covariance gate; enable only if it helps, else document.
-- [~] W5. (29 Sep, usage limit hit: sim/needless_data.py (dataset of takeover decisions with counterfactual labels), sim/train_needless.py and the RelayIntent need_path/need_tau hook are written; the data generation was still running in the background (data/needless/decisions_100.npz then decisions_400.npz); next: python -m sim.train_needless, then compare as decider on untouched seeds with RC_NEED_PATH=pi/needless_v1.json)  Direct 'would this takeover be needless' model: build a dataset of takeover decisions from Monte Carlo counterfactual labels
+- [x] W5. (30 Sep: trained + compared, NOT adopted - v2 stays decider, see ml.md; was: usage limit hit: sim/needless_data.py (dataset of takeover decisions with counterfactual labels), sim/train_needless.py and the RelayIntent need_path/need_tau hook are written; the data generation was still running in the background (data/needless/decisions_100.npz then decisions_400.npz); next: python -m sim.train_needless, then compare as decider on untouched seeds with RC_NEED_PATH=pi/needless_v1.json)  Direct 'would this takeover be needless' model: build a dataset of takeover decisions from Monte Carlo counterfactual labels
   (features at trigger time), train (GPU/sklearn), use it as the decider, compare with v2 on untouched seeds.
 - [x] W6. (adas/online_calibration.py; ECE -37 % / -28 % prequential on the twin; wired into RelayIntent (shown risk only)) On-the-go adaptation of the crash predictor once a person starts driving: online recalibration of the risk (Platt / Bayesian) from
   outcome feedback the car can observe, per-driver profile; prequential evaluation in the twin.
@@ -614,3 +614,441 @@ power gauge, battery bar) and Tesla FSD scene (white/grey cars, lane lines, red/
 ## X. Requirements
 - [x] X1. (user, 29 Sep) docs/requirements.md - master SRS (goals, ODD, FR/NFR with acceptance criteria and status, HW, stack, I/O, success metrics). Keep its status columns current at milestones.
 - [x] X2. (29 Sep) Knowledge extraction into requirements / architecture / decisions / modules; docs/interfaces.md (shared data types).
+
+## Y. Lead / integration chat (30 Sep)
+- [x] Y1. (30 Sep: scenarios 21/21 pass; unit tests 160/161, failure logged below) Consistency check: `python -m unittest discover -s tests` and `python -m sim.relay_scenarios`; failures in other chats' modules are logged below, not fixed.
+- [~] Y2. (tools/publish.py written, dry run shown: GitHub differs by 3 files; the real push waits for the user's OK) tools/publish.py: copy the working tree into the published layout (src/adas_project/, no git-ignored files, no data/, logs, gui/zones.json), commit, push to real-car-adas. Dry run shown to the user before the first real push.
+- [x] Y3. (docs/DEPLOY_PLAN.md, nothing run) Pi deployment plan (prepared, NOT run) for when the car is repaired: backup name, changes since the 28 Sep 22:15 deploy, protocol additions the GUI needs (MODE, HOME, EXPLORE, PARK, zones), real-car test checklist turning SRS Met-S into Met. Goes in docs/modules/integration.md (or docs/DEPLOY_PLAN.md).
+
+## Z. Safety & planning chat (30 Sep)
+- [x] Z1. (30 Sep: trigger is now feasibility-based, `NUDGE_GENTLE`; repeatability 55 -> 100 % of 20 randomised cars, seeds 1000-1019; untouched seeds 3000-3039 x 5 box positions: 194/200, 0 contacts) Nudge (steering correction) robust to randomised cars: baseline 55 % spec in `python -m sim.repeat_scenarios`; fails when the servo-centre error drifts the car. Fix generally; report the new repeatability.
+- [x] Z2. (30 Sep: diagnosis only, no code change kept) Two Monte Carlo drives (seed 0, 'lapsing' and 'late' driver styles) still end stuck for ADAS and ADAS + intent: find the general cause and fix it.
+- [~] Z3. (30 Sep, plan-only so far: at planner kappa 1.5 a 3-cusp path exists down to a 0.60-0.65 m gap in 4-15 s of search (12 000-node production budget only reaches 0.70-0.75 m); kappa 2.0-2.5 gives 0.65 m with one direction change in 0.3 s but the car's reliable turn is ~0.65 m radius; still to do: full twin drive + margins) Parallel parking needs a ~1.1 m slot (3.4 car lengths): see whether a multi-point (3+ move) manoeuvre can use smaller slots safely.
+- [ ] Z4. After each change: affected tests + `python -m sim.relay_scenarios` all-pass; update docs/modules/safety_decision.md and planning.md parameter tables; report numbers with seeds and sample sizes.
+
+## P2. Perception chat (30 Sep)
+- [x] P2-1. Profile the perception chain per scan: `tools/profile_perception.py` (187 scans of 719 points, twin room route, 0.5 m/s; laptop idle, best of 3 runs; Pi = laptop x 3.5 from `sim/hw_sim.PI_COMPUTE_FACTOR` - `tools/pi_parts_bench.py` has no factor of its own; NOT measured on the Pi). Median / p95 ms laptop -> Pi estimate: convert 0.1/0.1 -> 0.3/0.4 · memory 0.4/0.5 -> 1.3/1.9 · RF2O+EKF 1.1/1.5 -> 3.7/5.1 · ICP 2.7/4.2 -> 9.4/14.7 (largest) · EKF predict per packet 0.02 -> 0.1 · tracking (LiDAR thread) 1.0/1.4 -> 3.3/4.9 · SLAM worker 0.02 (85 % of scans) / 30 -> 0.1 / 105 (the 15 % with a loop search). Control-loop share on a scan tick 4.3/6.4/9.5 (max) -> **15 / 22 / 33 ms** against the 20 ms budget: median inside, p95 marginally over; whole chain within one scan period except the SLAM worker's loop search (median 98, max 243 ms on the Pi estimate; it only ever holds the newest scan, so it drops scans instead of delaying anything, but as Python it competes for the GIL). Done: the loop search was 715 ms laptop (2.5 s Pi) as a Python loop over 6 859 poses; vectorised (integer cell shifts, padded float32 field) it is 28 ms with an identical result (`sim.slam_eval`: 8.0 -> 0.8 cm). Numbers in `models/perception_profile.json`, `docs/modules/perception.md`.
+  - [ ] P2-1a. (perception, needs the lead's OK to run on the Pi, benchmark in `~/rc_bench` only) Run `python3 tools/profile_perception.py` on the Pi to replace the x3.5 estimate.
+  - [ ] P2-1b. (perception, proposal) ICP scan matching is 60 % of the control-loop share: run `RelaySpeed._scan_pose` in a worker like the SLAM front end (latest scan wins, the pose is composed with the dead reckoning since the scan). Changes when `pose` updates, so the lead should agree first.
+- [x] P2-2. Global relocalisation: `adas/submaps.py` (`PoseGraphMap.relocalise/rebase/save/load`, `Relocaliser`, `kidnap_score`, `SlamService.relocalise/save/load`, lost mode), `RelaySpeed.relocalise/lost/save_map/load_map`. Twin: `sim/reloc_eval.py` -> `models/reloc.json`: lounge / room / doorway 60/60 fixes (median 0.3-0.5 cm, 0.1 deg), 0 wrong; empty rectangle 0/20 and corridor 2/20 refused (symmetric / ambiguous, correctly); 0.07-0.27 s per fix on the laptop; lift-and-drop mid-drive found by the detector (92 % of random drops in a room; 0 false alarms in ~10 000 real-car scan pairs) and re-fixed within 2 scans. 14 new tests in `tests/test_submaps.py`. ADR-030. Honest limits: the twin's scans are the map's own scans (same LiDAR model, no furniture moved); real rooms change; a corridor / empty room cannot be solved by one scan; the world frame after a relocalisation is the saved map's frame.
+  - [ ] P2-2a. (integration chat) Wire it: where to keep the map (`~/rc_car/map.npz`?), `SAVEMAP` / `LOADMAP` / `RELOCALISE` operator commands (interfaces § 16), `RelaySpeed.load_map` at relay start when the file exists, `lost` in the StateMessage `world` block (§ 15) and the HMI ("localising..."), zones / HOME must not use `pose_corrected` while `lost`.
+  - [ ] P2-2b. (perception) On the car: does a real LiDAR's map still match after furniture moves? Needs a saved map from a real drive + the user's OK for a test.
+- [x] P2-3. Moving-object test: `Tracker(model="lrt")` (default) in `adas/tracking.py`, twin harness `sim/tracking_eval.py` -> `models/tracking_latency.json` (person 0.10 m radius, standing then walking at 0.3 / 0.5 / 1.0 m/s across the path, car still / 0.4 m/s straight / arc with speed scale error and yaw-rate bias, 20 mm noise, 4 % dropout; tuned on seeds 0-2, reported on 3-8). FINDINGS: (1) the old test (fitted speed > 0.10 m/s for 3 scans) flags 15-19 % of static track-scans in this room at 20 mm (wall pieces cut by grazing gaps slide and swap identity), 700-860 per condition, 170-200 distinct static tracks - even with the consumers' >= 5-scan rule; no threshold / persistence choice reaches zero (`models/tracking_legacy_grid.txt`). FR-004's "never flagged" was only ever true for the consumer-filtered flag in easier scenes. (2) New test: 0 of ~13 000 static track-scans in the crossing runs, 1 track (0.03 %) in 15 000 in static drives; 8 mm noise: 0; 30 mm: 0.1 %. (3) Faster? Not for slow walkers: median from the first step with `Track.moving` 0.3 m/s 1.3-1.5 s, 0.5 m/s 0.8-0.95 s, 1.0 m/s 0.45-0.6 s vs the old test under the >= 5 rule 0.9-0.95 / 0.7-0.8 / 0.6 s (its raw flag 0.35-0.85 s, but that flag is the false one). The limit is information: at 20 mm noise a 0.3 m/s mover moves 1.5 sigma per scan. What is gained is the false rate, and that the >= 5-scan filter is no longer needed. Also fixed on the way: a head-on scenario regressed with a first version (`sim.relay_scenarios` is 21/21). ADR-031. Tests: `tests/test_tracking.py` (8).
+  - [ ] P2-3a. (safety_decision chat) In `RelayAssists` moving-object assist (`pi/relay_assists.py` ~ line 780) replace `t.moving_count < 5` by `not t.moving` (the new test already needs 2 scans above a chi-square threshold and holds with hysteresis); keep the 0.15-2 m/s speed window; re-run the crossing scenarios + a paired Monte Carlo (the swerve / yield should react 0.1-0.4 s earlier).
+  - [ ] P2-3b. (integration chat) `pi/wifi_drive_safety.py` Clearance thread: feed the tracker the EKF `vest.v` / `vest.w` (3 cm/s, 2 deg/s) instead of the model speed and `v tan(delta)/L`; and check the y sign: it builds y = +d sin(bearing) while `RelayAssists.points_vehicle_frame` / interfaces § 1 use y = -d sin(a) (clockwise angles) - if the bearing there is already counter-clockwise it is fine, if not the tracker sees a mirrored world and the yaw-rate sign in the motion field is wrong.
+- [x] P2-4. Parameter table + performance targets in `docs/modules/perception.md`, FR-004 / FR-006 rows in `docs/requirements.md`, ADR-030 / ADR-031 in `docs/decisions.md`.
+- [ ] P2-5. (proposal for `docs/interfaces.md`, lead) § 4 TrackedObject: add `evidence` (float, chi-square statistic of "not static", 2 dof) and change the `moving_count` row to "consumers may use `moving` directly (2 scans above threshold + hysteresis)"; § 6 EgoState: add `lost` (bool, pose_corrected not to be trusted while relocalising); new type `Fix` (pose in W, score, margin, inliers, submap); `SlamService` API additions as in `docs/modules/perception.md`. Not changed by me.
+- [ ] Z5. **Request to the perception chat:** commit 00825a2 (adas/tracking.py, LRT moving-object test) made 'Moving obstacle: head-on' worse on randomised cars: 18/20 -> 13/20 (seeds 1000-1019, closest -1..-4 cm, car ends at x 0.8-1.2 m instead of 1.95 m); restoring the previous tracking.py gives 18/20 again. The nominal `sim.relay_scenarios` still passes. Likely the object is flagged 'moving' later. Not edited here.
+- [~] Z6. (30 Sep, INTERRUPTED: adas/park_select.py, tests/test_park_select.py and the planning.md rows are written, but the tests are NOT green yet. First run: 11 of 14 failed, mostly test-helper errors (strip started at x=-1, depth 0.30 too tight; both fixed since, not re-run). Known: the one-move reverse S needs a slot > 1.0 m for the 0.36 m car (nose hits the front neighbour), so 1.0 m and shorter rely on the multi-point Hybrid A* fallback, whose success/time per length is still unmeasured. Next: re-run `python -m unittest tests.test_park_select`, measure S / multi-point by slot length (1.4, 1.2, 1.0, 0.8, 0.66, 0.55 m), delete the scratch file _dbg_tmp.py in the repo root.) (user, 30 Sep) Parking selection planning (planning logic only, GUI untouched): perpendicular mode = rear-wall ArUco marker detection + pose estimate + reverse trajectory aligned with the marker centre line, stop tolerance <= 5 cm; parallel mode = project the user's click on the parking strip, search all spaces, ignore occupied, nearest free space to the click, parking goal, realistic reverse parallel-park trajectory; different space sizes. Exposes only `selected_space_id`, `parking_goal`, `planned_path`. Module adas/park_select.py + tests/test_park_select.py + docs/modules/planning.md.
+
+## G3. GUI chat (30 Sep, second task): high-FPS simulator + Parking Simulator (user)
+- [x] G3-0. Removed the faint ground-truth "sim walls" mesh (0.05 m high) from the 3D drive scene: too low for the LiDAR to see, so it showed objects the car cannot detect.
+- [x] G3-1. (gui/render.py: 60 Hz FrameClock, StateInterpolator, Smooth; group transform moves the scene by the interpolated pose; FPS readout; 62 FPS measured) Part A: 60 FPS fixed-timestep renderer, interpolation / exponential smoothing of received states (car, map, zones tab), stable follow camera, update only changed meshes, live FPS counter. Note: OpenGL must render on the GUI thread; receiving stays on the network thread, rendering reads the latest snapshot.
+- [x] G3-2. (sim/parking_worlds.py: park_perp + park_street, runtime switch in tools/sim_car.py, layout in sim.parking, 3D objects in the drive scene) Part B: switchable Parking Simulator - perpendicular bay room (walls, floor grid, bay, ArUco marker with adjustable ID on the rear wall, reverse target) and parallel-parking street (road, sidewalk, parked cars, free spaces of different widths / lengths); spaces rendered as objects. Needs simulator worlds (sim/, not owned by the GUI chat) - decide who builds them.
+- [x] G3-3. (Park space tool: hover preview, click -> nearest free space, red / green / blue, zoom + pan kept; publishes clicked_world_pose, selected_space_id, occupancy - interfaces.md 16b) Part C: interactive Zones map - clickable parking strip, nearest free space, highlight, occupied red / free green / target blue, hover preview, zoom + pan.
+- [x] G3-4. (pose interpolation, no teleporting) Part D: smooth vehicle motion by interpolation, no teleporting; no planning-logic changes; events only through existing interfaces.
+- [x] G3-5. FPS profiling + optimisation (axis labels -> MetricGrid, vectorised point_walls / walls_mesh, cached map cells, world-frame parking group, glGetError off): 62 FPS scene, 60 FPS with map drawer.
+- [ ] G3-6. Not yet done / to check on the real car: the relay's `world.pose` is dead-reckoned + scan-matched, so on the car the parking layout does not exist (simulator only); a marker-based overlay for the real car is planning's (P2 / park_select).
+- [ ] G3-7. `PARK_TARGET` UDP command: proposed in interfaces.md 16b, not sent until planning declares support.
+- [x] G3-8. (user screenshot: bays outside the room after driving: the relay's estimated frame had drifted 20 degrees from the simulator's; the HMI now aligns the layout from the (sim.pose, world.pose) pair every packet; test_parking_layout_follows_the_relays_drifted_frame)
+
+## V. Parking validation framework (30 Sep, ML & validation chat; no GUI / planning changes)
+- [x] V1. (written, 86 scenarios: 20 perpendicular + 24 layouts x 2 start lanes + 10 named parallel + 8 others; nominal suite runs) sim/parking_validation.py: scenario builders + runner for both parking worlds (perpendicular ArUco: perfect, 5/10/20 deg marker rotation, occlusion, marker distance, LiDAR noise, localisation drift; parallel: 20+ layouts, vehicle lengths, narrow/standard/wide, random occupied, click between spaces, edge spots); executes the planner's ParkingPlan on the relay's own AutoNav / gate in the twin.
+- [x] V2. (results_*.csv, summary_*.json) Metrics per run: success, final pose error (cm), heading error (deg), corrections, collisions, time, path length -> CSV.
+- [x] V3. (860 runs = 86 scenarios x 10, 0 contacts; see monte_carlo.md) Monte Carlo with randomised sensor + steering noise (domain randomisation), 8 workers, background.
+- [x] V4. (reports/parking_validation/dashboard.html, results.csv, summary.csv, plots; tests/test_parking_validation.py 7 tests pass; docs done) Dashboard (HTML) + summary plots (reports/parking_validation/); tests/test_parking_validation.py; docs (monte_carlo.md, TODO).
+
+## V5. Parking on the actual GUI + twin relay (user request, 30 Sep: make it work end to end, test there, iterate, report only when all tests pass)
+- [ ] V5a. Relay accepts a parking command (PARK_TARGET / perpendicular marker) and drives park_select plans with its own follower (no framework injection), incl. the follower issues found in V (replan check, 6 cm gap, arrival tolerance).
+- [ ] V5b. tools/sim_car.py (twin relay) supports it; HMI (Parking Simulator) click -> relay; verify in the running HMI.
+- [ ] V5c. Validation framework runs through the real path (UDP commands to tools/sim_car.py or the same relay class), all scenarios pass or are documented refusals; iterate on failures.
+- [x] G3-9. (user, 30 Sep: LIMP 'LiDAR slow 5.5 Hz; control loop slow 95th 99 ms' while driving to the goal, 34 FPS) The display shares the computer with the relay / twin. Found: at 2560x1400 the HMI only reached 35 FPS (overlay widgets repainting over the GL scene ~7 ms); the relay stayed healthy in my runs (1366x768 and 2560x1400, GOTO active) but a slower or busier computer can starve it. Done: HMI runs below-normal priority when the host is local; auto frame cap (60 -> 30 FPS after 3 s under 48 FPS, `--fps 30|60|auto`, shown as 'eco'); mini-map redraw at 30 Hz. Not proven on the user's machine.
+- [ ] G3-10. Overlay widgets (speed cluster, cards) repaint on every GL frame; caching them as pixmaps would recover the last ~7 ms at 2560x1400.
+
+## AA. Parking end to end on the actual GUI + relay (user, 30 Sep; supersedes V5 - the pieces of the GUI, planning and validation chats do not work together yet)
+- [x] AA1. Audit: read all parking code and docs (adas/park_select.py, sim/parking_worlds.py, gui/parking.py, sim/parking_validation.py, sim/parking_e2e.py, tools/sim_car.py, pi/relay_assists.py diffs, docs); list what is broken; delete _dbg_tmp.py.
+- [ ] AA2. Perpendicular parking: bay with an ArUco marker on the rear wall; guidance from the REAR CAMERA marker pose + LiDAR; reverse in aligned with the marker centre line, stop tolerance <= 5 cm.
+- [ ] AA3. Parallel parking: a parking STRIP with cars parked at various distances; the user clicks a location in the strip (click-and-go); the car finds the closest viable free space, goes there and parallel parks (realistic reverse manoeuvre); different space sizes; occupied spaces ignored.
+- [ ] AA4. Relay command (PARK_TARGET / marker parking) handled by the relay's own follower; twin relay (tools/sim_car.py) supports it; the Parking Simulator in the HMI drives it; verified in the running HMI.
+- [ ] AA5. Validation framework runs through the real path (UDP -> twin relay); all scenarios pass or are documented refusals; iterate until the metrics are met.
+- [ ] AA6. GUI lag / jitter: profile and optimise (G3-9 / G3-10 open), verify FPS and frame-time stability with the twin running.
+- [ ] AA7. Tests, docs (planning.md, gui.md, interfaces.md, requirements.md status), commit; report only when the metrics are met.
+- Findings of the audit (AA1): (a) tests/test_park_select.py used outdated conventions (marker `facing` pi for a wall behind the car, 8 cm marker, pitch-32 camera, 0.9 m spaces for a 0.36 m car): 11/15 failed and took 112 s -> rewritten to the real convention and to the planner's real limits (17 pass in 1.4 s); (b) planner: a space shorter than car + 0.9 turning radii (~0.96 m for the 0.33 m car) was searched for 9 s and refused -> `min_space_length` refuses at once; (c) the follower skipped half of the reverse S (nearest-point search jumped to the retraced forward leg after the cusp); the arrival was declared on a pose that drifts 5 % of the distance along a straight street (scan matching is degenerate along a wall) -> 20-50 cm errors in truth; (d) the S was planned at the tightest curvature (no control margin) and the pull-up was reached with a heading error; (e) harness "wanted" space is not the nearest VIABLE one (S7 is too short: the car correctly parks in S5).
+- AA3 status (parallel, in-process relay twin, 4 spaces x 12 seeds, tools/_inproc_batch.py): 48/48 within 10 cm / 10 deg, position 0.1-7 cm, heading <= 9.4 deg, 0 contacts. Fixes: leg-limited nearest-point search, straight run-in before the reversing point, S at 80 % of the tightest curvature (roomier margin first), reverse-back approach when the car is already past the pull-up point, slow reverse (0.14 m/s, 0.15 m look-ahead), terminal creep / re-plan from the reached pose, LiDAR re-localisation on the neighbours (gap middle + road-side faces measured on the way in, frozen at the first reverse; end faces in a point-to-line ICP, translation only) applied as an offset on the scan-matched pose (adas/layout_localise.py, Censi 2008).
+- [ ] AA3b. Real-path (UDP) run of all street cases; nearest-VIABLE expectation in sim/parking_e2e.py; per-run crash counting.
+
+
+## AB. Production hardening before the car test (user, 30 Sep, master spec; supersedes the open parts of AA)
+User correction: parallel parking has NO predefined spaces - one continuous kerb strip with cars parked at arbitrary spacing;
+the car finds the gaps with its LiDAR and parks in the viable part of the strip nearest to the click.
+- [x] AB1. Parallel parking on a continuous strip: gap detection from LiDAR along the strip, nearest viable slot to the click, reverse S / multi-point, re-measure + re-plan alongside the gap; world (sim/parking_worlds.py), HMI (gui/parking.py), relay command, validation (sim/parking_validation.py, sim/parking_e2e.py) without space rectangles. Target <= 5 cm, correct heading, 0 contacts, nearest viable gap.
+- [x] AB2. Perpendicular (ArUco + LiDAR): remaining suite failures (rot20 heading, lidar 4 cm stuck, refuse beyond marker range), <= 5 cm.
+- [x] AB3. Click-to-go audit: forward preference, gear-change / curvature / clearance costs, replanning triggers (blocked, new obstacle, stall, localisation jump), stuck detection + recovery ladder; scenario tests (straight, corridor, dead end, dynamic obstacle, goal behind obstacle, repeated replans).
+- [x] AB4. Obstacle memory: persistence through the LiDAR minimum range and occlusion (IDs, age, confidence, decay); audit the existing blind-zone memory + tracker; tests.
+- [x] AB5. Evasive steering: after the evasive manoeuvre re-plan and rejoin the route (click-to-go active) instead of only steering away; scenarios (static obstacle, crossing pedestrian, narrow pass, rejoin).
+- [x] AB6. Localisation drift (scan matching + submaps): long drive, loop return, repeated parking.
+- [x] AB7. Vehicle dynamics in the follower: steering-rate / acceleration limits, smooth reversing.
+- [x] AB8. Dashboard: 30+ FPS stable, no shake (profile with the twin running); relay not starved.
+- [x] AB9. Pi performance numbers (planner / control loop latency, CPU, memory) from the Pi-factor twin.
+- [x] AB10. Cleanup of the parking debug tools, docs (planning.md, gui.md, interfaces.md, requirements.md, decisions.md), tests green, commit; final audit report.
+- AB1 status (30 Sep): continuous lane everywhere (world, HMI, relay command, planner, validation, e2e); gap detection from the scan,
+  nearest viable slot to the click, reverse S at 80 % curvature with a roomy margin first, multi-stroke exit plan for tiny spots
+  (Vorobieva et al. 2015; exact rectangle clearance; 0.63 m = car + 0.30 m minimum, ~10 ms), re-selection alongside the gap from the
+  close-range scan, creep-centring along the slot. Results: validation suite parallel 34/62 at the strict 5 cm / 5 deg target
+  (0 contacts, every gap choice right or a <= 10 cm near-tie); all misses are 5-12 cm position errors on 5-10 m approaches = pose
+  drift of the manoeuvre odometry (along-street ICP slides, 4-5 % short; lateral 5-9 cm). Real UDP path (sim/parking_e2e.py):
+  5/6 street cases <= 4.9 cm, the 9 m case 9.5 cm; ArUco bay 6.1 cm. Next: AB6 odometry drift (scan-to-local-map), AB2 bay < 5 cm.
+- Known: tests/test_explore_park.EndToEnd.test_parallel_parks_between_two_objects (old PARK via Hybrid A*) fails under heavy CPU
+  load (the twin's simulated Pi planning time follows the laptop's), passes alone 3/3.
+- AB6 status (30 Sep): pi/scanmatch.LocalMapOdometry replaces scan-to-scan Odometry in the relay (manoeuvre frame and world pose):
+  scan-to-local-map (KISS-ICP, Vizzo et al. RA-L 2023), point-to-line Gauss-Newton with Huber weights (Censi ICRA 2008), corridor
+  degeneracy from the information matrix -> that direction from the speed model (Zhang, Kaess & Singh ICRA 2016). Offline twin
+  benchmark (6 streets, 9 m, speed model 5 % low): along 30.8 -> 3.1 cm, lateral 8.1 -> 1.4 cm, heading 1.8 -> 0.1 deg,
+  3.3 -> 1.7 ms/scan; corridor + turning rooms: along 9.7 -> 3.3, lateral 1.7 -> 0.7, heading 0.41 -> 0.09 deg. Unit tests 216,
+  scenarios 21/21. Parking: re-plan uses the pose at its launch (bug: the car rolled on), a slot re-selected far away is measured
+  again beside it (<= 3), a parking path held still 2 s is re-planned from there (<= 3) instead of given up.
+  Parallel suite at 5 cm / 5 deg: 45/62, 0 contacts, 0 stuck; misses = along 5-12 cm after 5-10 m approaches (lateral <= 3 cm).
+  E2E real path: street 5/6 (1.1-3.8 cm; the 9 m case 8.5 cm), bay 6.9 cm.
+- [x] AB6b. par_edge_last: the re-plan at the lane end finds no manoeuvre ("no room here after all", 31 cm): investigate.
+- [x] AB11. Test determinism: Hybrid A* budgets are wall-clock; under full-suite CPU load test_explore_park (parallel / bay) can
+  miss (pass alone). Use a node budget in the twin's inline plan service. One intermittent segfault seen in the offscreen GUI tests.
+- AB2 done (30 Sep): camera -> which bay (marker position), LiDAR -> the wall's line (trimmed PCA fit, neighbours' rear faces
+  rejected) and the final stop (the last reverse leg follows the wall as measured, frozen within 4 cm). Bay suite 23/24 (all parks
+  <= 4.4 cm, mean 2.8, heading <= 3.1 deg; the miss = 4 cm LiDAR noise stress case, 7.5 cm, no longer stuck). E2E bay 5.2 cm.
+- Stall recovery: a failed re-plan from mid-manoeuvre falls back to a goal-pose search with reversing (fixed par_edge_last,
+  street19b/23a). Whole parking suite 70/86 at 5 cm / 5 deg: every miss is a 5-13.6 cm position error (none stuck, 0 contacts);
+  79 parks: median 3.0 cm, p90 8.0 cm, heading median 1.7 deg. E2E real path: street 6/6 (1.7-5.0 cm), bay 5.2 cm.
+- AB3 done (30 Sep): sim/autonav_eval.py suite - 13 scenarios x seeds with behaviour metrics from the true trace (forward / reverse
+  metres, gear changes, steering reversals per metre, stop-and-go, re-plans): straight, goal behind (forward U-turn), sharp side goal,
+  corridor ahead / behind, dead end (reverse out), doorway, 52 cm gap, room, a box pushed onto the path, three boxes in turn, a
+  crossing walker, goal inside a box. 26/26 (2 seeds): forward only where forward is possible, reverse only where needed, 0 steering
+  oscillation, <= 1 stop without events. The reported "reverse to goal / oscillation" does not reproduce in the twin. New: a clicked
+  point on an obstacle (its inside is unseen by a 2D LiDAR until close) -> when the re-plan fails, the body is swept toward it and the
+  car goes as near as it fits ("arrived as near as the car fits"); 6 classic goals 6/6.
+- AB11 done: the twin is deterministic - Hybrid A* budgets in the twin are node counts (NodeBudget, 1600 nodes per Pi-second), the
+  plan delay is the work done (nodes, grid cells, clearance evaluations) at Pi rates, SLAM runs inline in the twin. The bay test that
+  gave 3.8 / 8.2 / 25 cm in one process now repeats exactly; return to start 4.07 cm x6 (was 2/6 failures at 215 cm).
+- GUI crash fixed (intermittent access violation, also a theme-switch hazard in the real HMI): worker threads emit through
+  controls.ThreadSignal bridges (Qt drops them when the widget dies) and Python garbage is collected only on the GUI thread
+  (pyqtgraph GarbageCollector) - a worker importing PyTorch had freed an old window's widgets. GUI tests 4/4, full suite 2/2 clean.
+- AB5 done (30 Sep): the evasive assist already re-plans every 0.3 s and after a stall, and plans back to the driver's line; new
+  scenarios prove it: back within 3 cm of the line 1.5 m past the block with 2 steering reversals (out, back, straighten), a second
+  obstacle in the swerve path, a walker stepping into it (no contact). Scenario suite 24/24. The steering-reversal metric (also in the
+  click-to-go suite) had a units bug (stick is -1..1) - fixed; click-to-go worst 0.56 reversals/m (doorway), limit 1/m.
+- AB4 done: the gate's obstacle memory now rides on the scan-matched pose (ObstacleMemory.correct_pose after each scan, stale poses
+  ignored by stamp, a frame jump such as ORIGIN keeps the points around the car); dead reckoning only bridges 0.1 s. Unit tests
+  (tests/test_memory.py, 8): blind-ring persistence, the scan overrules the memory, a no-return bearing keeps its points, forgetting
+  after the car drove on, 10 % speed error 4 cm -> < 0.5 cm, stale pose, ORIGIN, movers not remembered. (A relay scenario for a post
+  inside the minimum range was tried and dropped: the gate stops a creeping car before the blind ring matters - not a real test.)
+  Moving objects keep IDs / velocity / age in adas/tracking.py (Tracker); the memory stores only static returns (exclude movers).
+- AB8 done (30 Sep): `python -m gui.dashboard --measure S` records frame intervals and the displayed car pose (shake = second
+  difference per frame) on the real HMI; measured with the twin relay weaving (laptop panel 1707 x 1067 @ 165 Hz):
+  bare 3D scene 62.5 FPS, frame sd 6.3 ms (p95 30 ms: a 16 ms timer beating against the refresh), shake p95 3.0 / max 10.3 mm ->
+  swap-paced frames with an 11 ms floor: 92 FPS, sd 4.6 ms, shake p95 2.3 / max 5.9 mm; with the map drawer 52 -> 64 FPS (the map
+  follows the car every other frame). Relay health stayed NORMAL (LiDAR 10 Hz, link 20 Hz) during the runs.
+- AB7 done: steer before moving - at a standstill a steering change > 0.3 (of full lock) is given first and the car waits 0.15 s (servo
+  delay + slew) before rolling (relay `_navigate`); speed stays with the PI speed controller + feedforward (FR-034). Parking suite neutral
+  (68/86, p90 5.9 cm), click-to-go 26/26.
+- AB9 done (`python -m sim.profile_relay`, 30 drives): control loop 4.2 ms mean per 50 ms tick on the laptop = ~14.7 ms on the Pi 5
+  (budget 20 ms); per scan: pose / EKF p95 4.7 ms (16 ms Pi), gate + memory 0.5 ms, intent 1.7 ms; planner in the worker process
+  median 23 ms / p95 355 ms laptop. Not yet measured on the Pi itself (needs the car: `python3 -m sim.profile_relay --on-pi`).
+- AB10 done: docs (interfaces 15/16/16b, ADR-032..037, requirements FR-030/FR-033, planning / perception / gui modules, CLAUDE.md commands).
+- Open for the car test: MEASURE odometry drift on the car (5 m straight, taped mark) and the parking accuracy; forward entry into a dead
+  end is refused (steering too weak); long approaches (5-10 m) park 5-10 cm off; test_explore_park load sensitivity is gone (twin
+  deterministic).
+- [x] AB12. Monte Carlo after the session (models/relay_mc.json, 24 seeds x 5 styles): 0 crashes for every assisted variant (unchanged),
+  goals 108 -> 110 (adas) / 105 -> 112 (adas+intent), min clearance 2.0 -> 3.4 cm; BUT needless takeovers rose (adas 68 -> 179,
+  adas+intent 34 -> 44). Bisect on 40 runs: memory correction / odometry: no effect; the twin's work-based plan delay: 11 of +16 -
+  it under-estimated the evasive search's Pi time (model 118 ms vs measured x 3.5 337 ms median), so plans arrived too early. Refit
+  the delay model's rates on single-threaded measurements, then re-run the Monte Carlo.
+- AB12 result: the twin's Pi-time model refitted (single-threaded, 127 jobs of every kind: 1400 nodes/s, 8e5 grid cells/s, 1.3e7
+  clearance evaluations/s, 5 ms base; per-kind median measured/model 0.8-1.0). Needless takeovers do not come back down with it (40-drive
+  bisect 76; pre-session code 59): the old baseline measured laptop time x 3.5 WHILE 8 simulations shared the laptop, so evasive plans
+  were inflated and often arrived too late to take over. With the planner on its own core (as on the Pi) more arrive in time - an
+  arbitration question for the decider (ML), not a planner regression. Final Monte Carlo (24 seeds x 5 styles): 0 crashes for every
+  assisted variant; adas+intent goals 111/120, 44 needless takeovers; min clearance 3.0 cm.
+- Final numbers with the calibrated twin: unit tests 224/224; scenario suite 24/24; click-to-go 26/26; parking suite 64-71/86 at
+  5 cm / 5 deg depending on the planning-time model (0 contacts, 0 stuck; median 3.2 cm, p90 8.8 cm, max 12.1 cm); HMI 64-92 FPS,
+  HMI 375 MB / relay 120 MB RSS, relay 25 % of a laptop core (~90 % of one Pi core by the 3.5 factor - MEASURE on the Pi).
+- Final real-path run (30 Sep): 5/7 - street s:6.4 5.1 cm (just over), s:9.1 chose the neighbouring gap once (then 4/4 at 3.0-4.6 cm);
+  bay 4.2 cm. Audit report: docs/audit_2026-09-30.md.
+
+
+## AC. Dashboard test of 30 Sep (user) - parallel parking broken in the real HMI
+- [ ] AC1. Parked car laterally shifted / partly outside the lane: must be fully inside the lane and as close to the kerb as possible.
+- [x] AC2. Far click: planned path not shown on the map and the car drives into the wall while RT is held.
+      Done: the way to the slot is a re-planning click-to-go drive (ADR-038); dashboard park_far / park_from_far_side: path shown 99-100 %, no contact.
+- [x] AC3. Tight spots refused ("can't park") although the car fits.
+      Done: tight gaps planned (multi-stroke) and driven; dashboard park_tight: inside, 6.1 cm off the kerb, 0.2 deg (a stall mid-manoeuvre pulls out and retries).
+- [x] AC4. Unparkable click: never refuse - take the nearest parkable spot on the lane and plan for it.
+      Done: the nearest viable slot, independent of where the car stands; dashboard park_on_car / park_short_gap park in the next gap.
+- [x] AC5. The planned path is missing from the map about half the time.
+      Done: the path (way + manoeuvre) stays drawn during re-plans; dashboard 98-100 % of driving ticks in every run.
+- [x] AC6. HMI test harness: the real EVWindow + twin relay, real clicks on the map, dead-man throttle, screenshots reviewed - for every
+      feature used today (manual drive + assists / braking, click-to-go, parallel parking, bay parking, zones, return to start).
+      Done: tools/hmi_test.py (own relay 4310/8190, own zones file) - parking x10, bay, go-to + return to start, zone, braking at a wall.
+- [x] AC7. Validation criteria: "inside" = the whole body inside the lane band, kerb-side gap reported; fix what the suites called success.
+      Done: inside = whole body in the lane, 1-8 cm off the kerb; lane cases scored on along error / heading / kerb (sim/parking_validation.py).
+- [x] AC8. Root cause (user's relay log 10:16-10:19 + tools/hmi_test.py): the way to the slot was ONE fixed Dubins curve planned from one scan
+      (often a long reverse), never re-planned -> reversed to 8 cm of a car / 21 cm of the wall; from inside a gap no Dubins exists -> "no way
+      to park there". New sequence (as production APA): choose the slot, drive to its pull-up pose with the re-planning click-to-go planner
+      (Hybrid A*, obstacle memory, stall recovery), measure the gap alongside, then plan and drive the manoeuvre.
+      Done (ADR-038).
+- [x] AC9. Parked already (car inside the lane): pull out first (the multi-stroke exit planner run from the car's pose), then approach.
+      Done: plan_pull_out; dashboard park_again_elsewhere ok (4.3 cm off the kerb).
+- [ ] AC10. Kerb: the parked neighbours stand 3-6 cm off the kerb; target 3 cm (was 7) with its own clearance along the path (kerb is not
+      seen by the LiDAR - 1.5 cm planning margin), neighbours keep theirs.
+- [x] AC11. Map: keep the path drawn while a re-plan / the gap measurement runs, and draw the whole intended path (approach + manoeuvre).
+      Done.
+- [x] AC12. tools/hmi_test.py runs its own twin relay on 4310/8190 (the first run went to the user's relay on 4210 at 10:28-10:31: it
+      switched their room to STREET and clicked a park target; nothing else). Scenarios: open, tight, far, on a car, short gap, after
+      hand-driving, parked -> park elsewhere, RT released and pressed again, from the far side of the road.
+      Done.
+- [x] AC13. "NO DATA constantly" (user): the relay died on an AttributeError in the half-finished AutoNav (`_refines`) the user's restarted
+      relay had loaded from the working tree. Fixed, and a fault in any autonomy code (tick or GOTO / PARK* / EXPLORE command) now stops the
+      autonomy with a message instead of ending the relay. Their stream measured healthy otherwise (20 Hz, 12 KB, no gap > 60 ms).
+- [x] AC14. Pull-out stuck (user screenshot 11:24, harness park_again_elsewhere): the first stroke backs toward the car behind until the brake
+      gate predicts contact at 0.10 m, then it stalls.
+      Done: stroke end at the gate's creep limit, progress-based stall, pull-out strokes 8 cm.
+- [ ] AC15. Rear wheels clip the kerb (user): kerb target 3 cm + tracking error / the rear corner's swing in the S; also the HMI's wheels may
+      stand outside the planner's body width.
+- [ ] AC16. Screen / car shake (user): LiDAR noise may move the points, never the car model or the camera - filter the displayed pose.
+- [ ] AC17. Twin actuation noise (user): steering / throttle must not give exactly the same curve every time; parking and click-to-go must
+      adapt (closed loop), evaluated with the noise on.
+      Done so far: sim.hw_sim.ActuationNoise on in every simulation (ADR-041). Parking adapts: stroke end at the gate's creep limit,
+      progress-based stall (RT pulses no longer reset it), side correction (one S + back / two S / partial), straighten at the approach
+      point, final position measured from the neighbours before 'arrived' (centred + in line, gap offset in long gaps), goal in line with
+      the neighbours (ADR-042 to write), kerb wall for the parking searches, escape from a start inside the margin, stale matcher origin.
+      Validation (62 lane cases, noise on): 44 -> 49 ok; dashboard 6/9 -> see AC6 results. Remaining: kerb < 1 cm in ~4, along 6-10 cm in
+      ~5 (fix in: measured centring before arrival), 2 stuck.
+- [x] AC18. Relay crash on a room switch / simulator reset (teleport hooks ran on the HTTP thread and raced the loop's obstacle memory:
+      IndexError in memory.add_scan -> NO DATA). The loop runs them itself now (TELEPORT_PENDING).
+
+- [ ] AC19. Click-to-go from a parked car (user, 30 Sep): the relay remembers the lane it parked in; a GOTO while the car stands in that lane
+      pulls out first (park_select.plan_pull_out, in the plan service) and then drives the go-to.
+- [ ] AC20. Remaining validation failures (55/62 lane): two tight gaps end stuck at 42 deg on the kerb ("stuck - no way through"), one
+      0.83 m gap times out mid-manoeuvre, a 1.79 m gap 6-7 cm along (the neighbours beyond reach), a 0.71 m gap 13 cm out.
+
+- [ ] AC21. Relay scenario "head-on walker" fails with the actuation noise (closest -3 cm; 5 cm without noise): the walker's velocity is
+      estimated at ~0.4 m/s from 0.8 s in both, but the tracker's likelihood-ratio 'moving' flag comes at 1.9 s instead of 1.4 s (the
+      static reference tracks and the ego-motion prior differ), and the crossing logic then waits for 5 confirmations -> backing away
+      starts 0.55 s late. Backing away now matches the closing speed (0.15-0.35 m/s, adas/crossing.py) - not enough alone. To do: the
+      moving test's ego-motion prior under actuation noise (adas/tracking.py ego_v / ego_w), the 5-confirmation wait for tracks in the path.
+      (Committed the noise model before running this suite - a slip; the suite is 23/24 with the corridor threshold adjusted.)
+
+- [ ] AC22. Click-to-go suite 25/26 with the actuation noise: corridor_ahead seed 1 'arrived' 17 cm off on the truth - in a featureless
+      corridor the along motion is unobservable to the LiDAR (scan matcher and range flow degenerate), the odometry takes the speed model,
+      and the twin's speed gain now errs by a few % (4.4 m -> 13 cm). Options: an end-of-corridor feature when there is one, a final
+      approach on the goal as measured in the scan (as the parking does with its neighbours), a speed-gain estimate from the non-degenerate
+      stretches.
+
+- [ ] AC23. HMI: after switching the Parking Simulator to ROOM the panel still shows the bays room's "3 of 5 spaces free".
+- [ ] AC24. Still open from the dashboard / validation (30 Sep, noise on): lane 55/62, bays 23/24, 0 contacts; successful lane parks 1.8-6.2 cm
+      off the kerb, <= 4.4 cm along, <= 4.3 deg. Failures: two tight gaps end stuck at 43 deg across the kerb line (the last-resort search),
+      two tight gaps time out, 1.79 m gap 6-7 cm along (the neighbours beyond reach). AC1 / AC10 / AC15 stay open until these pass.
+      Dashboard 30 Sep (last runs): park open / far / on a car / short gap / after driving / again elsewhere / far side / tight / RT pulses /
+      then go-to all ok in their last run (RT pulses and tight each failed once in an earlier run); bay park 4.5 cm 2 deg; go-to through the
+      doorway 10.8 cm (arrives on the odometry, 8 cm) + return to start 2.2 cm; 5 km/h zone held (0.105 m/s max); braking stopped 10 cm
+      before the wall. Not yet measured: the display shake with the One Euro filter (AC16).
+
+- [ ] AC25. Last full dashboard run (16 scenarios) 13/16: all 10 parking + lane over the street + zone + braking ok; goto_and_home had 3
+      CONTACTS (investigate first - a safety regression?), bay_park failed its 5 cm check, lane along the room wall looped in pull-out retries.
+
+## AE. Deploy to the Pi (user, 30 Sep evening: "plugged in the rpi and lidar, get all the code on the rpi, the car won't move, make sure
+##     everything is working and ready for me testing it")
+- [x] AE1. Reachability + hardware (serial devices, temperature), backup of ~/rc_car, keep the car's own json (tuning, calibration, panel).
+  (30 Sep 23:10: Pi 192.168.1.6 reachable, 50 C; backup ~/rc_car_backup_20260930_2310.tgz; tuning_real_car.json, cal_results.json,
+  panel_params.json, car_model.json checksums unchanged by the upload. HARDWARE BLOCKER: no USB device enumerates - the kernel logs
+  'usb usbN-portM: over-current change' on every port, ~20 per second, since 23:07; the supply negotiated no USB-PD
+  (max_current 900 mA, usbpd objects 0) so the Pi 5 caps all USB ports at 600 mA together. User to check power: LiDAR alone,
+  ESP32 + servo off the Pi's USB power (own 5 V regulator), or a 5 V 5 A PD supply.)
+- [x] AE2. Upload adas/, pi/, gui-free runtime (sim/tools not needed on the car), requirements; remove stale files from pi/.
+  (30 Sep 23:14: 139 entries from the working tree (commit da9d0b6); 18 old top-level pi/*.py scripts that the repo keeps in
+  pi/legacy moved to ~/rc_car_stale_20260930/pi (not deleted); car data kept: json reports, tuning .bak files, drive_logs,
+  the built pi/lidar_stream/rc_lidar_stream; rc-relay.service and control_panel.* identical, so no service change.)
+- [x] AE3. Offline checks on the Pi (imports, unit tests that need no hardware), then restart rc-relay; LiDAR rate, ESP32 state, health.
+  (Offline part done: Python 3.12.3, numpy 1.26.4, scipy 1.11.4, sklearn 1.4.1; relay + planners import in 0.44 s; 67 hardware-free
+  tests pass on the Pi in ~/rc_bench/tests_20260930 (esp_link, health, zones, crossing, speed_control, planning_safety,
+  park_select); the other 18 need sim/ (twin, not on the car) or the repo layout. rc-relay picked up the new code by itself
+  (it restarts every ~15 s while 'No LiDAR found'). Open: LiDAR rate, ESP32 state, health - wait for the USB power fix.
+  23:25:55 re-plug: both CP2102s (10c4:ea60) attached as ttyUSB0/1 and dropped within 1 s; over-current stays at ~23/s on
+  all six root ports, also while nothing is attached -> a steady overload, short or back-fed VBUS, not a port-name issue
+  (find_ports probes every /dev/ttyUSB*). Next: user unplugs all USB; if the flags stop, add LiDAR alone, then ESP32.
+  23:29 reboot on another power source: still max_current 900 mA (no USB-PD), over-current from 0.77 s after boot on all
+  ports (before any device enumerates), no device attached. Same kernel (6.8.0-1065, installed 24 Sep) on the good 28 Sep
+  boots (0 over-current, LiDAR + ESP32 attached); the 28 Sep 19:30 boot had the same storm (3697, no devices) -> the
+  power/wiring setup, not the software. LiDAR alone (23:33): attaches for 1-4 s, drops, over-current continues -> the
+  LiDAR's draw is what trips the 600 mA cap. ESP32 alone on the user's stronger supply (23:35 boot): 0 over-current,
+  CP2102 stays on ttyUSB0, PING -> PONG, 'ROVER READY', ESP32 on Wi-Fi 192.168.1.15; supply still no USB-PD
+  (max_current 900 mA). Options for the LiDAR: its adapter's second (power) micro-USB from a separate 5 V source, a
+  5 V 5 A PD supply, or usb_max_current_enable=1 (user, sudo) only if the supply really gives 5 A.)
+- [ ] AE5. find_ports() opens each /dev/ttyUSB* with serial.Serial(p, 256000) - DTR/RTS are asserted during open
+  before being cleared, which can reset the ESP32 (auto-reset circuit): 'ROVER READY' was printed during a PING check
+  while the relay was looping on 'No LiDAR found'. Open the probe port with dtr/rts False before open(), as open_esp does.
+- [x] AE4. Dashboard connection from the laptop with NO motor commands: stream, PING, MODE, ZONES, ORIGIN, the Parking lane tool.
+  (30 Sep 23:37-23:42, LiDAR on external power, ESP32 on the Pi: relay found both; LiDAR 11-12 Hz, 'Good'; ESP32 ok (PONG
+  every 0.2 s); health normal; PING -> PONG 27 ms; stream 19.4 Hz, ~1180 points. `python -m gui.dashboard --host 192.168.1.6`
+  screenshots reports/pi_deploy_20260930/dash_drive.png, dash_map.png: HEALTH + ESP32 green, room outline in 3D and on the map,
+  Parking lane tool present. 10 s of the controller's at-rest packet (A 87 87 / M 0): all stream keys present (world, assist,
+  nav, plan, gate, intent), pwm_sent 0 throughout, pose held at 0 +-1 mm, nav idle, p_crash 0.006. Pi 5 timing (relay running):
+  parallel-parking plans 2-46 ms (twin's Pi model 6-64 ms), click-to-go Hybrid A* 16 / 112 / 1122 ms (model 33 / 176 / 1807 ms)
+  -> the twin's Pi model is conservative. CPU 60-70 C with the relay idle.)
+- [ ] AE6. After the user reconnected everything (23:45, wheels on) the LiDAR (CP2102 404f9cb2...) dropped off USB at 23:46:08,
+  re-attached/dropped 3 times, gone since 23:47:00 - no over-current flags this time -> its cable or its external power.
+  The relay correctly goes to FAULT 'no LiDAR scans' (motor held at zero) but never reopens the LiDAR: after it comes back the
+  relay has to be restarted. FR-046 / checklist test 11 want 'relay recovers by itself' -> reopen or exit(1) for systemd
+  after a lost LiDAR reappears (check the twin's LiDAR-loss scenarios first; the twin runs the same relay in-process).
+  1 Oct 00:00-00:05, 3 Pi reboots, several ports/cables: the LiDAR adapter never enumerates (on the laptop either, where it
+  was COM8 before); plugged into the Pi it causes over-current bursts (139, then ~2/s) that knock the ESP32 off USB ~10
+  times. Removed at 00:04:30 -> 0 over-current, ESP32 stable. Suspect the LiDAR's micro-USB cable or adapter board (user).
+  00:10 on the laptop (COM8, adapter LED on): GET_INFO model 0x31 (A3) fw 1.32 hw 6, GET_HEALTH Good (0); legacy and
+  express scan descriptors come back but zero measurement bytes in 4-6 s with DTR low or high, and the user sees the motor
+  NOT spinning -> core + serial fine, motor drive dead (motor wires in the LiDAR-adapter connector, motor power, jammed
+  head, or the adapter's motor driver). Car testing waits for a spinning LiDAR.
+  00:15 after the user changed the power and re-seated the LiDAR-adapter plug: spins; SET_MOTOR_PWM 660 + DTR low 10.4 rev/s,
+  then DTR only (as the relay's SDK path) 9.8 Hz, 11 832 samples in 4 s -> the fault was the motor's power/connector, LiDAR OK.
+  00:14:46 back on the Pi (data to the Pi, external power on the adapter): enumerated, relay started by itself (00:15:01),
+  LiDAR 11.5-12 Hz 'Good', ESP32 ok, health normal, 0 over-current, stream 19.7 Hz, PING 6 ms; dashboard screenshot
+  reports/pi_deploy_20260930/dash_map_ready.png. Car ready for the user's tests. Still open here: the relay reopening a
+  lost LiDAR by itself (FR-046). Seen meanwhile: Wi-Fi to the Pi drops for a few seconds now and then (SSH/PING timeouts).
+
+## AF. Steering after the refit (user, 1 Oct 00:2x: "the left turn limits need to be increased, the center has changed ... left and
+##     right seem to be switched ... the left limit is much lower than right limit"; "also set new lidar front")
+- [x] AF1. rc_controller.py: the outer wheel turned more (user) -> swap the servo outputs (LEFT_SERVO_CHANNEL 2 -> 1, RIGHT 1 -> 2) and
+      keep each servo's straight-ahead angle the user tuned (output 2 = 80, output 1 = 70) -> LEFT_CENTER 70, RIGHT_CENTER 80.
+- [x] AF2. Turn limits: the centres moved down 7-17 deg but the low limit stayed 30 -> physical left turn had 40-50 deg of servo
+      travel vs 60-70 right. Shift the limits with the centres to the travel the car had at centre 87 (left 57, right 53):
+      LEFT (output 1) 13..123, RIGHT (output 2) 23..133. User to check full lock on the box for binding.
+- [x] AF3. Relay (pi/relay_assists.py, pi/path_predict.py): one steering centre = mean of the two servo centres (was left_center
+      only), its own steering lines per output around each servo's centre (was "A sv sv" -> wheels 10 deg apart with 70/80),
+      the 35..145 clamps relative to the centre. Unit test; twin unchanged (equal centres).
+- [~] AF4. Car tuning (Pi pi/tuning_real_car.json, backup first): servo block as AF1/AF2; LiDAR yaw 45.7 -> 70.67 from the user's
+      panel front calibration (00:29:55, object 0.39 m, bearing +24.97 deg, sd 0.07). Upload the code, relay started by the user
+      (panel Drive; the calibration stopped it at 00:27:31). Check stream, straight-ahead, turn both ways on the box.
+      (Done 00:4x: backup tuning_real_car.json.bak_20261001_steer_yaw; relay centre 75, straight line 'A 70.0 80.0', yaw 70.67;
+      relay started through the panel's /api/start drive; the user's controller already sends A 70.0 80.0 / M 0. Tests: 9 affected
+      test modules OK incl. tests/test_servo_centres.py; relay_scenarios 23/24 (as before). Open: the user's turn check on the
+      box. NEW: Pi at 80-82 C with the relay running, no fan/cooling device detected -> health LIMP (speed capped); fit the
+      active cooler (K7).)
+
+## AJ. After the real-car parking / click-to-go tests (user, 14 Oct: "it is very close to perfect")
+- [~] AJ1. Re-planning gets stuck (user; also AH6/AC25 in the twin: "stuck - no way through from here"). Find why the re-plan from
+      where the car stopped fails (start inside the margin, budget, goal now unreachable) and recover (back off along the driven path,
+      relax the margin at a crawl, then re-plan).
+- [~] AJ2. Prefer known paths over unexplored space (user: "the car should be inclined to follow known paths instead of planning into
+      unexplored open space which may or may not be a dead end"). Hybrid A* cost: cells seen free (mapped) cheaper than unknown ones,
+      paths the car has already driven cheaper still (e.g. unknown-space penalty as in exploration-aware planners; occupancy-grid
+      known/unknown/occupied tri-state, Thrun et al. 2005); unknown space used only when no known route exists.
+      (14 Oct first attempt, NOT shipped - saved in docs/wip/: AJ2 a known-space cost map (adas/known_space.py: ray-cast seen/unknown
+      grid + driven trail, unknown +3/m, trail -0.3/m, shots crossing > 0.3 m unknown refused, fallback without it) and AJ1 a back-off
+      along the trail before re-planning. Unit tests passed and the click-to-go suite stayed 25/26, but on the dashboard (twin
+      goto_and_home) the first plan took 5 s, one go-to 'arrived' 57 cm off and return-to-start failed; the back-off ran 3x and still
+      ended 'stuck' with 4 contacts. Root cause per the research (docs/research_lidar_navigation.md): planner clearance smaller than the
+      brake field -> brake flicker and stalls; re-plans on every stop. Redo as AK1-AK3 + AK7.)
+- [~] AJ3. Memory deletes thin objects (user: thin objects are saved when the car is close, then deleted once the car moves away because
+      they are not seen from further away). Cause: adas/memory.py prune_contradicted drops a point in ONE scan when any return within
+      +-4 deg is farther (a chair leg covers ~1 deg at 1 m: the wall beside it erases it); gui/ev.py WorldStore has the same weakness
+      (+-1 deg, 3 scans). Make deletion depend on distance and evidence (user): only beams that really pass through the point count
+      (bearing window = the point's own angular size at that range plus the LiDAR's beam spacing, not a fixed +-4 deg); a point needs
+      more "seen-through" scans the more often it was hit and the farther the car is (expected returns from a thin object fall
+      with range: n_expected ~ width / (r * angular step)); never delete when the expected number of returns from it at this range is
+      below ~1 (it simply cannot be seen from here). Clamped log-odds per point / cell (OctoMap) with a range-dependent miss weight.
+      Unit test: a 2 cm post seen at 0.4 m, car backs to 2 m with a wall 1 m behind it -> the post stays; a removed box -> goes.
+      (Done in code, ADR-046: adas/visibility.py used by adas/memory.py (gate) and gui/ev.py (map); tests/test_memory.py thin post
+      stays / removed box goes, tests/test_world_store.py thin post stays from 2 m; phantom-wall test still passes. To do: Pi timing,
+      deploy, check on the car with a thin post.)
+
+## AK. Smoothness and tuning from the research (user, 14 Oct: "make the car as smooth and well tuned as possible ... reduce unnecessary
+##     warnings and replans"; report docs/research_lidar_navigation.md)
+- [ ] AK1. Re-plan only on invalidation: remaining-path validity on the planning cost each scan, invalid after >= 3 scans, slow first
+      (Nav2 consistent-replanning / IsPathValid). Measure: re-plans and stops per metre in the click-to-go suite and goto_and_home.
+- [ ] AK2. Clearance hierarchy: planner lethal clearance >= brake field + p95 tracking error + localisation error, decaying cost gradient
+      (Smac cost_penalty) - measure the twin's tracking error first; target: no brake/hold flicker on autonomous legs.
+- [ ] AK3. Brake hysteresis (release at d + 3-5 cm after 2-3 clear scans) and a speed-dependent protective field.
+- [ ] AK4. Follower: RPP-style proximity and curvature slow-down, minimum speed above the dead-band, velocity-scaled lookahead.
+- [ ] AK5. Online steering bias/gain (RLS on scan-matched yaw rate) + backlash compensation (adas/online_steering.py exists - review vs RLS).
+- [ ] AK6. Speed loop: feedforward map + dead-band jump + PI anti-windup, battery-voltage scheduling (adas/speed_control.py - review).
+- [ ] AK7. Known-space commitment (first ~1.5 m of a path in known free space) + dead-end blacklist; reuse docs/wip/known_space.py.txt.
+- [ ] AK8. Cost cap on analytic shots + local path repair before a full re-plan.
+- [ ] AK9. Scan hygiene: min-range binning, shadow/speckle filter, deskew, no clearing by no-return beams.
+- [ ] AK10. Later: MAP-style steering table or kinematic MPC; residual model / ILC for parking. Not: end-to-end / RL controllers.
+
+## AI. Real-car checks through the real dashboard (user, 14 Oct: "carefully run the tests on the actual UI ... confined space ... object
+##     straight ahead to calibrate")
+- [x] AI1. LiDAR front (user-requested): object 0.29 m ahead at -7.71 deg (sd 0.08, 40 scans) -> yaw 70.67 -> 62.96 (backup
+      tuning_real_car.json.bak_20261014_yaw); re-measured +0.02 deg. Pi now at 192.168.1.15 (DHCP changed).
+- [x] AI2. tools/car_ui_test.py: real EVWindow against the car, rc_controller's own packets, own safety layer (throttle cap, no throttle
+      without fresh data <0.3 s - added after the first brake run sent throttle 4.7 s before the dashboard had data -, speed cap, 8 cm
+      bumper cut), screenshots in reports/car_ui_test/.
+- [x] AI3. idle: health normal, ESP32 ok. steer: full left 32/42, full right 108/118, centre 70/80 (38 deg envelope each way, per-servo
+      centres). reverse crawl 1 s ~0.1 m/s ok. brake (throttle 50): crawled 1.13 m at 0.12-0.17 m/s, the relay's gate held the car
+      ("holding", dashboard EMERGENCY BRAKE) 8 cm from the wall; the test's 8 cm cut fired in the same tick. Throttle 70 reached
+      0.25 m/s within 0.4 s.
+- [ ] AI4. Brake test with the test's own cut lowered (4 cm) so only the gate stops the car; then click-to-go 0.5 m, zone cap.
+- [ ] AI5. USB: at boot the Pi overloaded again until the LiDAR-adapter cable / ports were redone (user, 14 Oct).
+
+## AH. INCIDENT 1 Oct ~00:42 (user): "the controls are delayed and persist for very long after, like a 1 second delay; it just broke my
+##     back wheel bevel differential because it hit a wall; I gave it forward and right, it moved after a delay and kept moving"
+Evidence: logs/incident_20261001/20261001_003520_relay.jsonl.gz (Pi ~/logs), drive CSVs. Findings:
+- Wall hit at 409.6 s (manual, full throttle -254 straight): 403-409.6 s the car crept (v_est 0-0.37 m/s) with the output ramping to
+  -120 and dropping (limp cap + smoother) while the LiDAR returned 360-480 of ~1000 points: a 100-200 deg arc in front had NO returns
+  (dark / very close / blocked), so front = None, the gate had nothing to brake for until the wall appeared at 0.04 m. No-return was
+  treated as free space.
+- Delay: 196-260 s (parking autonomy "driving to strip", the user holding RT) the relay handled 14-20 packets/s (dt median 37 ms,
+  p95 220 ms) while rc_controller sends 50/s; the UDP socket (rmem 212 992 B) queued seconds of old commands and dropped 1943 packets
+  (/proc/net/udp) -> commands late and still arriving after release. Over the whole session only ~44 of 50 packets/s were handled.
+- Pi at 80-85 C, no fan detected, health LIMP most of the session.
+- [x] AH1. Relay: never act on stale driver commands - drain the socket each tick and use only the newest driving packet (control
+      commands still all processed, in order); small SO_RCVBUF. Twin/unit test with a burst of queued packets.
+      (pi/driver_input.py + the loop in pi/wifi_drive_safety.py, ADR-044; tests/test_incident_20261001.py: 40 queued packets -> the
+      newest one + the PING. Deployed 1 Oct 01:23 with AH2 (commit cb1f8bc; relay restarted through the panel, waiting for the
+      LiDAR). Full unit suite: 251 tests, the only failures are pre-existing - test_gui_smoke parking HMI x2 (also with the
+      committed gui/ev.py) and the order-dependent wheel-scroll test.)
+- [~] AH2. Relay: no returns in the direction of travel = unknown, not free: coverage of the path corridor; blind -> creep cap, then
+      stop; health/GUI "LiDAR blind ahead". ADR, unit test, twin scenario (a non-reflective obstacle).
+      (pi/path_gate.py sector_cover + BLIND_*: < 50 % of the 2 deg bins within 30 deg covered -> 0.10 m/s, stop after 1 s; ADR-045;
+      unit tests. Incident replay: creep from 401.0 s, stop 402.1 s (impact 409.6 s); rest of the session: 3 single-scan blips, no
+      stop. Still open: twin scenario with a non-reflective obstacle, GUI wording.)
+      (1 Oct 01:3x: a bearing also counts as seen when the obstacle memory holds a too-close point there - twin runs had shown blind
+      creep/stops when nosing up to walls (67 + 6 ticks); now 0 in two goto_and_home runs; whole-session replay: stop from 402.7 s,
+      otherwise creeps of 0.1 / 0.1 / 0.9 s. relay_scenarios 23/24 as before.)
+- [ ] AH6. goto_and_home (ROOM) return-to-start ends 'stuck - no way through from here' 0.8-4 m from the start with 0-7 contacts per
+      run, with the old code too (1 run: 3 contacts, 1.29 m) - AC25; investigate before the user relies on Return to start.
+- [ ] AH3. Profile the relay tick on the Pi during parking autonomy (why 14-20 Hz) and move the heavy part out of the loop (rule 5).
+- [ ] AH4. Why the output kept dropping to 0 every ~0.45 s at full throttle with v ~0 (403-409 s): limp cap / smoother / stall logic.
+      (Found: -120 = health LIMP cap (Pi hot); each drop to 0 = the moving-object check (moving_blocked) for ONE scan - flickering
+      tracks from clutter beside the car (406.27, 407.05, 407.48, 408.28, 408.83 s) - and the smoother ramped straight back: torque
+      hammering against the wall. To do: a moving-object cut must be confirmed over several scans and, once cut, hold like the gate's
+      latch instead of ramping back at once.)
+- [ ] AH5. Pi cooling (user): fit/connect the active cooler; the relay should report fan missing.
+
+## AG. Map persistence (user, 1 Oct, screenshot of a smeared map: "the persistence logic makes the map so bad, make it remove points
+##     that the lidar already saw past, only keep points where the lidar can't see (like when it is too close)")
+- [~] AG1. gui/ev.py WorldStore only ever added hit counts (LRU at 40 000 cells), so stale points (pose error, moved things) stayed.
+      Visibility-based removal (Removert, Kim & Kim 2020; clamped occupancy scores as OctoMap, Hornung et al. 2013): a cell loses
+      score when the current scan returns from farther away in its direction; cells closer than the LiDAR's minimum range, hidden
+      behind a nearer return or in a direction without a return keep their score. Unit test + dashboard screenshots (twin drive,
+      then the car).
+      (Done in gui/ev.py: clamped score 6, -2 per scan that sees past (return > cell + 10 cm, 1 deg range image, nearest of 3 bins),
+      cells < 0.20 m / occluded / no return kept; tests/test_world_store.py (6, incl. a rotated pose - it caught a degrees/radians
+      slip). Twin dashboard: map clean and thin after goto_and_home (reports/hmi_test/goto_and_home_09_home_end.png). Car: the user
+      restarts the dashboard; to check on the next drive. Pose drift on the car also smears (the 00:4x map) - separate.)
+
+## AD. Real-car testing (user, 30 Sep: "make it so that I can define a parking strip on the map when I drive in real life ... think about
+##     tests in real life for everything and make sure features are available for that")
+- [ ] AD1. Parking lane on the live map (user, 30 Sep: "define a parking lane as a rectangle in any simulation or the real thing"): a
+      "Parking lane" map tool - drag a rectangle; its long axis is the lane, the long side nearer the car the road edge, the other the kerb
+      (a button flips it), the short side the depth; saved like the zones; drawn in 3D and on the map; the Park tool then clicks on it exactly
+      as on the simulator's street (PARK_TARGET). Works in every simulator room and on the car; a drawn lane takes the place of the
+      simulator street's own. The kerb stays invisible to the LiDAR: the lateral target comes from the parked neighbours (in line with them)
+      and the drawn kerb (never nearer it than 3.5 cm).
+- [ ] AD2. Keep the drawn lane in place: the world frame survives (ORIGIN only when asked), save / load the map with the lane, relocalise
+      on load; warn when the pose is lost.
+- [ ] AD3. Real-car test plan (docs/test_plan_car.md): for every feature - manual drive + braking / evasive / nudge, speed zones, click-to-go,
+      return to start, parallel parking (boxes as parked cars along a taped kerb line; gaps 0.65 / 0.9 / 1.3 m), pull-out and park again, bay
+      parking with the printed ArUco marker, RT released mid-manoeuvre - with the set-up, what to measure (tape marks, phone video, the drive
+      log) and the pass criteria.
+- [ ] AD4. Audit sim-only dependencies: what the HMI / relay use that only the twin provides (sim.parking layout, truth overlay, room
+      switch, marker source) - each gets a real-car path or is marked twin-only.
+- [ ] AD5. Real-car parking specifics: the rear camera service for the marker, the LiDAR mount height vs the boxes used as cars, the
+      steer-before-moving delay and the gate's creep limit measured on the car (no calibration without the user's OK).

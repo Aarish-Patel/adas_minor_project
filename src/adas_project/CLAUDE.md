@@ -37,7 +37,8 @@ Dependency rule: `adas` <- `pi` <- `sim`/`tools`. `gui` talks to the car only ov
 - All tests: `python -m unittest discover -s tests` (~2 min, 160+ tests)
 - Scenario suite: `python -m sim.relay_scenarios` (must print all passed)
 - Monte Carlo: `python -m sim.relay_mc --live <rooms> off,brake-only,adas,adas+intent <styles>`; bound/paired: `python -m sim.mc_bound`
-- Twin relay: `python tools/sim_car.py --world room` · HMI: `python -m gui.dashboard [--host IP] [--open map|assists|mc|train]`
+- Twin relay: `python tools/sim_car.py --world room` · HMI: `python -m gui.dashboard [--host IP] [--open map|assists|mc|train] [--measure 20]`
+- Parking suite: `python -m sim.parking_validation suite` · real UDP path: `python -m sim.parking_e2e` · click-to-go suite: `python -m sim.autonav_eval suite 2`
 
 ## Coordinate frames
 - Vehicle (base_link): origin rear-axle centre, x ahead, y left, angles/curvature + = counter-clockwise (left).

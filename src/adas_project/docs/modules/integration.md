@@ -44,6 +44,7 @@ All other subsystems (their classes are instantiated here). Python: NumPy, SciPy
 - Deploy: copy the repository to the Pi (`~/rc_car`), restart `rc-relay` / `rc-panel` - **only with the user's OK**; back up first
   (`~/rc_car_backup_<date>.tgz`). Benchmarks run in `~/rc_bench`, never in `~/rc_car`.
 - Calibrations only when the user asks; results applied only via "Apply".
+- Deployment plan and real-car test checklist (prepared, not run): `docs/DEPLOY_PLAN.md`. Publishing to GitHub: `python tools/publish.py` (dry run), `--push -m "msg"`.
 - Pull logs: `tools/pull_logs.py`; analyse / replay: `tools/analyze_drive_log.py`, `tools/replay_log.py`.
 - Laptop twin in place of the car: `python tools/sim_car.py --world room` (same ports, so the GUI and `rc_controller.py` work unchanged).
 
@@ -68,7 +69,7 @@ wall, evasive, click-to-go - before new features are trusted (SRS status Met-S -
 `pi/turn_test.py`, `pi/brake_run.py`, `pi/passthrough.py`, `pi/estop.py`, `pi/rear_camera.py`, `pi/lidar_stream/`, `pi/*.service`,
 `pi/devices.py`, `pi/link.py`, `pi/runtime.py`, `pi/main.py`, `pi/hil.py`, `pi/run_all.py`; `ESP32_RC/ESP32_RC.ino`; `rc_controller.py`;
 `tools/pull_logs.py`, `tools/stream_log.py`, `tools/analyze_drive_log.py`, `tools/relay_latency.py`, `tools/pi_parts_bench.py`,
-`tools/drivetrain_report.py`. Early experiments: `pi/legacy/` (not used).
+`tools/drivetrain_report.py`, `tools/publish.py`. Early experiments: `pi/legacy/` (not used).
 
 ## Hardware state and history (as of 29 Sep 2026)
 - ESP32: the original board died on 28 Sep; replaced by an ESP32-WROOM-32D connected to the Pi over USB (appears as COM7 on the laptop).
@@ -77,7 +78,8 @@ wall, evasive, click-to-go - before new features are trusted (SRS status Met-S -
 - Pi 5 reached 74 °C under sustained load; active cooler to be fitted. The car vibrates strongly.
 - Pi software: last deploy 28 Sep 22:15 (gate leg fix). NOT on the Pi yet: drivetrain protection, EV GUI protocol additions (MODE, HOME,
   EXPLORE, PARK, zones), moving-object assist, vision, SLAM, speed control, online calibration, commitment rules.
-- Pi backups: `~/rc_car_backup_20260928_1927.tgz`, `~/rc_car_backup_20260928_2200.tgz`.
+- Pi backups: `~/rc_car_backup_20260928_1927.tgz`, `~/rc_car_backup_20260928_2200.tgz`, `~/rc_car_backup_20260930_2310.tgz`
+  (before the 30 Sep deploy; old top-level scripts set aside in `~/rc_car_stale_20260930/`).
 - Health thresholds: LiDAR < 6 Hz limp, none for 1 s fault; link < 12 packets/s limp; Pi ≥ 80 °C limp; limp caps throttle at 120 PWM;
   a cause must be gone 2 s before recovery.
 - Driver client (`rc_controller.py`) sends 50 Hz (`SEND_HZ`); the health monitor treats < 12 packets/s as lossy; state stream to the GUI 20 Hz.

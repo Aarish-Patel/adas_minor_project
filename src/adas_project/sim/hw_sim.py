@@ -48,19 +48,58 @@ def load_car_model():
     return m
 
 
+class ActuationNoise:
+    """Imperfect actuation (user, 30 Sep: "the throttle and steering values don't always result in the same curve - the curve to park or
+    go to a place needs to adapt to that"). Per run: a steering-centre error, different left / right steering gains and a speed gain
+    error; over time: a slow wander of the steering offset and of the speed gain, each a first-order Gauss-Markov process (the standard
+    model of slowly varying biases, Maybeck, "Stochastic Models, Estimation and Control" vol. 1, 1979); plus play in the steering linkage
+    (the wheels move only once the servo has taken up `play_deg`). Magnitudes: a hobby servo re-centres to ~1 deg, the fitted left / right
+    curvature gains of the car differ by up to 15 % (pi/relay_assists), speed varies a few % with battery and floor.
+    Seeded: the same seed gives the same car, so a run is repeatable; each Monte Carlo seed gets its own."""
+
+    def __init__(self, seed=0, steer_bias_deg=0.8, gain_err=0.06, speed_gain_err=0.03, steer_wander_deg=0.5, steer_tau_s=2.0,
+                 speed_wander=0.04, speed_tau_s=3.0, play_deg=0.6):
+        import numpy as np
+        self.rng = np.random.default_rng(seed)
+        r = self.rng
+        self.steer_bias = float(r.normal(0.0, steer_bias_deg))
+        self.gain_left, self.gain_right = float(1.0 + r.normal(0.0, gain_err)), float(1.0 + r.normal(0.0, gain_err))
+        self.speed_gain = float(1.0 + r.normal(0.0, speed_gain_err))
+        self.steer_sd, self.steer_tau, self.speed_sd, self.speed_tau = steer_wander_deg, steer_tau_s, speed_wander, speed_tau_s
+        self.play = play_deg
+        self.steer_w, self.speed_w = 0.0, 0.0
+
+    def step(self, dt):
+        """Advance the wander processes (exact discretisation of the Gauss-Markov process)."""
+        for name, sd, tau in (("steer_w", self.steer_sd, self.steer_tau), ("speed_w", self.speed_sd, self.speed_tau)):
+            a = math.exp(-dt / tau)
+            setattr(self, name, a * getattr(self, name) + sd * math.sqrt(1.0 - a * a) * float(self.rng.normal()))
+
+    def steer_offset_deg(self):
+        return self.steer_bias + self.steer_w
+
+    def gain(self, left):
+        return self.gain_left if left else self.gain_right
+
+    def speed_factor(self):
+        return max(0.5, self.speed_gain * (1.0 + self.speed_w))
+
+
 class VirtualCar:
-    """Rear-axle pose in the world (x, y, theta; y left, theta counter-clockwise), driven by ESP32 lines."""
+    """Rear-axle pose in the world (x, y, theta; y left, theta counter-clockwise), driven by ESP32 lines. `noise`: the actuation
+    noise (ActuationNoise; default one with seed 0 - every simulation runs with it; None = an ideal car)."""
 
     SERVO_SLEW = 400.0          # deg/s
     FAILSAFE_S = 0.5            # ESP32 firmware: motor off after this long without a command
     DT = 0.005
 
-    def __init__(self, world, params, start=(0.0, 0.0, 0.0), motor_reversed=True, threaded=True):
+    def __init__(self, world, params, start=(0.0, 0.0, 0.0), motor_reversed=True, threaded=True, noise="default"):
         self.world, self.p = world, params
         self.m = load_car_model()
         self.x, self.y, self.th = start
         self.v = 0.0
-        self.servo = self.servo_cmd = self.m["servo_centre"]
+        self.servo = self.servo_cmd = self.servo_wheels = self.m["servo_centre"]
+        self.noise = ActuationNoise(0) if noise == "default" else noise
         self.pwm = 0.0                      # physical, + = forward, as applied by the motor driver
         self.reversed = motor_reversed
         self.queue = []                     # (t_apply, kind, value)
@@ -116,10 +155,16 @@ class VirtualCar:
                 self._step(dt)
 
     def _step(self, dt):
-        m = self.m
+        m, n = self.m, self.noise
         ds = self.servo_cmd - self.servo
         self.servo += max(-self.SERVO_SLEW * dt, min(self.SERVO_SLEW * dt, ds))
-        target = self._vss(self.pwm)
+        if n is not None:
+            n.step(dt)
+            half = n.play / 2                               # the linkage's play: the wheels follow the servo once it is taken up
+            self.servo_wheels = min(max(self.servo_wheels, self.servo - half), self.servo + half)
+        else:
+            self.servo_wheels = self.servo
+        target = self._vss(self.pwm) * (n.speed_factor() if n is not None else 1.0)
         if self.pwm == 0:
             dec = min(abs(self.v) / max(m["tau_motor"], 1e-3), m["coast_decel"]) * dt
             self.v = 0.0 if abs(self.v) <= dec else self.v - math.copysign(dec, self.v)
@@ -136,7 +181,8 @@ class VirtualCar:
             else:
                 a = max(-3.0, min(lim, a))
             self.v += a * dt
-        kappa = -m["k_curv_per_deg"] * (self.servo - m["servo_centre"])      # + = left
+        deg = self.servo_wheels - m["servo_centre"] + (n.steer_offset_deg() if n is not None else 0.0)
+        kappa = -m["k_curv_per_deg"] * deg * (n.gain(deg < 0) if n is not None else 1.0)      # + = left (servo below centre)
         nth = self.th + kappa * self.v * dt
         nx = self.x + self.v * math.cos((self.th + nth) / 2) * dt
         ny = self.y + self.v * math.sin((self.th + nth) / 2) * dt
@@ -172,6 +218,8 @@ class VirtualCar:
         with self.lock:
             self.x, self.y, self.th = start
             self.v, self.pwm, self.crashed = 0.0, 0.0, False
+            if self.noise is not None:                       # a new run: a new draw of the car's imperfections
+                self.noise = ActuationNoise(int(self.noise.rng.integers(1 << 30)))
 
 
 class SimESP32:
@@ -247,6 +295,9 @@ class SimLidar:
             j = tt.argmin(axis=1)
             best = tt[np.arange(self.n), j]
             dark_seg = getattr(world, "dark_segments", None)
+            if dark_seg is not None and len(dark_seg) != len(seg):      # objects were added after the world was built
+                from sim.hw_worlds import _finish
+                dark_seg = _finish(world).dark_segments
             if dark_seg is not None and len(dark_seg):
                 dark = dark_seg[j] & np.isfinite(best)
         circ = world.circles()

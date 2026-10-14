@@ -9,7 +9,7 @@ import numpy as np
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, ROOT)
 from adas.config import load_tuning  # noqa: E402
-from adas.hybrid_astar import HybridAStar  # noqa: E402
+from adas.hybrid_astar import Grid, HybridAStar  # noqa: E402
 from pi.path_gate import PathGate  # noqa: E402
 from pi.relay_assists import RelayAssists, car_params  # noqa: E402
 
@@ -56,6 +56,18 @@ class HybridAStarTests(unittest.TestCase):
 
 
 class ClickToGoTests(unittest.TestCase):
+    def test_start_closer_than_the_margin_can_leave(self):
+        """Parked 4 cm from a wall (closer than the planner's margin, as after pulling out of a gap): a go-to plan exists, and it never
+        comes closer to the wall than the start (ADR-038)."""
+        pts = np.vstack([wall(-1.0, 0.14, 3.0, 0.14), wall(-1.0, -1.2, 3.0, -1.2)])
+        ha = HybridAStar(P)
+        self.assertLess(float(ha.clearance(Grid(pts, -2, 4, -2, 2), np.array((0.0, 0.0, 0.0)))), ha.margin)   # inside the margin
+        path = ha.plan_to_point(pts, (0.0, 0.0, 0.0), (2.2, -0.6), allow_reverse=True, max_nodes=6000)
+        self.assertIsNotNone(path)
+        self.assertLess(math.hypot(path[-1, 0] - 2.2, path[-1, 1] + 0.6), 0.1)
+        from adas.park_select import _obb_clearance
+        self.assertGreater(float(_obb_clearance(path[:, :3], pts, P).min()), 0.035)          # never closer than it started (4 cm)
+
     def test_point_goal_through_the_doorway_forward_only(self):
         from sim.hw_worlds import doorway
         path = HybridAStar(P).plan_to_point(world_points(doorway()[0]), (0.0, 0.0, 0.0), (3.4, 0.0))
@@ -155,12 +167,25 @@ class PlanServiceTests(unittest.TestCase):
             svc.shutdown()
 
     def test_inline_mode_releases_after_the_pi_delay(self):
-        from adas.plan_service import PlanService
-        svc = PlanService("inline", latency_factor=1e6)
+        """A simulation of the Pi: the result is held back for the time the Pi needs for the work done (nodes, grid cells) - the same
+        every run - and search budgets are node counts."""
+        from adas.hybrid_astar import HybridAStar, NodeBudget
+        from adas.plan_service import PI_JOB_BASE_S, PlanService, plan_point_job
+        svc = PlanService("inline", latency_factor=3.5)
         job = svc.submit(sum, [1, 2])
-        self.assertFalse(job.ready(0.05))
-        self.assertTrue(job.ready(1e6))
+        self.assertFalse(job.ready(PI_JOB_BASE_S / 2))
+        self.assertTrue(job.ready(PI_JOB_BASE_S))
         self.assertEqual(job.result(), 3)
+        self.assertIsInstance(svc.budget(2.0), NodeBudget)
+        from adas.vehicle_params import VehicleParams
+        pts = box_pts(1.5, 0.0, 0.2, 0.6)
+        delays = []
+        for _ in range(3):                              # deterministic: the same work, the same simulated delay
+            j = svc.submit(plan_point_job, VehicleParams(), 1.5, pts, (0.0, 0.0, 0.0), (3.0, 0.0), svc.budget(2.0))
+            delays.append(j.delay)
+        self.assertEqual(len(set(delays)), 1)
+        self.assertGreater(delays[0], PI_JOB_BASE_S)
+        self.assertEqual(PlanService("process").budget(2.0), 2.0)   # on the car: seconds
 
 
 def box_pts(cx, cy, hx, hy, n=30):
@@ -243,7 +268,9 @@ class GateTests(unittest.TestCase):
         return g
 
     def test_passing_beside_a_wall_is_not_braking(self):
-        g = self.gate(wall(-0.5, P.width / 2 + 0.18, 2.0, P.width / 2 + 0.18))
+        # (the room's far wall 4 m ahead and behind: with nothing returned ahead the gate would now creep - ADR-045)
+        g = self.gate(np.vstack([wall(-0.5, P.width / 2 + 0.18, 2.0, P.width / 2 + 0.18), wall(4.0, -3.0, 4.0, 3.0),
+                                 wall(-4.0, -3.0, -4.0, 3.0)]))
         out, brk = g.decide(0.05, 150, 0.0, 0.45)
         self.assertEqual(out, 150)
         self.assertFalse(brk)

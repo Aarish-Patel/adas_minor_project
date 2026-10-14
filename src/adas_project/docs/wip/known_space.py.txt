@@ -1,0 +1,99 @@
+"""Known space for planning: what the LiDAR has seen free, and where the car has driven (user, 14 Oct 2026: "the car should be inclined
+to follow known paths instead of planning into unexplored open space which may or may not be a dead end").
+
+A log-odds occupancy grid from ray casting (adas/explore.OccupancyGrid: Moravec & Elfes 1985; Thrun, Burgard & Fox 2005 ch. 9) in the
+relay's world frame, plus the cells the car's body has covered. For a plan, `terrain` turns it into a per-metre cost raster in the
+planner's frame: space never seen costs W_UNKNOWN extra per metre, the driven trail is W_TRAIL cheaper - the planner then prefers
+routes through known space and uses unknown space only when no known route exists (a cost map that keeps unknown space apart from free
+and occupied space, as the layered costmaps of ROS navigation do: Marder-Eppstein et al., "The Office Marathon", ICRA 2010).
+
+Updates run in a worker thread (latest scan wins), never in the control loop (CLAUDE.md rule 5).
+"""
+import math
+import threading
+
+import numpy as np
+
+from adas.explore import UNKNOWN, OccupancyGrid
+
+W_UNKNOWN = 3.0          # extra cost per metre through space never seen (a known route up to ~4x longer is preferred)
+W_TRAIL = 0.3            # cost per metre taken off along the driven trail
+TRAIL_HALF_M = 0.08      # the trail's half width (the car's track)
+
+
+def compose(a, b):
+    c, s = math.cos(a[2]), math.sin(a[2])
+    return (a[0] + c * b[0] - s * b[1], a[1] + s * b[0] + c * b[1], a[2] + b[2])
+
+
+def inverse(a):
+    c, s = math.cos(a[2]), math.sin(a[2])
+    return (-(c * a[0] + s * a[1]), s * a[0] - c * a[1], -a[2])
+
+
+class KnownSpace:
+    def __init__(self, half=8.0, res=0.05, max_range=4.0, stride=3):
+        self.grid = OccupancyGrid(half=half, res=res, max_range=max_range)
+        self.trail = np.zeros((self.grid.n, self.grid.n), bool)
+        self.stride = stride
+        self.lock = threading.Lock()
+        self._pending = None
+        self._wake = threading.Event()
+        self._thread = None
+
+    # --- updates
+    def update(self, world_pose, pts_vehicle, lidar_x=0.12):
+        """Synchronous update (tests, simulations): free space along the rays, the car's trail."""
+        with self.lock:
+            self.grid.update(world_pose, pts_vehicle, lidar_x, stride=self.stride)
+            self._mark_trail(world_pose)
+
+    def submit(self, world_pose, pts_vehicle, lidar_x=0.12):
+        """From the control loop: hand the scan to the worker thread (the newest replaces one not yet processed)."""
+        self._pending = (tuple(world_pose), np.asarray(pts_vehicle, float).copy(), lidar_x)
+        if self._thread is None:
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
+        self._wake.set()
+
+    def _run(self):
+        while True:
+            self._wake.wait()
+            self._wake.clear()
+            job, self._pending = self._pending, None
+            if job is not None:
+                self.update(*job)
+
+    def _mark_trail(self, pose):
+        g = self.grid
+        r = int(math.ceil(TRAIL_HALF_M / g.res))
+        i, j = g.cell(pose[0], pose[1])
+        self.trail[max(0, i - r):i + r + 1, max(0, j - r):j + r + 1] = True
+
+    def clear(self):
+        with self.lock:
+            self.grid = OccupancyGrid(half=self.grid.half, res=self.grid.res, max_range=self.grid.max_range)
+            self.trail[:] = False
+
+    # --- for a plan
+    def terrain(self, world_from_frame, x0, y0, res, nx, ny):
+        """Per-metre extra cost on an (nx, ny) raster in the planner's frame (cell (0, 0) centred at x0 + res/2, y0 + res/2):
+        W_UNKNOWN in space never seen, -W_TRAIL on the driven trail, 0 elsewhere (seen free, or an obstacle - those are the
+        planner's own business). world_from_frame: the planner frame's origin as a pose in the world frame."""
+        xs = x0 + (np.arange(nx) + 0.5) * res
+        ys = y0 + (np.arange(ny) + 0.5) * res
+        X, Y = np.meshgrid(xs, ys, indexing="ij")
+        c, s = math.cos(world_from_frame[2]), math.sin(world_from_frame[2])
+        wx = world_from_frame[0] + c * X - s * Y
+        wy = world_from_frame[1] + s * X + c * Y
+        g = self.grid
+        i = ((wx + g.half) / g.res).astype(int)
+        j = ((wy + g.half) / g.res).astype(int)
+        inside = (i >= 0) & (i < g.n) & (j >= 0) & (j < g.n)
+        ic, jc = np.clip(i, 0, g.n - 1), np.clip(j, 0, g.n - 1)
+        with self.lock:
+            st = g.state()
+            trail = self.trail
+            cost = np.where(inside & (st[ic, jc] != UNKNOWN), 0.0, W_UNKNOWN)
+            cost = np.where(inside & trail[ic, jc], -W_TRAIL, cost)
+        return (float(x0), float(y0), float(res), cost.astype(np.float32))

@@ -1,0 +1,1127 @@
+{
+ "tune_seeds": [
+  0,
+  1,
+  2
+ ],
+ "confirm_seeds": [
+  3,
+  4,
+  5,
+  6,
+  7,
+  8
+ ],
+ "tune": {
+  "legacy": {
+   "latency": {
+    "0.3 m/s, car still": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 1.0500000000000005,
+     "max_s": 1.3000000000000007,
+     "flag_detected": 6,
+     "flag_median_s": 0.8500000000000005,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 484,
+     "static_track_scans": 2283,
+     "static_tracks_ever_flagged": 112
+    },
+    "0.3 m/s, car 0.4 m/s straight": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.9000000000000006,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 6,
+     "flag_median_s": 0.6500000000000004,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 257,
+     "static_track_scans": 1752,
+     "static_tracks_ever_flagged": 72
+    },
+    "0.3 m/s, car 0.4 m/s arc": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 1.0000000000000004,
+     "max_s": 1.1000000000000005,
+     "flag_detected": 6,
+     "flag_median_s": 0.6500000000000004,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 270,
+     "static_track_scans": 1903,
+     "static_tracks_ever_flagged": 65
+    },
+    "0.5 m/s, car still": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.8000000000000005,
+     "max_s": 1.1000000000000005,
+     "flag_detected": 6,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 485,
+     "static_track_scans": 2288,
+     "static_tracks_ever_flagged": 112
+    },
+    "0.5 m/s, car 0.4 m/s straight": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.8500000000000004,
+     "max_s": 1.0000000000000004,
+     "flag_detected": 6,
+     "flag_median_s": 0.5000000000000002,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 250,
+     "static_track_scans": 1719,
+     "static_tracks_ever_flagged": 70
+    },
+    "0.5 m/s, car 0.4 m/s arc": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.8000000000000005,
+     "max_s": 0.8000000000000005,
+     "flag_detected": 6,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 263,
+     "static_track_scans": 1873,
+     "static_tracks_ever_flagged": 73
+    },
+    "1.0 m/s, car still": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.6000000000000003,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 6,
+     "flag_median_s": 0.40000000000000013,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 451,
+     "static_track_scans": 2227,
+     "static_tracks_ever_flagged": 110
+    },
+    "1.0 m/s, car 0.4 m/s straight": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.5500000000000003,
+     "max_s": 0.7000000000000004,
+     "flag_detected": 6,
+     "flag_median_s": 0.3500000000000001,
+     "flag_max_s": 0.5000000000000002,
+     "static_flagged_track_scans": 283,
+     "static_track_scans": 1803,
+     "static_tracks_ever_flagged": 70
+    },
+    "1.0 m/s, car 0.4 m/s arc": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.6000000000000003,
+     "max_s": 0.7000000000000004,
+     "flag_detected": 6,
+     "flag_median_s": 0.40000000000000013,
+     "flag_max_s": 0.5000000000000002,
+     "static_flagged_track_scans": 300,
+     "static_track_scans": 1933,
+     "static_tracks_ever_flagged": 70
+    }
+   },
+   "static": {
+    "car still": {
+     "raw_moving_track_scans": 782,
+     "assist_moving_track_scans": 477,
+     "track_scans": 2508,
+     "static_tracks_ever_assist_moving": 87
+    },
+    "car 0.3 m/s straight": {
+     "raw_moving_track_scans": 667,
+     "assist_moving_track_scans": 369,
+     "track_scans": 2155,
+     "static_tracks_ever_assist_moving": 85
+    },
+    "car 0.6 m/s straight": {
+     "raw_moving_track_scans": 932,
+     "assist_moving_track_scans": 559,
+     "track_scans": 2328,
+     "static_tracks_ever_assist_moving": 92
+    },
+    "car 0.4 m/s arc": {
+     "raw_moving_track_scans": 718,
+     "assist_moving_track_scans": 392,
+     "track_scans": 2184,
+     "static_tracks_ever_assist_moving": 78
+    }
+   }
+  },
+  "lrt": {
+   "latency": {
+    "0.3 m/s, car still": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 1.750000000000001,
+     "max_s": 1.8000000000000012,
+     "flag_detected": 6,
+     "flag_median_s": 1.3000000000000007,
+     "flag_max_s": 1.5000000000000009,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1780,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.3 m/s, car 0.4 m/s straight": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 1.5000000000000009,
+     "max_s": 1.9000000000000012,
+     "flag_detected": 6,
+     "flag_median_s": 0.9000000000000005,
+     "flag_max_s": 1.3000000000000007,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1391,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.3 m/s, car 0.4 m/s arc": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 1.600000000000001,
+     "max_s": 1.700000000000001,
+     "flag_detected": 6,
+     "flag_median_s": 1.3000000000000007,
+     "flag_max_s": 1.4000000000000008,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1418,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.5 m/s, car still": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 1.3000000000000007,
+     "max_s": 1.5000000000000009,
+     "flag_detected": 6,
+     "flag_median_s": 1.0000000000000004,
+     "flag_max_s": 1.2000000000000006,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1797,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.5 m/s, car 0.4 m/s straight": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 1.2000000000000006,
+     "max_s": 1.3000000000000007,
+     "flag_detected": 6,
+     "flag_median_s": 0.9000000000000006,
+     "flag_max_s": 1.0000000000000004,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1371,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.5 m/s, car 0.4 m/s arc": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 1.0500000000000005,
+     "max_s": 1.3000000000000007,
+     "flag_detected": 6,
+     "flag_median_s": 0.7500000000000004,
+     "flag_max_s": 1.0000000000000004,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1366,
+     "static_tracks_ever_flagged": 0
+    },
+    "1.0 m/s, car still": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.9000000000000006,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 6,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 1,
+     "static_track_scans": 1712,
+     "static_tracks_ever_flagged": 1
+    },
+    "1.0 m/s, car 0.4 m/s straight": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.8000000000000005,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 6,
+     "flag_median_s": 0.5000000000000002,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1402,
+     "static_tracks_ever_flagged": 0
+    },
+    "1.0 m/s, car 0.4 m/s arc": {
+     "detected": 6,
+     "of": 6,
+     "median_s": 0.8000000000000005,
+     "max_s": 1.1000000000000005,
+     "flag_detected": 6,
+     "flag_median_s": 0.5000000000000002,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1410,
+     "static_tracks_ever_flagged": 0
+    }
+   },
+   "static": {
+    "car still": {
+     "raw_moving_track_scans": 0,
+     "assist_moving_track_scans": 0,
+     "track_scans": 1993,
+     "static_tracks_ever_assist_moving": 0
+    },
+    "car 0.3 m/s straight": {
+     "raw_moving_track_scans": 0,
+     "assist_moving_track_scans": 0,
+     "track_scans": 1729,
+     "static_tracks_ever_assist_moving": 0
+    },
+    "car 0.6 m/s straight": {
+     "raw_moving_track_scans": 2,
+     "assist_moving_track_scans": 0,
+     "track_scans": 1782,
+     "static_tracks_ever_assist_moving": 0
+    },
+    "car 0.4 m/s arc": {
+     "raw_moving_track_scans": 0,
+     "assist_moving_track_scans": 0,
+     "track_scans": 1575,
+     "static_tracks_ever_assist_moving": 0
+    }
+   }
+  }
+ },
+ "confirm": {
+  "legacy": {
+   "latency": {
+    "0.3 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9500000000000005,
+     "max_s": 1.0000000000000004,
+     "flag_detected": 12,
+     "flag_median_s": 0.7000000000000004,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 870,
+     "static_track_scans": 4666,
+     "static_tracks_ever_flagged": 182
+    },
+    "0.3 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9000000000000006,
+     "max_s": 1.3000000000000007,
+     "flag_detected": 12,
+     "flag_median_s": 0.6500000000000004,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 628,
+     "static_track_scans": 3710,
+     "static_tracks_ever_flagged": 180
+    },
+    "0.3 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9500000000000005,
+     "max_s": 1.3000000000000007,
+     "flag_detected": 12,
+     "flag_median_s": 0.7500000000000004,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 759,
+     "static_track_scans": 3842,
+     "static_tracks_ever_flagged": 166
+    },
+    "0.5 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.7000000000000004,
+     "max_s": 1.1000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.5000000000000002,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 878,
+     "static_track_scans": 4658,
+     "static_tracks_ever_flagged": 186
+    },
+    "0.5 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.7000000000000004,
+     "max_s": 0.8000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.5000000000000002,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 626,
+     "static_track_scans": 3680,
+     "static_tracks_ever_flagged": 174
+    },
+    "0.5 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.8000000000000005,
+     "max_s": 1.1000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 781,
+     "static_track_scans": 3847,
+     "static_tracks_ever_flagged": 174
+    },
+    "1.0 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.6000000000000003,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.40000000000000013,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 774,
+     "static_track_scans": 4545,
+     "static_tracks_ever_flagged": 166
+    },
+    "1.0 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.6000000000000003,
+     "max_s": 0.7000000000000004,
+     "flag_detected": 12,
+     "flag_median_s": 0.40000000000000013,
+     "flag_max_s": 0.5000000000000002,
+     "static_flagged_track_scans": 649,
+     "static_track_scans": 3836,
+     "static_tracks_ever_flagged": 172
+    },
+    "1.0 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.6000000000000003,
+     "max_s": 1.0000000000000004,
+     "flag_detected": 12,
+     "flag_median_s": 0.40000000000000013,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 807,
+     "static_track_scans": 3936,
+     "static_tracks_ever_flagged": 175
+    }
+   },
+   "static": {
+    "car still": {
+     "raw_moving_track_scans": 1384,
+     "assist_moving_track_scans": 861,
+     "track_scans": 4874,
+     "static_tracks_ever_assist_moving": 167
+    },
+    "car 0.3 m/s straight": {
+     "raw_moving_track_scans": 1283,
+     "assist_moving_track_scans": 694,
+     "track_scans": 4412,
+     "static_tracks_ever_assist_moving": 156
+    },
+    "car 0.6 m/s straight": {
+     "raw_moving_track_scans": 2098,
+     "assist_moving_track_scans": 1397,
+     "track_scans": 4852,
+     "static_tracks_ever_assist_moving": 200
+    },
+    "car 0.4 m/s arc": {
+     "raw_moving_track_scans": 1530,
+     "assist_moving_track_scans": 913,
+     "track_scans": 4352,
+     "static_tracks_ever_assist_moving": 171
+    }
+   }
+  },
+  "lrt": {
+   "latency": {
+    "0.3 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.8000000000000012,
+     "max_s": 2.3000000000000016,
+     "flag_detected": 12,
+     "flag_median_s": 1.5000000000000009,
+     "flag_max_s": 1.8000000000000012,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 3682,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.3 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.600000000000001,
+     "max_s": 1.9000000000000012,
+     "flag_detected": 12,
+     "flag_median_s": 1.3000000000000007,
+     "flag_max_s": 1.600000000000001,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2867,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.3 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.700000000000001,
+     "max_s": 1.9000000000000012,
+     "flag_detected": 12,
+     "flag_median_s": 1.4000000000000008,
+     "flag_max_s": 1.600000000000001,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2927,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.5 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.2000000000000006,
+     "max_s": 1.4000000000000008,
+     "flag_detected": 12,
+     "flag_median_s": 0.9000000000000006,
+     "flag_max_s": 1.1000000000000005,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 3667,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.5 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.1000000000000005,
+     "max_s": 1.5000000000000009,
+     "flag_detected": 12,
+     "flag_median_s": 0.8000000000000005,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2853,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.5 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.3000000000000007,
+     "max_s": 1.600000000000001,
+     "flag_detected": 12,
+     "flag_median_s": 0.9500000000000005,
+     "flag_max_s": 1.1000000000000005,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2885,
+     "static_tracks_ever_flagged": 0
+    },
+    "1.0 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9000000000000006,
+     "max_s": 1.4000000000000008,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 1,
+     "static_track_scans": 3582,
+     "static_tracks_ever_flagged": 1
+    },
+    "1.0 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.7500000000000004,
+     "max_s": 1.3000000000000007,
+     "flag_detected": 12,
+     "flag_median_s": 0.4500000000000002,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2913,
+     "static_tracks_ever_flagged": 0
+    },
+    "1.0 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9000000000000006,
+     "max_s": 1.0000000000000004,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2893,
+     "static_tracks_ever_flagged": 0
+    }
+   },
+   "static": {
+    "car still": {
+     "raw_moving_track_scans": 0,
+     "assist_moving_track_scans": 0,
+     "track_scans": 3910,
+     "static_tracks_ever_assist_moving": 0
+    },
+    "car 0.3 m/s straight": {
+     "raw_moving_track_scans": 1,
+     "assist_moving_track_scans": 0,
+     "track_scans": 3438,
+     "static_tracks_ever_assist_moving": 0
+    },
+    "car 0.6 m/s straight": {
+     "raw_moving_track_scans": 5,
+     "assist_moving_track_scans": 0,
+     "track_scans": 3704,
+     "static_tracks_ever_assist_moving": 0
+    },
+    "car 0.4 m/s arc": {
+     "raw_moving_track_scans": 4,
+     "assist_moving_track_scans": 1,
+     "track_scans": 3123,
+     "static_tracks_ever_assist_moving": 1
+    }
+   }
+  }
+ },
+ "noise_8mm": {
+  "legacy": {
+   "latency": {
+    "0.3 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9500000000000005,
+     "max_s": 1.4000000000000008,
+     "flag_detected": 12,
+     "flag_median_s": 0.7000000000000004,
+     "flag_max_s": 1.2000000000000006,
+     "static_flagged_track_scans": 132,
+     "static_track_scans": 2397,
+     "static_tracks_ever_flagged": 48
+    },
+    "0.3 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.8000000000000005,
+     "max_s": 1.2000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 236,
+     "static_track_scans": 2147,
+     "static_tracks_ever_flagged": 69
+    },
+    "0.3 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9000000000000006,
+     "max_s": 1.0000000000000004,
+     "flag_detected": 12,
+     "flag_median_s": 0.7000000000000004,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 248,
+     "static_track_scans": 2380,
+     "static_tracks_ever_flagged": 54
+    },
+    "0.5 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.8000000000000005,
+     "max_s": 1.1000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 125,
+     "static_track_scans": 2375,
+     "static_tracks_ever_flagged": 47
+    },
+    "0.5 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.7000000000000004,
+     "max_s": 0.8000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.5000000000000002,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 211,
+     "static_track_scans": 2100,
+     "static_tracks_ever_flagged": 65
+    },
+    "0.5 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.8000000000000005,
+     "max_s": 1.1000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 280,
+     "static_track_scans": 2349,
+     "static_tracks_ever_flagged": 62
+    },
+    "1.0 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.6000000000000003,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.40000000000000013,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 94,
+     "static_track_scans": 2315,
+     "static_tracks_ever_flagged": 40
+    },
+    "1.0 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.5500000000000003,
+     "max_s": 0.8000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.3500000000000001,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 262,
+     "static_track_scans": 2238,
+     "static_tracks_ever_flagged": 64
+    },
+    "1.0 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.6000000000000003,
+     "max_s": 0.8000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.40000000000000013,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 277,
+     "static_track_scans": 2397,
+     "static_tracks_ever_flagged": 59
+    }
+   },
+   "static": {
+    "car still": {
+     "raw_moving_track_scans": 267,
+     "assist_moving_track_scans": 147,
+     "track_scans": 2541,
+     "static_tracks_ever_assist_moving": 37
+    },
+    "car 0.3 m/s straight": {
+     "raw_moving_track_scans": 392,
+     "assist_moving_track_scans": 171,
+     "track_scans": 2567,
+     "static_tracks_ever_assist_moving": 46
+    },
+    "car 0.6 m/s straight": {
+     "raw_moving_track_scans": 941,
+     "assist_moving_track_scans": 581,
+     "track_scans": 2784,
+     "static_tracks_ever_assist_moving": 82
+    },
+    "car 0.4 m/s arc": {
+     "raw_moving_track_scans": 636,
+     "assist_moving_track_scans": 351,
+     "track_scans": 2572,
+     "static_tracks_ever_assist_moving": 43
+    }
+   }
+  },
+  "lrt": {
+   "latency": {
+    "0.3 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.8000000000000012,
+     "max_s": 2.0000000000000013,
+     "flag_detected": 12,
+     "flag_median_s": 1.5000000000000009,
+     "flag_max_s": 1.700000000000001,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2133,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.3 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.700000000000001,
+     "max_s": 1.8000000000000012,
+     "flag_detected": 12,
+     "flag_median_s": 1.4000000000000008,
+     "flag_max_s": 1.5000000000000009,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1952,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.3 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.700000000000001,
+     "max_s": 2.0000000000000013,
+     "flag_detected": 12,
+     "flag_median_s": 1.4000000000000008,
+     "flag_max_s": 1.700000000000001,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2119,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.5 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.0000000000000004,
+     "max_s": 1.3000000000000007,
+     "flag_detected": 12,
+     "flag_median_s": 0.7000000000000004,
+     "flag_max_s": 1.0000000000000004,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2087,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.5 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.1500000000000006,
+     "max_s": 1.2000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.8500000000000005,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1916,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.5 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.1000000000000005,
+     "max_s": 1.3000000000000007,
+     "flag_detected": 12,
+     "flag_median_s": 0.8000000000000005,
+     "flag_max_s": 1.0000000000000004,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2025,
+     "static_tracks_ever_flagged": 0
+    },
+    "1.0 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9000000000000006,
+     "max_s": 1.4000000000000008,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2046,
+     "static_tracks_ever_flagged": 0
+    },
+    "1.0 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.8000000000000005,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.5000000000000002,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 1990,
+     "static_tracks_ever_flagged": 0
+    },
+    "1.0 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9000000000000005,
+     "max_s": 1.0000000000000004,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 2083,
+     "static_tracks_ever_flagged": 0
+    }
+   },
+   "static": {
+    "car still": {
+     "raw_moving_track_scans": 0,
+     "assist_moving_track_scans": 0,
+     "track_scans": 2228,
+     "static_tracks_ever_assist_moving": 0
+    },
+    "car 0.3 m/s straight": {
+     "raw_moving_track_scans": 0,
+     "assist_moving_track_scans": 0,
+     "track_scans": 2386,
+     "static_tracks_ever_assist_moving": 0
+    },
+    "car 0.6 m/s straight": {
+     "raw_moving_track_scans": 0,
+     "assist_moving_track_scans": 0,
+     "track_scans": 2502,
+     "static_tracks_ever_assist_moving": 0
+    },
+    "car 0.4 m/s arc": {
+     "raw_moving_track_scans": 0,
+     "assist_moving_track_scans": 0,
+     "track_scans": 2284,
+     "static_tracks_ever_assist_moving": 0
+    }
+   }
+  }
+ },
+ "noise_30mm": {
+  "legacy": {
+   "latency": {
+    "0.3 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.7500000000000004,
+     "max_s": 1.1000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.5500000000000003,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 5491,
+     "static_track_scans": 14565,
+     "static_tracks_ever_flagged": 789
+    },
+    "0.3 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.8000000000000005,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 4860,
+     "static_track_scans": 14129,
+     "static_tracks_ever_flagged": 842
+    },
+    "0.3 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.9000000000000006,
+     "max_s": 1.1000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.6500000000000004,
+     "flag_max_s": 0.9000000000000006,
+     "static_flagged_track_scans": 5132,
+     "static_track_scans": 13907,
+     "static_tracks_ever_flagged": 832
+    },
+    "0.5 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.7000000000000004,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.5500000000000003,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 5427,
+     "static_track_scans": 14505,
+     "static_tracks_ever_flagged": 788
+    },
+    "0.5 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.7000000000000004,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.5000000000000002,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 4738,
+     "static_track_scans": 14008,
+     "static_tracks_ever_flagged": 840
+    },
+    "0.5 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.8000000000000005,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 5116,
+     "static_track_scans": 13915,
+     "static_tracks_ever_flagged": 845
+    },
+    "1.0 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.5500000000000003,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.30000000000000004,
+     "flag_max_s": 0.7000000000000004,
+     "static_flagged_track_scans": 5310,
+     "static_track_scans": 14394,
+     "static_tracks_ever_flagged": 792
+    },
+    "1.0 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.6000000000000003,
+     "max_s": 0.9000000000000006,
+     "flag_detected": 12,
+     "flag_median_s": 0.3500000000000001,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 4910,
+     "static_track_scans": 14321,
+     "static_tracks_ever_flagged": 842
+    },
+    "1.0 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 0.7000000000000004,
+     "max_s": 0.8000000000000005,
+     "flag_detected": 12,
+     "flag_median_s": 0.4500000000000002,
+     "flag_max_s": 0.6000000000000003,
+     "static_flagged_track_scans": 5172,
+     "static_track_scans": 14014,
+     "static_tracks_ever_flagged": 841
+    }
+   },
+   "static": {
+    "car still": {
+     "raw_moving_track_scans": 8426,
+     "assist_moving_track_scans": 6062,
+     "track_scans": 15630,
+     "static_tracks_ever_assist_moving": 699
+    },
+    "car 0.3 m/s straight": {
+     "raw_moving_track_scans": 8098,
+     "assist_moving_track_scans": 5597,
+     "track_scans": 16060,
+     "static_tracks_ever_assist_moving": 706
+    },
+    "car 0.6 m/s straight": {
+     "raw_moving_track_scans": 9071,
+     "assist_moving_track_scans": 6405,
+     "track_scans": 16402,
+     "static_tracks_ever_assist_moving": 754
+    },
+    "car 0.4 m/s arc": {
+     "raw_moving_track_scans": 8191,
+     "assist_moving_track_scans": 5715,
+     "track_scans": 15002,
+     "static_tracks_ever_assist_moving": 698
+    }
+   }
+  },
+  "lrt": {
+   "latency": {
+    "0.3 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.9500000000000013,
+     "max_s": 2.4000000000000017,
+     "flag_detected": 12,
+     "flag_median_s": 1.5000000000000009,
+     "flag_max_s": 2.1000000000000014,
+     "static_flagged_track_scans": 1,
+     "static_track_scans": 11093,
+     "static_tracks_ever_flagged": 1
+    },
+    "0.3 m/s, car 0.4 m/s straight": {
+     "detected": 9,
+     "of": 12,
+     "median_s": 1.700000000000001,
+     "max_s": 2.900000000000002,
+     "flag_detected": 12,
+     "flag_median_s": 1.2000000000000006,
+     "flag_max_s": 1.600000000000001,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 10408,
+     "static_tracks_ever_flagged": 0
+    },
+    "0.3 m/s, car 0.4 m/s arc": {
+     "detected": 10,
+     "of": 12,
+     "median_s": 1.8000000000000012,
+     "max_s": 3.0000000000000018,
+     "flag_detected": 12,
+     "flag_median_s": 1.2500000000000007,
+     "flag_max_s": 1.8000000000000012,
+     "static_flagged_track_scans": 7,
+     "static_track_scans": 10054,
+     "static_tracks_ever_flagged": 3
+    },
+    "0.5 m/s, car still": {
+     "detected": 11,
+     "of": 12,
+     "median_s": 1.3000000000000007,
+     "max_s": 1.5000000000000009,
+     "flag_detected": 12,
+     "flag_median_s": 0.8000000000000005,
+     "flag_max_s": 1.3000000000000007,
+     "static_flagged_track_scans": 1,
+     "static_track_scans": 11032,
+     "static_tracks_ever_flagged": 1
+    },
+    "0.5 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.3000000000000007,
+     "max_s": 2.1000000000000014,
+     "flag_detected": 12,
+     "flag_median_s": 0.9000000000000006,
+     "flag_max_s": 1.4000000000000008,
+     "static_flagged_track_scans": 2,
+     "static_track_scans": 10270,
+     "static_tracks_ever_flagged": 1
+    },
+    "0.5 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.1000000000000005,
+     "max_s": 2.3000000000000016,
+     "flag_detected": 12,
+     "flag_median_s": 0.8000000000000005,
+     "flag_max_s": 1.1000000000000005,
+     "static_flagged_track_scans": 7,
+     "static_track_scans": 10145,
+     "static_tracks_ever_flagged": 3
+    },
+    "1.0 m/s, car still": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.4000000000000008,
+     "max_s": 2.4000000000000017,
+     "flag_detected": 12,
+     "flag_median_s": 0.5500000000000003,
+     "flag_max_s": 1.2000000000000006,
+     "static_flagged_track_scans": 2,
+     "static_track_scans": 10969,
+     "static_tracks_ever_flagged": 2
+    },
+    "1.0 m/s, car 0.4 m/s straight": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.0000000000000004,
+     "max_s": 2.4000000000000017,
+     "flag_detected": 12,
+     "flag_median_s": 0.6000000000000003,
+     "flag_max_s": 0.8000000000000005,
+     "static_flagged_track_scans": 0,
+     "static_track_scans": 10484,
+     "static_tracks_ever_flagged": 0
+    },
+    "1.0 m/s, car 0.4 m/s arc": {
+     "detected": 12,
+     "of": 12,
+     "median_s": 1.1000000000000005,
+     "max_s": 1.5000000000000009,
+     "flag_detected": 12,
+     "flag_median_s": 0.6500000000000004,
+     "flag_max_s": 1.0000000000000004,
+     "static_flagged_track_scans": 9,
+     "static_track_scans": 10141,
+     "static_tracks_ever_flagged": 4
+    }
+   },
+   "static": {
+    "car still": {
+     "raw_moving_track_scans": 15,
+     "assist_moving_track_scans": 2,
+     "track_scans": 12104,
+     "static_tracks_ever_assist_moving": 2
+    },
+    "car 0.3 m/s straight": {
+     "raw_moving_track_scans": 50,
+     "assist_moving_track_scans": 6,
+     "track_scans": 12414,
+     "static_tracks_ever_assist_moving": 4
+    },
+    "car 0.6 m/s straight": {
+     "raw_moving_track_scans": 47,
+     "assist_moving_track_scans": 4,
+     "track_scans": 12172,
+     "static_tracks_ever_assist_moving": 3
+    },
+    "car 0.4 m/s arc": {
+     "raw_moving_track_scans": 74,
+     "assist_moving_track_scans": 9,
+     "track_scans": 11062,
+     "static_tracks_ever_assist_moving": 4
+    }
+   }
+  }
+ }
+}

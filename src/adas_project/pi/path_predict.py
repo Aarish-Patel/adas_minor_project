@@ -35,7 +35,8 @@ def _measured():
         from adas.config import load_tuning
         from pi.relay_assists import K_CURV_PER_SERVO_DEG, car_params
         tun = load_tuning(os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuning_real_car.json"))
-        return car_params(tun.mount), K_CURV_PER_SERVO_DEG, float(tun.servo.left_center)
+        from adas.servo import steering_centre
+        return car_params(tun.mount), K_CURV_PER_SERVO_DEG, float(steering_centre(tun.servo))
     except Exception:
         return VehicleParams(wheelbase=0.20, pivot_track=0.07, width=0.14, front_overhang=0.06, rear_overhang=0.05,
                              lidar_x=0.12, lidar_y=0.0), None, 90.0

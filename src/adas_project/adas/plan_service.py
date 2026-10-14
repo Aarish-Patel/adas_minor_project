@@ -9,7 +9,8 @@ each tick; the brake gate keeps protecting the car while a plan is being made.
 Modes:
   process   a worker process (the relay on the car / in the laptop simulator)
   inline    computed at once in the caller (simulations, tests) - but the result is only released after the time
-            the Pi would have needed (measured compute time x latency_factor), so simulations see the delay
+            the Pi would have needed, so simulations see the delay: with a latency factor, the work done (search nodes,
+            grid cells) at the Pi's measured rates, and search budgets in nodes - deterministic, whatever the laptop is doing
 """
 import time
 
@@ -19,6 +20,12 @@ import time
 EVASIVE_BUDGET_S = 0.20           # forward swerve search: the car is moving, it must be quick (typically ~0.05 s)
 BACKOFF_BUDGET_S = 2.0            # with reversing: only needed close to an obstacle, where the brake holds the car
 GOTO_BUDGET_S = 2.0               # click-to-go: the car waits while it plans
+# The twin's model of the Pi's planning time (plan delay and node budgets). Least-squares fit of measured laptop time x PI_COMPUTE_FACTOR
+# (3.5) on 127 jobs of every kind (evasive, click-to-go, parking), single-threaded: per-kind median ratio measured / model 0.8-1.0.
+PI_NODES_PER_S = 1400.0           # Hybrid A* expansions (with their collision checks and analytic tries) per second on the Pi 5
+PI_GRID_CELLS_PER_S = 8.0e5       # planning-grid cells (occupancy + distance transform) per second
+PI_POSE_POINTS_PER_S = 1.3e7      # exact body-clearance evaluations (pose x point) per second
+PI_JOB_BASE_S = 0.005             # a job's fixed cost (hand-over, set-up)
 
 
 # ------------------------------------------------------------------ the jobs (module level: they run in the worker)
@@ -57,6 +64,40 @@ def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_head
                             goal_heading=goal_heading, w_reverse=GOTO_W_REVERSE)
 
 
+def plan_parallel_job(params, strip_pts, side, depth, click, pts):
+    """Parking: find the free gaps on the strip from the scan, take the viable one nearest to the click and plan the reverse manoeuvre
+    from its pull-up pose (adas/park_select.py); the car drives to that pose with the click-to-go planner (AutoNav), after pulling out of
+    the gap it stands in if it is parked. Everything in the vehicle frame now. Returns a ParkingPlan."""
+    from .park_select import ParkingStrip, plan_parallel, plan_pull_out
+    strip = ParkingStrip(strip_pts, side, depth)
+    plan = plan_parallel(strip, click, params, pose=(0.0, 0.0, 0.0), points=pts, approach=False)
+    if plan.planned_path is not None:
+        out = plan_pull_out(strip, params, pts)
+        if out is not None:
+            plan = plan._replace(pull_out=out)
+    return plan
+
+
+def plan_pull_out_job(params, strip_pts, side, depth, pts):
+    """A go-to from a car parked in the lane: the way out onto the road first (adas/park_select.plan_pull_out, vehicle frame now).
+    Returns poses (N, 4) or None."""
+    from .park_select import ParkingStrip, plan_pull_out
+    return plan_pull_out(ParkingStrip(strip_pts, side, depth), params, pts)
+
+
+def plan_refine_job(params, strip_pts, side, depth, click, slot, pts):
+    """Parking, alongside the chosen slot: the gap measured again in the close-range scan and the manoeuvre re-planned (vehicle frame
+    now). Returns a ParkingPlan."""
+    from .park_select import ParkingStrip, refine_parallel
+    return refine_parallel(ParkingStrip(strip_pts, side, depth), click, slot, params, points=pts)
+
+
+def plan_perpendicular_job(params, marker, pts):
+    """Parking: the bay behind the rear-wall ArUco marker (MarkerObs in the vehicle frame). Returns a ParkingPlan."""
+    from .park_select import plan_perpendicular
+    return plan_perpendicular(marker, params, pose=(0.0, 0.0, 0.0), points=pts)
+
+
 # ------------------------------------------------------------------ the service
 class Job:
     def __init__(self, future=None, result=None, delay=0.0):
@@ -73,7 +114,9 @@ class Job:
         if self.future is not None:
             try:
                 return self.future.result()
-            except Exception:                  # a failed search must never take the relay down
+            except Exception:                  # a failed search must never take the relay down - but it is reported, not hidden
+                import traceback
+                traceback.print_exc()
                 return None
         return self._result
 
@@ -99,19 +142,29 @@ class PlanService:
 
     def budget(self, pi_seconds):
         """A computing budget given in Pi seconds, for the machine the search will run on: on the Pi (process
-        mode) as is; inline with a latency factor (a simulation of the Pi) shrunk by that factor."""
+        mode) as is; inline with a latency factor (a simulation of the Pi) as the number of nodes the Pi expands in that time
+        (hybrid_astar.NodeBudget) - deterministic, whatever else the laptop is doing."""
         if self.mode == "inline" and self.latency_factor > 0:
-            return pi_seconds / self.latency_factor
+            from .hybrid_astar import NodeBudget
+            return NodeBudget(pi_seconds * PI_NODES_PER_S)
         return pi_seconds
 
     def submit(self, fn, *args):
         if self.mode == "process":
             return Job(future=self._executor().submit(fn, *args))
+        from .hybrid_astar import WORK
+        n0, c0, p0 = WORK["nodes"], WORK["grid_cells"], WORK["pose_points"]
         t0 = time.perf_counter()
         res = fn(*args)
         elapsed = time.perf_counter() - t0
-        self.last_ms = elapsed * 1000
-        return Job(result=res, delay=elapsed * self.latency_factor)
+        if self.latency_factor > 0:
+            # a simulation of the Pi: the delay from the WORK done (search nodes, grid cells) at the Pi's rates, not from how long the
+            # laptop happened to take - the same drive then gives the same result every time
+            delay = PI_JOB_BASE_S + (WORK["nodes"] - n0) / PI_NODES_PER_S + (WORK["grid_cells"] - c0) / PI_GRID_CELLS_PER_S                 + (WORK["pose_points"] - p0) / PI_POSE_POINTS_PER_S
+        else:
+            delay = 0.0
+        self.last_ms = (delay if self.latency_factor > 0 else elapsed) * 1000
+        return Job(result=res, delay=delay)
 
     def shutdown(self, wait=True):
         """Stop the worker process (waits for it by default, so it can never outlive the relay)."""

@@ -27,12 +27,9 @@
 // WIFI
 // ============================================================
 
-const char* WIFI_SSID = "Airtel_Ghar";
-const char* WIFI_PASSWORD = "Gharkawifi@407";
+#include "secrets.h"   // WIFI_SSID, WIFI_PASSWORD, AP_SSID, AP_PASSWORD (AP: 8+ characters) - git-ignored, see secrets.example.h
 const unsigned long WIFI_FALLBACK_MS = 15000;
 
-const char* AP_SSID = "RC_CAR";
-const char* AP_PASSWORD = "rccar123";   // must be 8+ characters
 
 const char* HOSTNAME = "rccar";         // reachable as rccar.local
 const unsigned int UDP_PORT = 4210;

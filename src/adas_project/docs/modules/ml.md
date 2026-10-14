@@ -88,7 +88,28 @@ model files in `pi/` and `models/`.
 | Hardware | laptop RTX 4060 (CUDA) for training; car inference NumPy |
 | Large data | `data/` is git-ignored: regenerate with the scripts (twin data ~minutes-hours on 8 workers) |
 
-## Pending: takeover-needed classifier (W5)
-Dataset of takeover decisions (plain ADAS drives, features at takeover onset, counterfactual label needed / needless) generated
-locally in `data/needless/decisions_100.npz` (seeds 100-349) and `decisions_400.npz` (seeds 400-499, test); not trained yet. Adopt it as
-decider (`RC_NEED_PATH=pi/needless_v1.json`, threshold `RC_NEED_TAU`) only if it beats v2 on untouched Monte Carlo seeds.
+## Takeover-needed classifier (W5) - trained, NOT adopted
+Dataset of takeover decisions (plain ADAS drives, v3 window features at takeover onset, counterfactual label needed / needless):
+`data/needless/decisions_100.npz` (seeds 100-349, 1736 takeovers, 3.8 % needed in training) and `decisions_400.npz` (seeds 400-499,
+held-out test, 742 takeovers, 5.1 % = 38 needed). `python -m sim.train_needless` (depth-3 gradient-boosted trees, 24 iterations,
+class-balanced, temperature-scaled) writes `pi/needless_v1.json` and `models/needless_report.json`.
+
+| Held-out test (742 takeovers, 38 needed) | AUC | AP | needless held back, 0 needed missed | held back, <= 10 % needed missed |
+|---|---|---|---|---|
+| v3 crash risk as score | 0.64 | 0.074 | 19.9 % | 28.7 % |
+| logistic regression | 0.69 | 0.091 | - | - |
+| needed-model (trees) | 0.75 | 0.139 | 17.5 % | 18.9 % |
+
+Better ranking than v3 risk, but still weak (few positives) and no better at holding takeovers back at a safe operating point.
+As decider (Monte Carlo tuning seeds 0-23, 72 drives = 24 seeds x 3 styles, `python -m sim.need_eval tune`, `models/need_eval_tune*.json`;
+paired one-sided Wilcoxon vs v2; the two sweeps re-ran ADAS/v2 so their baselines differ by a few drives):
+| Decider (RC_NEED_TAU) | crashes | goals | takeovers | needless interv. | overridden needlessly (s) |
+|---|---|---|---|---|---|
+| ADAS | 0 | 67 / 68 | 118 / 113 | 136 / 129 | 334 / 331 |
+| v2 | 0 | 65 / 66 | 30 / 31 | 80 / 99 | 312 / 288 |
+| need 0.05 / 0.1 / 0.2 / 0.35 | 0 | 67 / 63 / 65 / 65 | 69 / 49 / 43 / 41 | 111 / 111 / 98 / 96 | 424 / 355 / 315 / 309 |
+| need 0.5 / 0.7 | 0 | 65 / 66 | 37 / 34 | 95 / 92 | 290 / 294 |
+No threshold beats v2 (takeovers 30-31 vs 34-69; the paired test never favours the model; needless interventions 92-95 vs 99 is
+p = 0.40-0.43, not significant). Rule: a decider changes only if it beats v2 on untouched seeds, so the untouched-seed confirmation
+(24-47) was not run and **v2 stays the decider**. Cause: only 53 needed takeovers to learn from; consistent with ADR-010 / ADR-024
+(arbitration, not prediction, is the limit). More decision data (needed events are rare) would be the next lever.

@@ -475,3 +475,290 @@ Changed files are copied into the published layout and committed there. No READM
 full-size km/h and converted; the steering envelope limits lateral acceleration to a full-size-equivalent ~0.6 g. Time is not scaled.
 
 **Consequences.** Numbers on screen read like a real car; test thresholds in code stay in car units.
+
+# ADR-030 Relocalisation: coarse-to-fine correlative matching against the submaps, refuse rather than guess
+
+**Status:** Accepted
+
+**Context.** Loop closure (ADR on submaps) needs a pose guess within ~0.45 m / 14°. A car lifted and put down, or switched on inside a
+room that was mapped before, has none, and the pose it reports is wrong for the rest of the session. The map was also lost at every
+restart.
+
+**Decision.** `PoseGraphMap.relocalise` searches every submap over its whole extent and all headings (0.4 m / 6° max-pooled likelihood
+field, then 0.2 m / 3° around the survivors, then 5 cm / 1° and ICP: multi-resolution correlative matching after Olson 2009 with the
+pooled-field pyramid of Hess et al. 2016). A fix needs a score ≥ 0.60, ≥ 55 % of the scan within 10 cm of the map and a margin ≥ 0.06
+over the best genuinely different pose; `Relocaliser` also needs a second scan to give the same place after the front end's motion.
+Otherwise there is no fix (an empty rectangular room is symmetric; a corridor is ambiguous along its length). `rebase` joins the new
+stretch to the map by an edge to the fixed submap and no odometry edge across the break. `kidnap_score` (range-image agreement of two
+scans) triggers the search after a lift-and-drop; `SlamService.relocalise()` / `load()` trigger it on request or after loading a saved
+map (`PoseGraphMap.save/load`). With no fix after 8 s the service carries on as a new session.
+
+**Alternatives.** Feature or place-recognition descriptors (Scan Context, M2DP): more code and data for a 2D scan in a small room, and
+they still need the geometric verification above. AMCL particle filter: needs a fixed occupancy map and a motion prior; the correlative
+search is exact over the window and reuses the loop-closure fields.
+
+**Consequences.** ~0.07-0.3 s per attempt on the laptop (0.25-1 s on the Pi estimate) in the worker thread only; the detector misses
+about 8 % of drops in a room (poses that happen to look alike) and all in a corridor, so the operator trigger stays. The world frame
+after a relocalisation is the saved map's frame, not the pose at power-up.
+
+# ADR-031 Moving-object test: likelihood ratio on the track history with aperture-aware covariances
+
+**Status:** Accepted
+
+**Context.** The tracker called an object moving when its fitted speed exceeded 0.10 m/s for 3 scans (the relay then wanted ≥ 5). At 20 mm
+range noise a fifth of the static wall fragments were flagged (a wall cut into pieces by grazing gaps has a centroid that slides along it,
+and neighbouring pieces swap identities): the "never flagged" acceptance of FR-004 was only met through the ≥ 5-scan filter, and no
+threshold / persistence choice of that test reached zero false flags (`models/tracking_legacy_grid.txt`).
+
+**Decision.** `Tracker(model="lrt")` (default): every position sample has a covariance (range noise / sqrt(points) + sampling jitter;
+along the cluster axis a large term per cut end: aperture problem); weighted least-squares lines over the newest 3..N samples (scan
+statistic); statistic = squared Mahalanobis distance of the fitted velocity from "fixed in the world", with the car's motion error
+(dv, dw) estimated from the other tracks (Huber-robust consensus, prior from the speed model) and its covariance included; χ² threshold
+18.4 (flag) / 9.2 (keep), 2 consecutive scans; association gate 0.15 m; clusters cut at both ends are never flagged. Method: chi-square
+innovation test (Bar-Shalom et al. 2001), sequential form after Wald 1945. The old test stays as `model="legacy"` for comparisons.
+
+**Consequences.** Zero static flags in 20k+ twin track-scans at 8-30 mm noise (`sim/tracking_eval.py`); detection latency equal to the old
+test under the consumers' ≥ 5-scan rule (0.4-1.3 s depending on speed) but reachable without that rule: the consumers should use
+`Track.moving` directly (proposed in TODO P2-3). About 3 ms per scan on the laptop.
+
+# ADR-032 Parallel parking on a continuous lane: gaps from the scan, nearest viable slot to the click
+
+**Status:** Accepted (supersedes the fixed parking spaces S0..S7 of the Parking Simulator)
+
+**Context.** The first Parking Simulator street had predefined spaces with occupied flags; the user rejected it: "no dedicated rectangles
+should exist" - a real street is one lane along the kerb with cars at arbitrary spacing, and the driver points at where they want to park.
+
+**Decision.** The HMI sends only the lane (road-edge polyline, side, depth) and the click (`PARK_TARGET`). The car finds the free gaps from
+its own scan (`find_gaps`: returns in the lane band projected on the strip, 1-D clustering), a gap is viable if it is at least the car's
+length + 0.30 m, a slot is placed in each viable gap as near to the click as the gap allows (at most 1.6 m long; a long gap parks where
+clicked), the nearest slot with a manoeuvre is taken. When the car is beside the gap it measures it again at short range and re-plans
+(`refine_parallel`, same rule among the gaps within 1.5 m): from afar parked cars hide parts of each other at grazing angles. The lane
+itself (the kerb) is not visible to a 2D LiDAR, so its position comes from the car's pose.
+
+**Consequences.** No spaces anywhere (world, HMI, planner, validation); validation is scored against the true parked cars. A near-tie between
+two gaps (a few cm of difference in distance to the click) can go either way with perception noise - accepted within 10 cm.
+
+# ADR-033 Tight gaps: the exit planned from the parked pose and driven backwards (Vorobieva et al. 2015)
+
+**Status:** Accepted (replaces the Hybrid A* multi-point search for parallel parking)
+
+**Context.** With the car's 0.67 m turning radius (twice its length) the reverse S needs ~1.3 m; the Hybrid A* multi-point search below that
+took ~9 s and failed at 1.1 m, partly because its three-circle body model over-states the car by ~6 cm at each bumper.
+
+**Decision.** Plan the EXIT: from the parked pose back up to the rear neighbour, then alternate full-lock forward and reverse strokes that
+each end 5 cm before a neighbour or the kerb, until two arcs lead out to the lane; drive it backwards (Vorobieva, Glaser, Minoiu-Enache &
+Mammar, IEEE T-ITS 2015). Clearance on the exact rectangle. The reverse S (80 % curvature, roomy margin first) stays the first choice.
+
+**Consequences.** Deterministic, ~10 ms; gaps down to 0.55 m plan (9 gear changes); the minimum is set to car + 0.30 m (<= ~6 changes).
+Forward entry (a dead end ahead) swings the long front end into the kerb with this steering: refused, documented.
+
+# ADR-034 Scan-to-local-map odometry with degeneracy handling
+
+**Status:** Accepted (replaces scan-to-scan `Odometry` in the relay)
+
+**Context.** Scan-to-scan ICP drifted 3-5 % along a street (the parallel walls leave the along direction unconstrained, the speed model's
+bias then decides) and ~1.5 deg heading over 9 m; parking after a long approach missed by 10-30 cm.
+
+**Decision.** `pi/scanmatch.LocalMapOdometry`: each scan is registered to a voxel map of recent keyframes (KISS-ICP, Vizzo et al. RA-L 2023)
+by point-to-line Gauss-Newton with Huber weights (Censi ICRA 2008); a direction with too little information (smallest eigenvalue of the
+translation block) keeps the motion prediction (Zhang, Kaess & Singh ICRA 2016). Used for the manoeuvre frame and the world pose; the gate's
+obstacle memory is re-anchored on it after each scan.
+
+**Consequences.** Twin benchmark (6 streets, 9 m, speed model 5 % low): along 30.8 -> 3.1 cm, lateral 8.1 -> 1.4 cm, heading 1.8 -> 0.1 deg,
+3.3 -> 1.7 ms per scan; return to start 11 -> 4 cm. To be confirmed on the car (MEASURE: straight 5 m drive, taped end mark).
+
+# ADR-035 A deterministic twin
+
+**Status:** Accepted
+
+**Context.** The same simulated drive gave different results run to run (a bay park 3.8 / 8.2 / 25 cm; return to start failing 2 in 6): the
+Hybrid A* budgets were wall-clock, the simulated Pi delay was measured time x 3.5, and the SLAM worker thread's timing decided which scans it
+used - so tests were flaky and tuning chased noise.
+
+**Decision.** In the twin (plan service inline with a latency factor): search budgets in nodes (`NodeBudget`, 1600 nodes per Pi-second), the
+plan's release delay from the work done (nodes, grid cells, clearance evaluations) at measured Pi rates, SLAM inline. The car keeps
+wall-clock budgets and the worker thread / process.
+
+**Consequences.** Identical results on repeat; full test suite stable; the twin's timing is a model (rates in `adas/plan_service.py`).
+
+# ADR-036 Bay parking: camera for WHICH bay, LiDAR for the wall and the stop
+
+**Status:** Accepted
+
+**Context.** Parking from the ArUco marker alone ended 6-9 cm short / long (range from four pixel corners, odometry on the way in) and tilted
+by an askew marker (5-11 deg).
+
+**Decision.** The marker gives the bay's place on the wall; the rear wall's line comes from the LiDAR (trimmed PCA around the marker,
+neighbours' rear faces rejected); on the last reverse leg the stop follows the wall as the LiDAR measures it (parking-sensor behaviour).
+
+**Consequences.** Bay suite 23/24 at 5 cm / 5 deg (all parks <= 4.4 cm, mean 2.8 cm); an askew marker no longer tilts the car.
+
+# ADR-037 HMI: frames paced by the buffer swap; garbage only on the GUI thread; worker signals through bridges
+
+**Status:** Accepted
+
+**Context.** A free 16 ms timer beat against the display refresh (30 ms frames among 14 ms, visible judder); intermittent access violations
+came from worker threads emitting on widgets that a window rebuild had destroyed, and from Python's collector freeing Qt objects in a worker.
+
+**Decision.** The next frame starts when the 3D view's frame reached the screen (11 ms floor, 33 ms eco); `controls.ThreadSignal` bridges for
+every worker-thread signal; `controls.gui_thread_gc()` (pyqtgraph GarbageCollector) at start-up.
+
+**Consequences.** 62 -> 92 FPS, frame sd 6.3 -> 4.6 ms, on-screen shake p95 3.0 -> 2.3 mm (twin relay driving); no crash in repeated test runs.
+
+# ADR-038 Parallel parking in phases: pull out, approach with the click-to-go planner, measure alongside, manoeuvre
+
+**Status:** Accepted (amends ADR-032: the way to the slot is no longer part of the gap planner's path)
+
+**Context.** Dashboard test of 30 Sep (user's relay log 10:16-10:19): the way from the car to the slot was one Dubins curve planned from one
+scan and driven as fixed; from afar it was often a long reverse along the road (8 cm from a parked car, 21 cm from the wall, then stuck),
+and from a car already parked in the lane no such curve exists ("no way to park there"). The slot choice itself depended on that curve: a
+click was answered with a different gap when the curve to the nearest one failed.
+
+**Decision.** As production park assists do (search, drive to the start of the manoeuvre, measure, park): the click chooses the slot from the
+scan independently of where the car is (`plan_parallel(..., approach=False)`: the nearest viable gap with a manoeuvre, never a refusal while
+one exists); a car standing in the lane first pulls out with the tiny-gap planner's exit strokes run forward (`plan_pull_out`); the
+click-to-go planner (Hybrid A*, re-planned on blockage, stall recovery) drives to a point 0.8 m before the pull-up pose, beside the gap;
+there the gap is measured at short range and the manoeuvre planned from the car's exact pose (run-in + reverse S, or multi-stroke). The map
+shows the whole intended path (way + manoeuvre) and keeps it while a re-plan runs. The kerb has its own clearance (target 5 cm, 3 cm
+along the path) apart from the neighbours'. A stroke the brake gate holds within 6 cm of its end counts as done (the gate keeps 6 cm +
+1.2 cm at a crawl); a stall is measured as no progress, not as speed below a threshold (a car that creeps and stops for minutes is stalled).
+A side offset left after the S (> 1.5 cm) is taken out with a two-arc shift and a straight move back, reversing when moving toward the kerb.
+
+**Consequences.** See TODO AC8-AC15 for the dashboard results (tools/hmi_test.py). The approach costs a Hybrid A* search (the Pi's
+planner process; the car holds still meanwhile) and the gap planner is used only from beside the gap, where its single-curve approach is
+short.
+
+# ADR-042 Parallel parking: the final position from the parked neighbours, not from the odometry
+
+**Status:** Accepted (amends ADR-032's "the lane's position comes from the car's pose")
+
+**Context.** With the actuation noise on, the car's picture of the lane drifted during the approach (along the street up to 18 cm, across
+it up to ~4 cm on the dashboard) and during the manoeuvre (9 cm along in one run): cars parked 5-10 cm off-centre or on the kerb while
+believing they were on target. A 2D LiDAR does not see the kerb; it sees the parked cars well at short range.
+
+**Decision.** As production parallel-park systems place the target from the detected vehicle contours (Pohl, Sethsson & Ekmark, Proc.
+IMechE D 220, 2006) and finish on the parking sensors: (1) when the gap is measured beside it, the goal across the lane is in line with the
+neighbours' road-side faces (never nearer the believed kerb than 3.5 cm; without neighbours 5 cm off the kerb); (2) in the slot, near the
+end of the path, the free distances to the neighbour ahead and behind and their end faces' road-side corners set the goal - centred
+between them (plus the slot's planned offset in a long gap) and in line with them - before 'arrived' is decided; the side correction and
+the creep then drive to it. The path keeps as much clearance to the kerb as the goal has (at most 3 cm).
+
+**Consequences.** The final position no longer depends on the odometry since the click. It follows the neighbours: a row parked far from
+the kerb is followed (clamped by the believed kerb), a single neighbour or none falls back to the odometry goal.
+
+# ADR-043 A parking lane drawn as a rectangle on the map (simulator and car)
+
+**Status:** Accepted
+
+**Context.** The Park tool worked only on the simulator's street, whose lane comes from the simulator's layout; on the car there was no way
+to say where the parking lane is. User, 30 Sep: "make it so I can define a parking lane as a rectangle in any simulation or the real thing".
+
+**Decision.** A Parking lane map tool: drag a rectangle; its long axis is the lane, the long side nearer the car the road edge (the car
+stands on the road), the other the kerb (a Flip tile swaps them), the short side the depth. It is stored in the relay's world (map) frame
+in `gui/parking_lane.json`, turned into the same layout the simulator street uses (in the simulator frame through the current alignment;
+on the car the alignment is the identity), so the Park tool, the map and 3D drawing and `PARK_TARGET` are unchanged; in the simulator the
+street's cars and pavement stay on screen. A room switch or an origin reset deletes it (its coordinates would point elsewhere). A kerb the
+LiDAR sees (a wall, a board) is handled: returns within 3 cm of the kerb line are the kerb (3.5 x the 8 mm range noise, and a 3 cm
+drawing error), returns within 8 cm are not used to find parked cars, and with returns along the kerb inside the gap the car parks 6 cm
+off it and the path keeps 5 cm (outside the brake gate's crawl envelope). In a gap longer than the slot, further positions 0.25 m apart
+are tried, nearest to the click first, before a gap is given up.
+
+**Consequences.** Works in every simulator room and on the car (dashboard: a lane over the street, 2-4 cm off the kerb in 4 of 5 runs,
+0.4 cm in one - the drawn kerb was 1.9 cm off the true one; a lane along a room wall, 5.1 cm off it). The lane's precision is the
+drawing's: the car cannot see a tape kerb - the neighbours (in line with them) limit the error.
+
+# ADR-039 A fault in the autonomy never ends the relay
+
+**Status:** Accepted
+
+**Context.** 30 Sep: the relay process died on an AttributeError in unfinished AutoNav code (a restarted twin had loaded it); the dashboard
+showed NO DATA and the brake gate was gone with the process.
+
+**Decision.** The relay catches any exception from the autonomy's tick and from the GOTO / PARK_TARGET / PARK_MARKER / PARK / EXPLORE
+commands, prints the traceback, cancels the autonomy (the car then holds until the throttle is let go, as after any autonomy end) and carries
+on. Manual driving and the gate are unaffected.
+
+**Consequences.** A planning bug becomes an "autonomy fault - stopped" message instead of a dead relay; bugs are still visible in the log.
+
+# ADR-040 The displayed ego pose is filtered (One Euro)
+
+**Status:** Accepted
+
+**Context.** User, 30 Sep: the car keeps vibrating on the dashboard - LiDAR noise must move the points, not shake the screen. The displayed
+pose was the relay's pose interpolated between packets; the scan matcher corrects it by millimetres / tenths of a degree ten times a second
+and the chase camera magnifies a heading step across the whole view.
+
+**Decision.** The pose for the car model, the chase camera, the mini-map and the map's follow view passes a One Euro filter (Casiez, Roussel &
+Vogel, CHI 2012): 0.6 Hz cutoff at rest (heading 0.5 Hz), rising with speed (6 Hz per m/s, heading 3 Hz per rad/s) so the car does not
+trail its own points; a jump (reset, relocalisation) is taken at once. The LiDAR points keep the packet's own pose, so their noise stays in the
+points.
+
+**Consequences.** Measured with `--measure` (TODO AC16). Up to ~2 cm lag of the car model at 0.3 m/s.
+
+# ADR-041 The twin's car has imperfect actuation
+
+**Status:** Accepted
+
+**Context.** User, 30 Sep: the same steering and throttle must not always give the same curve in the simulator, since they do not on the car;
+parking and click-to-go have to adapt. The twin's car executed every command exactly.
+
+**Decision.** `sim.hw_sim.ActuationNoise` (seeded, on by default in every simulation): a steering-centre error (sd 0.8 deg) and left / right
+gain errors (sd 6 %) per run, a speed gain error (sd 3 %) per run, slow wander of the steering offset (sd 0.5 deg, 2 s) and of the speed gain
+(sd 4 %, 3 s) as first-order Gauss-Markov processes (Maybeck 1979), and 0.6 deg of play in the steering linkage. The Monte Carlo and the
+scenario suite draw one car per seed; a simulator reset draws a new one.
+
+**Consequences.** Results are reported with the noise on; open-loop accuracy no longer passes a test - the followers, the terminal
+corrections and the re-planning must close the loop.
+
+# ADR-044 The relay acts on the newest driving packet only
+**Status:** Accepted
+
+**Context.** Incident 1 Oct 2026 (TODO AH): during parking autonomy the relay handled 14-20 of the controller's 50 packets per second; the
+UDP socket (212 kB) queued seconds of old commands and dropped 1943 packets. The driver's steering and throttle took effect about a second
+late and went on after the trigger was released.
+
+**Decision.** `pi/driver_input.py`: after each wait the relay takes everything already queued on its port, handles every control command
+(PING, GOTO, ZONES, PARK, ...) in arrival order and, of the driving packets ("A", "M", "T" lines), only the newest - the keep-last, depth-1
+policy used for teleoperation command streams (e.g. ROS 2 QoS for velocity commands). The receive buffer is set to 32 kB. Dropped stale
+packets are counted in the drive log ("stale driver packets dropped").
+
+**Consequences.** A slow tick lowers the control rate but can no longer delay commands; the heavy work that made ticks slow is still to be
+moved out of the loop (TODO AH3). The twin runs the same loop, so the laptop simulator behaves the same.
+
+# ADR-045 No LiDAR returns in the direction of travel is unknown, not free
+**Status:** Accepted
+
+**Context.** Incident 1 Oct 2026: for 9 s the LiDAR returned nothing across a 100-200 deg arc in front of the car (a dark or very close
+surface); the path gate measured an infinite free distance and let the car push into the wall at full throttle until the wall appeared at
+4 cm. The rear bevel differential broke.
+
+**Decision.** `pi/path_gate.py`: each scan, the fraction of 2 deg bearing bins within 30 deg of straight ahead / behind that hold a return
+(`sector_cover`). Driving towards a sector with less than half of its bins covered: speed capped at 0.10 m/s, and after 1 s of that the
+throttle is held at zero ("LiDAR blind ahead - stopped") until the sector is seen again or the driver lets go. A bearing also counts as
+seen when the obstacle memory holds a point there that is now too close to see (nosing up to a wall seen before is not blind; each
+remembered point covers 3 cm either side). Unknown space is treated as
+possibly occupied, the conservative reading of an occupancy grid (Thrun, Burgard & Fox 2005, ch. 9); ISO 3691-4 likewise asks driverless
+vehicles to slow or stop when the protective field cannot be monitored.
+
+**Consequences.** Replaying the whole incident session (22 073 driver ticks) through the gate: stopped from 402.7 s, 7 s before the
+impact; elsewhere two 0.1 s creeps and one 0.9 s creep, no stop. Twin: goto_and_home runs 0 blind ticks, relay_scenarios 23/24 as before. A driver can
+still reverse out of a blind spot when the rear is seen.
+
+# ADR-046 Remembered obstacles are removed only on evidence that depends on distance and size
+**Status:** Accepted
+
+**Context.** User, 14 Oct 2026 (real car): thin objects were remembered when the car was close and deleted once it moved away, since
+they are not returned from farther off. `adas/memory.py` dropped a point in one scan when no return lay within 10 cm of it, or when any
+return within +-4 deg was farther; the dashboard map (ADR-less fix of 1 Oct) used a +-1 deg window.
+
+**Decision.** `adas/visibility.py`, used by the gate's obstacle memory and the dashboard map: each remembered point / cell keeps a
+clamped score (+1 per scan that hits it; memory max 8, map 6) and loses a miss weight when the scan sees through it. Only beams within
+the point's own angular size count; that size comes from how many remembered points lie next to it (a thin post = 1-2 points, a wall =
+many). A point is judged only when at least 4 beams should hit it from where the car is (a 2 cm post: within ~0.9 m; a wall: from
+several metres), and the weight falls beyond 1 m (R_REF / r). Inside the LiDAR's minimum range a far return still removes the point at
+once (a phantom wall from dead-reckoning drift). Clamped log-odds occupancy (Moravec & Elfes 1985; OctoMap, Hornung et al. 2013) with
+Removert's visibility test (Kim & Kim 2020).
+
+**Consequences.** A 2 cm post seen at 0.4 m stays when the car backs to 1 m with the wall seen beside it; a removed 20 cm box goes within
+~15 scans; a wall that moved 1 m clears in ~6 scans at 2 m (was 2). Objects that really were removed but are only ever seen again from far
+away stay on the map until the car comes closer. Dashboard cost ~11 ms per update at 13 000 cells.

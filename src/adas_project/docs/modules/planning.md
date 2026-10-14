@@ -15,7 +15,7 @@ and track them, without ever blocking the control loop. SRS: FR-023, FR-030-034,
 | Closed-loop speed | feedforward from the throttle model + PI with anti-windup, only on ADAS-commanded throttle |
 | Return to start | goal = world origin with the original heading, from the loop-closed pose |
 | Exploration | log-odds occupancy grid, nearest reachable frontier (BFS over robot-radius-safe cells), tried goals blacklisted 60 s |
-| Parking | bay (perpendicular) / slot (parallel) found from one scan; reverse-in pose goal; straightening strokes at the end |
+| Parking | parallel on a continuous lane: gaps from the scan, the viable slot nearest to the click, reverse S or a multi-stroke exit plan driven backwards (ADR-032/033), re-measured beside the gap; bay: ArUco marker + LiDAR wall, the stop follows the wall (ADR-036); straightening strokes, centring creep, stall -> re-plan from here |
 
 ## Inputs
 Obstacle points in the vehicle frame (incl. blind-zone memory) · start pose · goal (point or pose) · pose updates while driving ·
@@ -40,6 +40,9 @@ NumPy, SciPy. Consumes perception outputs. Used by safety_decision (evasive, aut
 | `Explorer`, `OccupancyGrid`, `pick_frontier` (`adas/explore.py`) | `step(t, pose, pts, nav_active, goto)`; `done`, `msg` |
 | `find_bays`, `park_goal`, `find_parallel_slots`, `park_goal_parallel` (`adas/park.py`) | bay / slot detection and goal pose |
 | `home_goal(pose)` (`pi/relay_assists.py`) | world origin as a vehicle-frame goal |
+| `plan_parallel(strip, click, car, pose, points)` (`adas/park_select.py`) | gaps from `points` in the lane band (`find_gaps`), viable slots (`choose_slots`: >= car + 0.30 m, slid toward the click), the nearest with a manoeuvre: reverse S or `_tight_gap` exit plan; `refine_parallel` re-measures alongside |
+| `plan_perpendicular(marker, car, pose, points)` (`adas/park_select.py`) | ArUco rear-wall marker (`adas/markers.MarkerObs`) -> bay centre line -> reverse path aligned with it; `detect_rear_marker`, `fuse_markers` give the marker pose from camera frames |
+| `ParkingPlan` | `selected_space_id` (label), `parking_goal` (x, y, heading°, rear axle), `planned_path` ((N, 4) x, y, θ, direction), `slot` (4 corners, parallel), `request` (lane + click for the re-plan, or the bay's wall); `None`s when nothing can be planned |
 
 ## Test strategy
 - Unit: `tests/test_planning_safety.py` (doorway, reverse, boxed, click-to-go), `test_explore_park.py`, `test_speed_control.py`,
@@ -54,7 +57,8 @@ NumPy, SciPy. Consumes perception outputs. Used by safety_decision (evasive, aut
 | Click-to-go | 6/6 goals, ≤ 8 cm | 6/6, 4-6 cm |
 | Return to start | ≤ 30 cm, ≤ 15° | 11 cm mean in a bare room |
 | Exploration | ≥ 90 % floor, 0 contacts | 97.7-100 % |
-| Parking | ≤ 10 cm, ≤ 10°, 0 contacts | 3-6 cm, 4-9° |
+| Parking | ≤ 5 cm, ≤ 5°, 0 contacts, never stuck (`sim/parking_validation.py`, deterministic twin) | 68-71/86 pass; 0 contacts, 0 stuck; median 2.7 cm, p90 6 cm, max 9.8 cm; heading median 1.7° |
+| Click-to-go scenarios | all pass, ≤ 1 steering reversal / m | 26/26 (`python -m sim.autonav_eval suite 2`), worst 0.56 / m |
 | Speed tracking | ≤ 4 cm/s RMSE with ±30 % model error | 2.2-3.3 cm/s |
 
 ## Files
@@ -75,3 +79,5 @@ NumPy, SciPy. Consumes perception outputs. Used by safety_decision (evasive, aut
 | Exploration | grid 0.05 m, max range 4 m, robot radius 0.16 m, frontier ≥ 4 cells, min goal distance 0.5 m, blacklist 60 s, re-plan 1 s |
 | Parking | bay: width ≥ car + 2×6 cm, depth ≥ 0.40 m, reverse-in nose out; parallel: length ≥ car + 2×9 cm (in practice ≥ ~3.4 car lengths = 1.1 m for the 0.4 m turning radius) |
 | Loops | Dubins paths turning > 270° refused (a looping approach was seen on the car) |
+| Parallel parking (`adas/park_select.py`) | κ 1.5 1/m (S tried at 80 % first); exact-rectangle clearance 4 cm (13 cm tried first), strokes end 5 cm off; gap >= car + 0.30 m, lane >= car width + 8 cm; slot <= 1.6 m; goal 7 cm off the kerb; re-measure within 0.9 m of the reversing point, re-select among gaps within 1.5 m; arrive 3 cm / 4°, centring to 1.5 cm along |
+| Perpendicular (ArUco) | rear bumper 6 cm from the wall, 30 cm straight reverse on the marker centre line, marker pose fused over several frames; forward staging pose 45 cm further out when the bay cannot be reached by one reverse move |

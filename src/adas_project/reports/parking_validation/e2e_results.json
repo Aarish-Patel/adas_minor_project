@@ -1,0 +1,82 @@
+[
+ {
+  "room": "park_street",
+  "policy": "s:9.1",
+  "reply": "planning the parking manoeuvre",
+  "msg": "arrived",
+  "crashes": 0,
+  "time_s": 40.9,
+  "pose": [
+   8.466,
+   0.765,
+   -1.6
+  ],
+  "expected_s": 9.75,
+  "parked_s": 9.78,
+  "pos_err_cm": 3.1,
+  "head_err_deg": 1.6,
+  "inside": true,
+  "gap_ok": true,
+  "success": 1
+ },
+ {
+  "room": "park_street",
+  "policy": "s:9.1",
+  "reply": "planning the parking manoeuvre",
+  "msg": "arrived",
+  "crashes": 0,
+  "time_s": 40.3,
+  "pose": [
+   8.48,
+   0.756,
+   -2.8
+  ],
+  "expected_s": 9.75,
+  "parked_s": 9.79,
+  "pos_err_cm": 4.6,
+  "head_err_deg": 2.8,
+  "inside": true,
+  "gap_ok": true,
+  "success": 1
+ },
+ {
+  "room": "park_street",
+  "policy": "s:9.1",
+  "reply": "planning the parking manoeuvre",
+  "msg": "arrived",
+  "crashes": 0,
+  "time_s": 43.3,
+  "pose": [
+   8.46,
+   0.776,
+   0.4
+  ],
+  "expected_s": 9.75,
+  "parked_s": 9.77,
+  "pos_err_cm": 3.0,
+  "head_err_deg": 0.4,
+  "inside": true,
+  "gap_ok": true,
+  "success": 1
+ },
+ {
+  "room": "park_street",
+  "policy": "s:9.1",
+  "reply": "planning the parking manoeuvre",
+  "msg": "arrived",
+  "crashes": 0,
+  "time_s": 42.1,
+  "pose": [
+   8.439,
+   0.787,
+   1.2
+  ],
+  "expected_s": 9.75,
+  "parked_s": 9.75,
+  "pos_err_cm": 3.0,
+  "head_err_deg": 1.2,
+  "inside": true,
+  "gap_ok": true,
+  "success": 1
+ }
+]

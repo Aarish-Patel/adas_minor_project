@@ -1,0 +1,12 @@
+thr 0.1 persist 3: flag-latency medians [0.85, 0.65, 0.65, 0.6, 0.5, 0.6, 0.4, 0.35, 0.4] detected 54/54; static assist-rule 3043/17781, static runs raw 3099 assist 1797 of 9175
+thr 0.1 persist 5: flag-latency medians [1.05, 0.9, 1.0, 0.8, 0.85, 0.8, 0.6, 0.55, 0.6] detected 54/54; static assist-rule 3043/17781, static runs raw 2029 assist 1797 of 9175
+thr 0.1 persist 8: flag-latency medians [1.4, 1.2, 1.35, 1.1, 1.15, 1.1, 0.9, 0.85, 0.9] detected 54/54; static assist-rule 1395/17781, static runs raw 1085 assist 960 of 9175
+thr 0.15 persist 3: flag-latency medians [0.9, 0.7, 0.8, 0.65, 0.55, 0.6, 0.4, 0.4, 0.45] detected 54/54; static assist-rule 2430/17781, static runs raw 2336 assist 1440 of 9175
+thr 0.15 persist 5: flag-latency medians [1.1, 0.9, 1.05, 0.85, 0.9, 0.8, 0.6, 0.6, 0.65] detected 54/54; static assist-rule 2430/17781, static runs raw 1444 assist 1440 of 9175
+thr 0.15 persist 8: flag-latency medians [1.6, 1.2, 1.5, 1.15, 1.2, 1.1, 0.9, 0.9, 0.95] detected 54/54; static assist-rule 899/17781, static runs raw 679 assist 677 of 9175
+thr 0.2 persist 3: flag-latency medians [0.9, 0.75, 0.8, 0.7, 0.55, 0.6, 0.45, 0.5, 0.5] detected 53/54; static assist-rule 1894/17781, static runs raw 1859 assist 1099 of 9175
+thr 0.2 persist 5: flag-latency medians [1.1, 0.9, 1.0, 0.9, 0.9, 0.8, 0.65, 0.7, 0.7] detected 53/54; static assist-rule 1894/17781, static runs raw 1103 assist 1099 of 9175
+thr 0.2 persist 8: flag-latency medians [1.6, 1.25, 2.4, 1.2, 1.2, 1.15, 0.95, 1.0, 1.0] detected 50/54; static assist-rule 654/17781, static runs raw 472 assist 470 of 9175
+thr 0.3 persist 3: flag-latency medians [1.0, 0.8, 0.8, 0.8, 0.7, 0.75, 0.55, 0.5, 0.55] detected 49/54; static assist-rule 1304/17781, static runs raw 1270 assist 697 of 9175
+thr 0.3 persist 5: flag-latency medians [1.1, 1.0, 1.0, 1.0, 0.9, 0.95, 0.75, 0.7, 0.75] detected 44/54; static assist-rule 1304/17781, static runs raw 701 assist 697 of 9175
+thr 0.3 persist 8: flag-latency medians [None, 1.85, None, 1.35, 1.3, 1.35, 1.05, 1.0, 1.05] detected 38/54; static assist-rule 389/17781, static runs raw 259 assist 257 of 9175

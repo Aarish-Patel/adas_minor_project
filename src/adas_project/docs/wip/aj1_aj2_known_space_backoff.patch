@@ -1,0 +1,254 @@
+diff --git a/adas/autonav.py b/adas/autonav.py
+index 257c8be..69a6a47 100644
+--- a/adas/autonav.py
++++ b/adas/autonav.py
+@@ -39,6 +39,7 @@ class AutoNav:
+         self._job = None                  # the search in progress (plans from a cancelled goal are dropped)
+         self._job_t = 0.0
+         self.stall_s, self.stalls = 0.0, 0   # stopped on the path with the throttle held -> search again
++        self._trail, self._backup = [], False  # recent own positions (start frame); backing off along them before a re-plan
+         self.reanchor = False                       # parking re-planned at the slot: the relay restarts its scan matcher's reference
+         self._term_replans, self._creeps = 0, 0
+         self._creep_dir, self._creep_flips = 0, 0
+@@ -90,8 +91,15 @@ class AutoNav:
+             pts_start = np.vstack([pts_start, kerb])
+         self.state = "planning"
+         self._job_t = time.perf_counter()
++        terrain = None
++        tf = getattr(self, "terrain_fn", None)                  # known space (adas/known_space.py), set by the relay
++        if tf is not None and self.goal is not None:
++            try:
++                terrain = tf(start, self.goal)
++            except Exception:                                   # never let the preference stop a plan
++                terrain = None
+         self._job = self.service.submit(plan_point_job, self.p, self.kappa_max, pts_start, start, self.goal,
+-                                        self.service.budget(GOTO_BUDGET_S), self.goal_heading, self.reverse_first)
++                                        self.service.budget(GOTO_BUDGET_S), self.goal_heading, self.reverse_first, terrain)
+         if self._job.ready(0.0):
+             self._collect()
+ 
+@@ -281,6 +289,7 @@ class AutoNav:
+         self.heading_tol = math.radians(8.0 if reverse_first else 20.0)   # a bay / slot needs the car straight
+         self.path, self.replans = None, 0
+         self.stall_s, self.stalls = 0.0, 0
++        self._trail, self._backup = [], False
+         self.msg = "planning a path"
+         pts = np.asarray(pts_vehicle, float).reshape(-1, 2)
+         if pull_out is not None:                          # parked: out of the space first (a search from inside a tight gap finds nothing)
+@@ -511,6 +520,24 @@ class AutoNav:
+         dx, dy = pts_start[:, 0] - self.x, pts_start[:, 1] - self.y
+         return np.column_stack([c * dx + s * dy, -s * dx + c * dy])
+ 
++    BACKUP_M = 0.20
++
++    def _backup_path(self):
++        """A reverse path back along the recent trail, up to BACKUP_M (None if the car has not come that way far enough)."""
++        if len(self._trail) < 3:
++            return None
++        pts, d = [self._trail[-1]], 0.0
++        for p in reversed(self._trail[:-1]):
++            d += math.hypot(p[0] - pts[-1][0], p[1] - pts[-1][1])
++            pts.append(p)
++            if d >= self.BACKUP_M:
++                break
++        if d < 0.08:
++            return None
++        P = np.array([(x, y, th, -1.0) for x, y, th in pts])
++        P[0, :3] = (self.x, self.y, self.th)
++        return P
++
+     def to_start(self, pts_vehicle):
+         c, s = math.cos(self.th), math.sin(self.th)
+         return np.column_stack([self.x + c * pts_vehicle[:, 0] - s * pts_vehicle[:, 1],
+@@ -525,6 +552,15 @@ class AutoNav:
+         if self.state == "idle":
+             return None
+         self.x, self.y, self.th = pose
++        if not self._trail or math.hypot(self.x - self._trail[-1][0], self.y - self._trail[-1][1]) > 0.03:
++            self._trail = (self._trail + [(self.x, self.y, self.th)])[-40:]
++        if self._backup and self.path is not None and self.i >= len(self.path) - 2:
++            # backed off along the way the car came (the recovery below): now plan again from here
++            self._backup = False
++            self.msg = f"backed off - re-planning from here ({self.stalls}/3)"
++            self._launch(self.to_start(pts_vehicle) if len(pts_vehicle) else np.empty((0, 2)), (self.x, self.y, self.th))
++            if self.state != "driving":
++                return (0.0, 0.0) if self.state == "planning" else None
+         if self._approach_pending and len(pts_vehicle):
+             out = self._start_approach(pts_vehicle)
+             if out is not None or self.state == "idle":
+@@ -687,6 +723,14 @@ class AutoNav:
+                 self.cancel("stuck - no way through from here")
+                 return None
+             self.replans += 1
++            back = self._backup_path() if not self._backup else None
++            if back is not None:
++                # recovery first (as Nav2's back-up behaviour): reverse a little along the way the car came - known free - so the new
++                # search does not start pressed against what stopped it (twin, 1 Oct: three re-plans from the same spot, then 'stuck')
++                self.path, self.i, self._backup = back, 0, True
++                self.msg = f"stopped on the path - backing off ({self.stalls}/3)"
++                return 0.0, 0.0
++            self._backup = False
+             self.msg = f"stopped on the path - re-planning from here ({self.stalls}/3)"
+             self._launch(self.to_start(pts_vehicle), (self.x, self.y, self.th))
+             if self.state != "driving":
+diff --git a/adas/hybrid_astar.py b/adas/hybrid_astar.py
+index da5d8cd..304b97f 100644
+--- a/adas/hybrid_astar.py
++++ b/adas/hybrid_astar.py
+@@ -98,6 +98,24 @@ class HybridAStar:
+         self.circle_x = np.array([params.rear_x + seg / 2, params.rear_x + 1.5 * seg, params.rear_x + 2.5 * seg])
+         self.circle_r = math.hypot(seg / 2, hw)
+         self.expanded = 0
++        # known space (adas/known_space.py): (x0, y0, res, per-metre extra cost raster) in this frame, or None. Steps through space
++        # never seen cost more, the driven trail less; an analytic shot to the goal crossing more than SHOT_UNKNOWN_M of unseen space
++        # is not taken (the search goes on through known space; plan_point_job falls back to no preference if that finds nothing)
++        self.terrain = None
++
++    SHOT_UNKNOWN_M = 0.3
++
++    def _terrain_cost(self, xy):
++        """Per-metre extra cost at points (N, 2) (0 outside the raster)."""
++        if self.terrain is None:
++            return np.zeros(len(xy))
++        x0, y0, res, c = self.terrain
++        i = ((np.asarray(xy)[:, 0] - x0) / res).astype(int)
++        j = ((np.asarray(xy)[:, 1] - y0) / res).astype(int)
++        ok = (i >= 0) & (i < c.shape[0]) & (j >= 0) & (j < c.shape[1])
++        out = np.zeros(len(i))
++        out[ok] = c[i[ok], j[ok]]
++        return out
+ 
+     # ------------------------------------------------------------------ body checks
+     def clearance(self, grid, poses):
+@@ -319,6 +337,11 @@ class HybridAStar:
+             h_node = (f - g) / eps
+             if h_node < 0.8 or self.expanded % 4 == 0:
+                 fin = analytic(pose, d_prev)
++                if fin is not None and self.terrain is not None:
++                    tc = self._terrain_cost(fin[0][:, :2])
++                    ds = np.hypot(*np.diff(fin[0][:, :2], axis=0).T).mean() if len(fin[0]) > 1 else 0.0
++                    if (tc > 0).sum() * ds > self.SHOT_UNKNOWN_M:
++                        fin = None                                       # a shortcut through unseen space: search on
+                 if fin is not None:
+                     rj, d_fin = fin
+                     return self._assemble(parents, nodes, i, np.column_stack([rj, np.full(len(rj), d_fin)]))
+@@ -336,6 +359,8 @@ class HybridAStar:
+                         + self.w_change * abs(k - k_prev) * self.step + w_offset * abs(end[1]) * self.step \
+                         + self.w_clear * max(0.0, self.clear_wish - clear) * self.step \
+                         + (1.0 if d != d_prev else 0.0) * 0.5
++                    if self.terrain is not None:
++                        cost += self.step * float(self._terrain_cost(np.array([end[:2]]))[0])
+                     g2 = g + cost
+                     h = max(h_euclid(end), self._h(grid, h2d, end))
+                     nid += 1
+diff --git a/adas/plan_service.py b/adas/plan_service.py
+index be1e3b4..1494ee4 100644
+--- a/adas/plan_service.py
++++ b/adas/plan_service.py
+@@ -43,13 +43,24 @@ def plan_line_job(params, kappa_max, pts, start, x_goal, max_nodes, reverse_node
+ GOTO_W_REVERSE = 6.0              # click-to-go: a metre driven backwards costs as much as 7 m forwards
+ 
+ 
+-def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_heading=None, reverse_first=False):
++def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_heading=None, reverse_first=False, terrain=None):
+     # (budget_s applies to each of the two searches)
+     """Click-to-go to a goal position (and heading, if given): forward-only first - also for goals behind the car
+     (a forward U-turn when there is room) - and only if no forward path exists, a search that may reverse, where
+-    reversing is expensive, so it backs up only as much as the goal heading or the room needs."""
++    reversing is expensive, so it backs up only as much as the goal heading or the room needs.
++    terrain: known space (adas/known_space.KnownSpace.terrain, in this frame) - routes through space already seen are preferred; if
++    none is found that way, the search runs again without the preference (unknown space only when there is no known route)."""
+     from .hybrid_astar import HybridAStar
+-    ha = HybridAStar(params, kappa_max=kappa_max)
++    for t in ((terrain, None) if terrain is not None else (None,)):
++        ha = HybridAStar(params, kappa_max=kappa_max)
++        ha.terrain = t
++        path = _plan_point(ha, pts, start, goal, budget_s, goal_heading, reverse_first)
++        if path is not None or ha.gave_up == "goal unreachable":
++            return path
++    return None
++
++
++def _plan_point(ha, pts, start, goal, budget_s, goal_heading, reverse_first):
+     if reverse_first:                      # parking: the way in is a reverse S-curve; the forward-only stage would only burn the budget
+         return ha.plan_to_point(pts, start, goal, allow_reverse=True, max_nodes=12000,
+                                 budget_s=None if budget_s is None else 4.0 * budget_s,      # parking plans while standing: more time is fine
+diff --git a/pi/relay_assists.py b/pi/relay_assists.py
+index 88992b3..6446e4c 100644
+--- a/pi/relay_assists.py
++++ b/pi/relay_assists.py
+@@ -466,6 +466,12 @@ class RelayAssists:
+         from adas.autonav import AutoNav
+         self.explorer = None           # frontier exploration (adas/explore.py), started by explore(True)
+         self.nav = AutoNav(self.p, self.model, service=self.planner)   # click-to-go (Hybrid A* + pure pursuit)
++        # known space (adas/known_space.py): seen-free cells + the driven trail in the world frame, updated off the loop; plans prefer
++        # routes through it (user, 14 Oct: follow known paths, not unexplored space that may be a dead end)
++        from adas.known_space import KnownSpace
++        self.known = KnownSpace()
++        self._known_seq = None
++        self.nav.terrain_fn = self._terrain_for_nav
+         self.nav_pose = (0.0, 0.0, 0.0)
+         self._odo_origin = (0.0, 0.0, 0.0)       # where the scan matcher's reference scan was taken (nav frame)
+         self._steer_wait = 0.0                    # s still to wait for the wheels before rolling (steer before moving)
+@@ -605,6 +611,7 @@ class RelayAssists:
+             self.assists._stop_evading(why)
+         if self.memory is not None:
+             self.memory.clear()
++        self.known.clear()
+         self.odo, self.nav_pose, self._odo_origin = None, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
+         self._hold, self._nav_was_active, self._last_raw = False, False, []
+         self.parked_lane = None
+@@ -719,6 +726,33 @@ class RelayAssists:
+         if ex.done:
+             self.explorer = None
+ 
++    def _world_pose(self):
++        if self.speed is None:
++            return None
++        return tuple(getattr(self.speed, "pose_corrected", None) or self.speed.pose)
++
++    def _known_update(self, points, seq):
++        """Each new scan to the known-space map (worker thread)."""
++        if seq is None or seq == self._known_seq or not points:
++            return
++        pose = self._world_pose()
++        if pose is None:
++            return
++        self._known_seq = seq
++        self.known.submit(pose, self.points_vehicle_frame(points, self.p.lidar_x), self.p.lidar_x)
++
++    def _terrain_for_nav(self, start, goal, pad=2.0, res=0.1):
++        """The known-space cost raster in the navigation frame (autonav's start frame = self.nav_pose's frame), covering start and goal
++        with `pad` around; None when there is no world pose."""
++        wp = self._world_pose()
++        if wp is None:
++            return None
++        from adas.known_space import compose, inverse
++        world_from_nav = compose(wp, inverse(self.nav_pose))
++        x0, x1 = min(start[0], goal[0]) - pad, max(start[0], goal[0]) + pad
++        y0, y1 = min(start[1], goal[1]) - pad, max(start[1], goal[1]) + pad
++        return self.known.terrain(world_from_nav, x0, y0, res, int(math.ceil((x1 - x0) / res)), int(math.ceil((y1 - y0) / res)))
++
+     def _planning_points(self, points):
+         """The scan in the vehicle frame PLUS the brake gate's remembered points in the LiDAR's blind ring (closer
+         than its minimum range, e.g. right at the nose): the planners must avoid what the gate will brake for, or
+@@ -833,6 +867,7 @@ class RelayAssists:
+         """lines: the driver's packet lines. Returns the lines to hand on to the safety gate, with the steering
+         inside the realistic, speed-dependent envelope (steer_limit_kappa)."""
+         self._adapt_steering(lines, time.time() if now is None else now)
++        self._known_update(points, seq)
+         out = self._process(lines, points, seq, now)
+         out = self._crossing(out, time.time() if now is None else now)
+         out = self._zone_cap(out)
+diff --git a/pi/wifi_drive_safety.py b/pi/wifi_drive_safety.py
+index d0a28fe..8da34d5 100644
+--- a/pi/wifi_drive_safety.py
++++ b/pi/wifi_drive_safety.py
+@@ -925,6 +925,7 @@ def main():
+             if text.strip() == "ORIGIN":                         # the world frame (zones, map) starts at the car now
+                 vest.reset_pose()
+                 assist.parked_lane = None                        # (a lane remembered in the old world frame would be misplaced)
++                assist.known.clear()                             # (as would the known-space map, adas/known_space.py)
+                 dlog.event("world origin reset")
+                 sock.sendto(b"OK", addr)
+                 continue

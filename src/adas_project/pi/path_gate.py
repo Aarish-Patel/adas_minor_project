@@ -64,11 +64,47 @@ LATCH_RELEASE_M = 0.08     # the hold after braking lets go once the free distan
 # speed the new path allows; the gate keeps checking it every tick)
 # steering correction instead of braking (steer_correction): the largest nudge of path curvature tried (0.7 1/m is
 # ~11 servo degrees at the fitted 0.0656 1/m per degree), tried smallest first, and only above walking pace
+# no returns in the direction of travel = unknown, not free (incident 1 Oct 2026: a 100-200 deg arc in front returned nothing - a
+# dark / very close surface - the gate saw free space and the car pushed into the wall). Unknown space is treated as possibly
+# occupied (the conservative reading of an occupancy grid, Thrun, Burgard & Fox 2005 ch. 9; ISO 3691-4 asks driverless vehicles
+# to slow or stop when the protective field cannot be monitored): creep, then stop.
+BLIND_HALF_DEG = 30.0      # the sector checked either side of straight ahead / straight behind (bearing from the LiDAR)
+BLIND_BIN_DEG = 2.0
+BLIND_COVER = 0.5          # blind when fewer than half of its 2 deg bins hold a return
+BLIND_V = 0.10             # m/s creep while blind
+BLIND_STOP_S = 1.0         # s blind while driving that way -> stop and hold until it sees again or the driver lets go
 NUDGE_MAX_KAPPA = 0.7
 NUDGE_STEPS = (0.1, 0.2, 0.3, 0.45, 0.6, 0.7)
 NUDGE_MIN_V = 0.2
 NUDGE_TTC_S = 1.0          # s: look this far ahead in time on the driver's path for a contact to correct
 NUDGE_GAIN_M = 0.5         # m: a correction must add at least this much free way (i.e. get past the obstacle)
+NUDGE_GENTLE = 0.3         # 1/m: act before the smallest clearing correction exceeds this - a lateral shift dy needs
+                           # k ~ 2 dy / d^2, so a fixed time-to-contact trigger comes too late for a shift of a few cm when
+                           # the car's own drift (servo-centre error) adds to it: the correction is started while it is still gentle
+
+
+def sector_cover(pts_vehicle, lidar_x, half_deg=BLIND_HALF_DEG, bin_deg=BLIND_BIN_DEG, near=None, near_width_m=0.03):
+    """{+1: front, -1: rear}: the fraction of bin_deg bearing bins within half_deg of straight ahead / behind (seen from the
+    LiDAR) that hold at least one return. near: remembered obstacle points too close to see now (the obstacle memory keeps them
+    ~2 cm apart); each covers the bearings of its near_width_m either side."""
+    n = int(round(2 * half_deg / bin_deg))
+    p = np.asarray(pts_vehicle, float).reshape(-1, 2) if pts_vehicle is not None else np.empty((0, 2))
+    q = np.asarray(near, float).reshape(-1, 2) if near is not None and len(near) else np.empty((0, 2))
+    if not len(p) and not len(q):
+        return {1: 0.0, -1: 0.0}
+    b = np.degrees(np.arctan2(p[:, 1], p[:, 0] - lidar_x))
+    bq = np.degrees(np.arctan2(q[:, 1], q[:, 0] - lidar_x))
+    wq = np.degrees(np.arctan2(near_width_m, np.maximum(np.hypot(q[:, 0] - lidar_x, q[:, 1]), 1e-3)))
+    centres = -half_deg + bin_deg * (np.arange(n) + 0.5)
+    out = {}
+    for direction, rel, relq in ((1, b, bq), (-1, (b + 360.0) % 360.0 - 180.0, (bq + 360.0) % 360.0 - 180.0)):
+        m = np.abs(rel) <= half_deg
+        hit = np.zeros(n, bool)
+        hit[np.clip(np.floor((rel[m] + half_deg) / bin_deg).astype(int), 0, n - 1)] = True
+        if len(relq):
+            hit |= (np.abs(centres[:, None] - relq[None, :]) <= wq[None, :] + bin_deg / 2).any(axis=1)
+        out[direction] = float(hit.sum()) / n
+    return out
 
 
 class PathGate:
@@ -85,6 +121,8 @@ class PathGate:
         self.brake_t = 0.0
         self.k_hist = []           # (age s, curvature) of recent steering commands: where the servo may still be
         self._v = 0.0              # speed estimate of the current decision (sizes the delay segment)
+        self.cover = {1: 1.0, -1: 1.0}   # fraction of the front / rear sector with LiDAR returns in the last scan
+        self.blind_t = 0.0         # s the travel direction has been blind while driving that way
 
     def on_scan(self, pts_vehicle, seq):
         """New LiDAR scan (vehicle frame: x forward from the rear axle, y left)."""
@@ -94,6 +132,10 @@ class PathGate:
         self.pts = pts_vehicle
         self.memory.prune_contradicted(pts_vehicle)     # never trust memory over what the LiDAR sees now
         self.memory.add_scan(pts_vehicle)
+        # a bearing is known when the LiDAR returns something there OR the memory holds an obstacle there that is now too
+        # close to see (nosing up to a wall seen before is not blind); only the truly unknown counts as blind
+        blind = self.memory.blind_points()
+        self.cover = sector_cover(pts_vehicle, self.p.lidar_x, near=blind)
 
     def free_distance(self, delta, direction, slop=True, margin=BODY_MARGIN_M):
         """How far the rear axle can travel along the commanded path (and its tighter/wider neighbours)
@@ -255,8 +297,9 @@ class PathGate:
         # 0.5 m/s it is ~0.2 m, a 6 cm sideways slide needs ~0.4 m) - a time-to-contact trigger as in production
         # evasive steering support, or the brake envelope if that is larger
         envelope = FOS * (BASE_M + v * self.reaction_s() + v * v / (2 * DECEL))
-        if not math.isfinite(free0) or free0 > max(v * NUDGE_TTC_S, envelope):
+        if not math.isfinite(free0) or free0 > HORIZON_M:
             return None
+        late = free0 <= max(v * NUDGE_TTC_S, envelope)    # the time-to-contact trigger: any correction that works
         need = max(free0 + NUDGE_GAIN_M, envelope)        # the corrected path must really get past it
         wb = self.p.wheelbase
         k0 = math.tan(delta) / wb
@@ -269,6 +312,8 @@ class PathGate:
                     continue
                 free_k, _ = self.free_distance(math.atan(k * wb), direction)
                 if free_k >= need and self.allowed_speed(free_k) >= v:
+                    if not late and shift < NUDGE_GENTLE:      # still far and a gentle correction suffices: wait
+                        return None
                     self.info["nudge"] = f"steering corrected {'left' if k > k0 else 'right'} by {shift:.2f} 1/m"
                     return math.atan(k * wb)
         return None
@@ -314,6 +359,7 @@ class PathGate:
         self._v = v_est
         if physical == 0:
             self.latch = None                     # the driver let go: the hold is released
+            self.blind_t = 0.0
             self.k_hist.append((0.0, k_now))
             return 0, False
         direction = 1 if physical > 0 else -1
@@ -406,6 +452,17 @@ class PathGate:
             pulse = min(BRAKE_PWM_MAX, BRAKE_GAIN * (v - v_ok))
             self.info["action"] = "braking"
             return -direction * int(pulse), True
+        # the LiDAR cannot see the way it is driving: creep, then stop (BLIND_*)
+        self.info["cover"] = round(self.cover[direction], 2)
+        if self.cover[direction] < BLIND_COVER:
+            self.blind_t += dt
+            if self.blind_t >= BLIND_STOP_S:
+                self.info["action"] = "LiDAR blind ahead - stopped (no returns that way)"
+                return 0, False
+            v_ok = min(v_ok, BLIND_V)
+            self.info["blind"] = "LiDAR blind ahead - creeping"
+        else:
+            self.blind_t = 0.0
         cap = self.model.pwm_for_speed(v_ok) if v_ok > 0 else 0.0
         if abs(physical) > cap:
             self.info["action"] = "limited" if cap > 0 else "stopped"

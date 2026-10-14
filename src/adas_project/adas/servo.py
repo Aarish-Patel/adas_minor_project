@@ -61,3 +61,17 @@ def command_text(steer, pwm, cal, wheelbase=0.20, track=0.07):
     by_channel = {cal.left_channel: left, cal.right_channel: right}
     motor = -pwm if cal.motor_reversed else pwm
     return f"A {by_channel[1]:.1f} {by_channel[2]:.1f}\nM {int(round(motor))}\n"
+
+
+def steering_centre(cal):
+    """The straight-ahead angle of the relay's one-number steering: the mean of the two servos' centres, as the relay averages
+    the driver's "A <s1> <s2>" (equal to either centre when both servos are centred alike)."""
+    return (cal.left_center + cal.right_center) / 2.0
+
+
+def output_offsets(cal):
+    """(output 1, output 2): each servo's centre minus steering_centre. The relay steers both wheels by the same angle from
+    their own straight-ahead, so servos with different centres stay parallel (no Ackermann split in the relay's own lines)."""
+    c = steering_centre(cal)
+    by_channel = {cal.left_channel: cal.left_center - c, cal.right_channel: cal.right_center - c}
+    return by_channel[1], by_channel[2]

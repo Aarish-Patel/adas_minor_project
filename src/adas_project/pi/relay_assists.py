@@ -16,8 +16,9 @@ import numpy as np
 
 from adas.aeb import SpeedEstimator
 from adas.assists import DrivingAssists
+from adas.servo import output_offsets, steering_centre
 from adas.vehicle_params import VehicleParams, delta_to_steer, steer_to_delta
-from pi.scanmatch import Odometry, polar_to_xy
+from pi.scanmatch import LocalMapOdometry, polar_to_xy
 
 K_CURV_PER_SERVO_DEG = 0.0656      # fitted from the logging drive (sim/fitted_car.json)
 # realistic steering (user, 28 Sep): the car is ~1:14 of a 4.5 m car (body ~0.33 m); lock capped at ~2 wheelbases of
@@ -102,21 +103,40 @@ class RelaySpeed:
         self.latency = DelayEstimator()        # how late the scans are (adas/latency.py); the gate reads .excess
         self.seq = None
         self.meas = None
-        # world pose (rear axle; x, y m, heading rad), the frame of the speed zones and the world map: scan matching
-        # (pi/scanmatch.Odometry, keyframed every KF_M / KF_DEG) on every scan, dead reckoning in between. Integrating
-        # the EKF alone drifted 7-11 % and 13 deg over 2-3 m in the twin.
+        # world pose (rear axle; x, y m, heading rad), the frame of the speed zones and the world map: scan-to-local-map
+        # matching (pi/scanmatch.LocalMapOdometry) on every scan, dead reckoning in between. Integrating the EKF alone drifted
+        # 7-11 % and 13 deg over 2-3 m in the twin; scan-to-scan matching 3-4 % along a street (AB6).
         self.lidar_x = lidar_x
         self.pose = (0.0, 0.0, 0.0)
+        self.pose_stamp = 0
         self._kf, self._odo = (0.0, 0.0, 0.0), None
         self.slam = None                          # SlamService (adas/submaps.py) once enable_slam() is called
 
-    KF_M, KF_DEG = 1.0, 30.0
+    slam_inline = False           # simulations: the pose graph runs in the caller, scan by scan (deterministic); the car: a worker thread
 
     def enable_slam(self):
         """Loop closure for the world pose: submaps + pose graph in a worker thread (adas/submaps.py)."""
         if self.slam is None:
             from adas.submaps import SlamService
-            self.slam = SlamService()
+            self.slam = SlamService(inline=self.slam_inline)
+
+    def relocalise(self, reason="requested"):
+        """The pose is lost (car lifted, restart in a mapped room): find it again in the map (adas/submaps.py, TODO P2-2)."""
+        if self.slam is not None:
+            self.slam.relocalise(reason)
+
+    @property
+    def lost(self):
+        """True while the corrected world pose is not to be trusted (relocalising)."""
+        return self.slam is not None and self.slam.lost
+
+    def save_map(self, path):
+        return self.slam is not None and self.slam.save(path)
+
+    def load_map(self, path):
+        """Load a saved map and relocalise in it (enables loop closure if it was off)."""
+        self.enable_slam()
+        return self.slam.load(path)
 
     @property
     def pose_corrected(self):
@@ -131,12 +151,12 @@ class RelaySpeed:
         self.pose, self._kf, self._odo = (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), None
 
     def _scan_pose(self, points, t):
-        from pi.scanmatch import Odometry, polar_to_xy
+        from pi.scanmatch import LocalMapOdometry, polar_to_xy
         xy = polar_to_xy(points)
         if len(xy) < 40:
             return
         if self._odo is None:
-            self._odo, self._kf = Odometry(), self.pose
+            self._odo, self._kf = LocalMapOdometry(), self.pose
         v = self.ekf.v
         k_right = -(self.ekf.w / v) if abs(v) > 0.05 else 0.0
         p = self._odo.update(xy, t, v, k_right)
@@ -146,12 +166,12 @@ class RelaySpeed:
         kx, ky, kth = self._kf
         c, sn = math.cos(kth), math.sin(kth)
         self.pose = (kx + c * dx - sn * dy, ky + sn * dx + c * dy, kth + thl)
+        self.pose_stamp += 1                      # a pose from this scan (consumers skip a stale one)
         if self.slam is not None:
             a = np.radians(np.array([q[0] for q in points]))
             d = np.array([q[1] for q in points])
-            self.slam.submit(self.pose, np.column_stack([self.lidar_x + d * np.cos(a), -d * np.sin(a)]))
-        if math.hypot(dx, dy) > self.KF_M or abs(thl) > math.radians(self.KF_DEG):
-            self._odo = None                      # new keyframe from the next scan
+            self.slam.submit(self.pose, np.column_stack([self.lidar_x + d * np.cos(a), -d * np.sin(a)]), t)
+        # (no restart every KF_M any more: the local map keeps its own keyframes; restarting would throw that map away)
 
     def command(self, t, dt, physical, servo):
         """What was actually sent: physical throttle (+ forward) and servo degrees, at time t."""
@@ -406,7 +426,8 @@ class RelayAssists:
         released after compute time x plan_latency (simulations: the Pi's delay)."""
         from adas.plan_service import PlanService
         self.p = car_params(tuning.mount)
-        self.centre = float(tuning.servo.left_center)
+        self.centre = float(steering_centre(tuning.servo))
+        self.out_offsets = output_offsets(tuning.servo)   # each servo's own straight-ahead (after the 1 Oct refit: 70 / 80)
         self.model = tuning.speed_model
         self.assists = DrivingAssists(self.p, self.model)
         self.planner = PlanService(plan_mode, plan_latency).start()
@@ -446,6 +467,8 @@ class RelayAssists:
         self.explorer = None           # frontier exploration (adas/explore.py), started by explore(True)
         self.nav = AutoNav(self.p, self.model, service=self.planner)   # click-to-go (Hybrid A* + pure pursuit)
         self.nav_pose = (0.0, 0.0, 0.0)
+        self._odo_origin = (0.0, 0.0, 0.0)       # where the scan matcher's reference scan was taken (nav frame)
+        self._steer_wait = 0.0                    # s still to wait for the wheels before rolling (steer before moving)
         self._nav_stick = 0.0
         self._last_raw = []
         self._nav_was_active = False
@@ -490,9 +513,9 @@ class RelayAssists:
         if d2 is None:
             return lines, None
         sv = self.centre - (math.tan(d2) / wb) / self.k
-        sv = int(round(max(35.0, min(145.0, sv))))
+        sv = int(round(self.clamp_servo(sv)))
         out = list(lines)
-        out[i_a] = f"A {sv} {sv}"
+        out[i_a] = self.a_line(sv)
         self._nudge_note = gate.info.get("nudge", "steering corrected")
         self.info = dict(self.info, nudge=self._nudge_note)
         self.changed = True
@@ -515,6 +538,21 @@ class RelayAssists:
             self.assists.enabled[name] = on
 
     # --- unit conversions
+    SERVO_LO, SERVO_HI = -52.0, 58.0   # hard clamp of the relay's own steering, degrees from the centre (35..145 at centre 87)
+
+    def clamp_servo(self, servo):
+        return max(self.centre + self.SERVO_LO, min(self.centre + self.SERVO_HI, servo))
+
+    def a_line(self, servo, fmt=None):
+        """'A <output 1> <output 2>' for one steering angle given around self.centre: each servo gets the same offset from its own
+        straight-ahead angle (adas/servo.output_offsets), so wheels with different centres stay parallel."""
+        a = [servo + o if o else servo for o in self.out_offsets]
+        if fmt:
+            a = [format(x, fmt) for x in a]
+        elif any(self.out_offsets):
+            a = [round(x, 1) for x in a]
+        return f"A {a[0]} {a[1]}"
+
     def servo_to_stick(self, servo):
         kappa_left = -self.k * (servo - self.centre)
         return delta_to_steer(math.atan(kappa_left * self.p.wheelbase), self.p)
@@ -545,27 +583,62 @@ class RelayAssists:
         xy = polar_to_xy(points)                  # car angle clockwise-positive -> pi frame (y right)
         kappa_right = -math.tan(steer_to_delta(stick, self.p)) / self.p.wheelbase
         if self.odo is None:
-            self.odo = Odometry()
+            self.odo = LocalMapOdometry()
         pose = self.odo.update(xy, time.time() if now is None else now, self.v, kappa_right)
         xl, yl, thl = float(pose[0]), -float(pose[1]), -float(pose[2])       # LiDAR pose, y left
         lx = self.p.lidar_x
         fix = (xl - lx * math.cos(thl) + lx, yl - lx * math.sin(thl), thl)   # rear axle, start frame
         if self.nav.active:
-            self.nav_pose = fix
+            ox, oy, oth = self._odo_origin            # the matcher's reference scan was taken here (re-anchored at the parking space)
+            c, s = math.cos(oth), math.sin(oth)
+            self.nav_pose = (ox + c * fix[0] - s * fix[1], oy + s * fix[0] + c * fix[1], oth + fix[2])
         else:
+            self._odo_origin = (0.0, 0.0, 0.0)
             a.pose_fix = fix
 
     # --- click-to-go autonomy
+    def forget_surroundings(self, why="car moved"):
+        """The car was put somewhere else (simulator reset / room switch): stop any autonomy, forget the obstacle memory and the
+        manoeuvre odometry - none of it describes the new place."""
+        self.nav.cancel(why)
+        if self.assists.phase is not None:
+            self.assists._stop_evading(why)
+        if self.memory is not None:
+            self.memory.clear()
+        self.odo, self.nav_pose, self._odo_origin = None, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
+        self._hold, self._nav_was_active, self._last_raw = False, False, []
+        self.parked_lane = None
+
     def goto(self, x, y, points=None, heading_deg=None, reverse_first=False):
         """Start driving to (x, y) m in the vehicle frame now (x forward from the rear axle, y left), arriving
         pointing heading_deg (0 = the car's heading now, + = left) or any way if None.
         points: the latest scan (relay format); defaults to the last one seen by process()."""
         if self.assists.phase is not None:
             self.assists._stop_evading("autonomy started")
-        self.odo, self.nav_pose = None, (0.0, 0.0, 0.0)
+        self.odo, self.nav_pose, self._odo_origin = None, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)   # a new start frame (a re-anchored origin is stale)
         raw = points if points else self._last_raw
-        return self.nav.start((float(x), float(y)), self._planning_points(raw),
-                              None if heading_deg is None else math.radians(float(heading_deg)), reverse_first)
+        pts = self._planning_points(raw)
+        return self.nav.start((float(x), float(y)), pts, None if heading_deg is None else math.radians(float(heading_deg)), reverse_first,
+                              pull_out=self._pull_out_job(pts))
+
+    parked_lane = None          # the parking lane (world frame) of the last parallel park: a go-to from inside it pulls out first
+
+    def _pull_out_job(self, pts):
+        """Standing in the lane of the last parallel park (user, 30 Sep: 'make sure the car can get out of the parking during click and
+        go'): the plan-service job that plans the pull-out (park_select.plan_pull_out), else None."""
+        lane = self.parked_lane
+        if lane is None or self.speed is None:
+            return None
+        from adas.park_select import ParkingStrip
+        from adas.plan_service import plan_pull_out_job
+        px, py, th = getattr(self.speed, "pose_corrected", self.speed.pose)
+        c, s = math.cos(th), math.sin(th)
+        strip_v = [(c * (p[0] - px) + s * (p[1] - py), -s * (p[0] - px) + c * (p[1] - py)) for p in lane["points"]]
+        strip = ParkingStrip(strip_v, lane.get("side", 1), lane.get("depth", 0.38))
+        s_c, y_c = strip.to_strip(np.array([[0.5 * (self.p.front_x + self.p.rear_x), 0.0]]))
+        if y_c[0] <= 0.0 or not -0.3 <= s_c[0] <= strip.length + 0.3:
+            return None                               # not in the lane (driven out by hand already, or elsewhere)
+        return plan_pull_out_job, (self.p, strip_v, strip.side, strip.depth, pts)
 
     def explore(self, on):
         """Start / stop exploring the room by itself (frontier goals sent to click-to-go; the operator holds the throttle)."""
@@ -595,6 +668,46 @@ class RelayAssists:
         _, what, size, (gx, gy, gh) = min(options, key=lambda o: o[0])
         ok = self.goto(gx, gy, raw, heading_deg=gh, reverse_first=True)
         return f"parking in a {size * 100:.0f} cm {what}" if ok else f"{what} found but no way in: {self.nav.msg}"
+
+    # --- parking selection (adas/park_select.py): planned in the plan service, the plan is followed as it is (AutoNav.start_plan)
+    marker_source = None        # () -> [MarkerObs] of the rear camera in the vehicle frame (camera service / simulator), or None
+
+    def park_target(self, strip, click, points=None):
+        """Parallel-park on the parking strip as near to `click` as a free gap allows (reverse S / multi-point). strip = {"points":
+        [[x, y]...] (road edge), "side": +-1 (lane side), "depth": m (road edge to kerb)} and click = [x, y], both in the WORLD frame
+        (docs/interfaces.md 16b); the gaps between the parked cars come from the car's own scan. Returns a message."""
+        from adas.plan_service import plan_parallel_job
+        px, py, th = getattr(self.speed, "pose_corrected", self.speed.pose) if self.speed is not None else (0.0, 0.0, 0.0)
+        c, s = math.cos(th), math.sin(th)
+
+        def to_v(p):
+            dx, dy = p[0] - px, p[1] - py
+            return (c * dx + s * dy, -s * dx + c * dy)
+        raw = points if points else self._last_raw
+        if self.assists.phase is not None:
+            self.assists._stop_evading("autonomy started")
+        self.odo, self.nav_pose, self._odo_origin = None, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)   # a new start frame (a re-anchored origin is stale)
+        pts = self._planning_points(raw) if raw else None
+        from adas.park_select import LANE_DEPTH_M
+        self.parked_lane = {"points": [tuple(p) for p in strip["points"]], "side": strip.get("side", 1),
+                            "depth": float(strip.get("depth", LANE_DEPTH_M))}     # (world frame: a later go-to pulls out of it first)
+        ok = self.nav.start_parking(plan_parallel_job, self.p, [to_v(p) for p in strip["points"]], strip.get("side", 1),
+                                    float(strip.get("depth", LANE_DEPTH_M)), to_v(click), pts)
+        return self.nav.msg if ok else "no free gap on the strip fits the car, or no way in"
+
+    def park_marker(self, points=None, marker=None):
+        """Reverse into the bay whose rear-wall ArUco marker the rear camera sees (perpendicular, reverse-in, nose out)."""
+        from adas.park_select import fuse_markers
+        from adas.plan_service import plan_perpendicular_job
+        obs = [marker] if marker is not None else (list(self.marker_source() or []) if self.marker_source else [])
+        if not obs:
+            return "marker not visible"
+        raw = points if points else self._last_raw
+        if self.assists.phase is not None:
+            self.assists._stop_evading("autonomy started")
+        self.odo, self.nav_pose, self._odo_origin = None, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)   # a new start frame (a re-anchored origin is stale)
+        ok = self.nav.start_parking(plan_perpendicular_job, self.p, fuse_markers(obs), self._planning_points(raw) if raw else None)
+        return self.nav.msg if ok else "no way into the bay from here"
 
     def _explore_tick(self, points, now):
         ex = self.explorer
@@ -638,11 +751,23 @@ class RelayAssists:
         th += math.tan(steer_to_delta(self._nav_stick, self.p)) / self.p.wheelbase * v * dt
         self.nav_pose = (x + v * math.cos(th) * dt, y + v * math.sin(th) * dt, th)
         self._odometry(points, seq, self._nav_stick, now)
+        if self.nav.reanchor:                     # at the space: the local scene is rich - restart the scan matcher's reference here
+            self.nav.reanchor = False
+            self.odo, self._odo_origin = None, self.nav_pose
         out = self.nav.step(dt, self.nav_pose, pts, v, held=physical > 20)
         if out is None:
             return None
         kappa, v_target = out
-        self._nav_stick = delta_to_steer(math.atan(kappa * self.p.wheelbase), self.p)
+        stick = delta_to_steer(math.atan(kappa * self.p.wheelbase), self.p)
+        # steer before moving (as a driver and production park assists do): at a standstill - a start or a change of gear - a steering
+        # command far from where the wheels point is given first and the car waits for the servo (command delay + slew) before it
+        # rolls, so the new leg starts on its curvature instead of on the old one
+        if abs(self.v) < 0.03 and abs(stick - self._nav_stick) > self.STEER_FIRST_DELTA:
+            self._steer_wait = self.STEER_FIRST_S
+        self._nav_stick = stick
+        if self._steer_wait > 0.0:
+            self._steer_wait -= dt
+            v_target = 0.0
         if physical <= 20:
             self.info = {"autonomy": "paused - hold the throttle to drive"}
             return self._nav_stick, 0.0
@@ -651,13 +776,15 @@ class RelayAssists:
             return self._nav_stick, self.speed_ctl.pwm(v_target, self.v, dt)
         return self._nav_stick, math.copysign(self.model.pwm_for_speed(abs(v_target)), v_target)
 
+    STEER_FIRST_DELTA, STEER_FIRST_S = 0.30, 0.15   # stick change (of -1..1) at a standstill that is steered first; the wait (s)
+
     def _rewrite(self, lines, i_a, i_m, servo, physical, dt):
         """Replace the driver's lines with our own steering (None = keep the driver's) and throttle."""
         w = -int(round(physical)) if self.reversed else int(round(physical))
         drop = (i_a, i_m) if servo is not None else (i_m,)
         out = [ln for i, ln in enumerate(lines) if i not in drop]
         if servo is not None:
-            out.append(f"A {servo} {servo}")
+            out.append(self.a_line(servo))
         out.append(f"M {w}")
         self.level, self.changed = 2, True
         self.est.update(dt, physical)
@@ -725,7 +852,7 @@ class RelayAssists:
                 lim = self.limit_servo(sv, v)
                 if abs(lim - sv) > 0.5:
                     self.steer_limited = (round(sv - self.centre), round(lim - self.centre))
-                    ln = f"A {lim:.0f} {lim:.0f}"
+                    ln = self.a_line(lim, ".0f")
                 else:
                     self.steer_limited = None
             res.append(ln)
@@ -836,10 +963,10 @@ class RelayAssists:
                 self._xhold = {"until": now + 1.4, "swerve": swerve}
             k, action, v_t, info = swerve
             info = dict(info, why="moving out of its way")
-            servo_new = int(round(max(35.0, min(145.0, self.stick_to_servo(_stick_of(k, self.p))))))
+            servo_new = int(round(self.clamp_servo(self.stick_to_servo(_stick_of(k, self.p)))))
             out = list(out)
             i_a = next((i for i, ln in enumerate(out) if ln.split()[0] == "A"), None)
-            line = f"A {servo_new} {servo_new}"
+            line = self.a_line(servo_new)
             if i_a is None:
                 out.append(line)
             else:
@@ -914,12 +1041,17 @@ class RelayAssists:
             if self.explorer is not None and seq is not None:
                 self._explore_tick(points, now)
         if self.nav.active:
-            nav = self._navigate(dt, self._planning_points(points), stick, physical,
-                                 points, seq, now)
+            try:
+                nav = self._navigate(dt, self._planning_points(points), stick, physical, points, seq, now)
+            except Exception as e:              # a fault in the autonomy must never take the relay (and its brake gate) down:
+                import traceback                # stop the autonomy - the car holds until the throttle is let go - and carry on
+                traceback.print_exc()
+                self.nav.cancel(f"autonomy fault - stopped ({type(e).__name__})")
+                nav = None
             if nav is not None:
                 self._nav_was_active = True
                 s_out, p_out = nav
-                sv = int(round(max(35.0, min(145.0, self.stick_to_servo(s_out)))))
+                sv = int(round(self.clamp_servo(self.stick_to_servo(s_out))))
                 return self._rewrite(lines, i_a, i_m, sv, p_out, dt)
         if self._nav_was_active and not self.nav.msg.startswith("driver"):
             self._hold = True       # autonomy ended by itself (arrived / blocked / GUI): stay stopped until the
@@ -948,8 +1080,8 @@ class RelayAssists:
         self.info = dict(self.assists.info, **nudged)
         out = list(lines)
         if abs(s_out - stick) > 1e-3:
-            sv = int(round(max(35.0, min(145.0, self.stick_to_servo(s_out)))))
-            line = f"A {sv} {sv}"
+            sv = int(round(self.clamp_servo(self.stick_to_servo(s_out))))
+            line = self.a_line(sv)
             if i_a is None:
                 out.append(line)
             else:

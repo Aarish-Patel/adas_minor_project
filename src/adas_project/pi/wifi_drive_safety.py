@@ -558,7 +558,11 @@ def gui_update_distances(front_track, rear_track, body_min_front, body_min_rear)
         GUI_STATE["data"]["body_min_rear"] = body_min_rear
 
 
+MARKER_SOURCE = None    # () -> recent ArUco observations (MarkerObs, vehicle frame): the rear camera service; tools/sim_car.py simulates one
 EXTRA_POST = {}     # path -> callable; filled by tools/sim_car.py (simulator reset), empty on the car
+TELEPORT_HOOKS = []  # simulator only: run when the twin moves the car by hand (reset, room switch); filled in main()
+TELEPORT_PENDING = threading.Event()   # set by the twin (any thread); the control loop runs TELEPORT_HOOKS in its own thread (a hook
+                                       # clearing the obstacle memory from the HTTP thread raced the loop's add_scan and crashed it)
 
 # --- live stream for the native dashboard (gui/dashboard.py): a client sends "GUI_SUBSCRIBE <port>" to the control
 # UDP port and gets a frame pushed 20 times a second - "RC1" + uint32 header length + JSON state + the scan as int16
@@ -760,9 +764,11 @@ def main():
     # driving assists, all off until toggled on; path searches (evasive, click-to-go) run in a worker process so
     # the control loop never waits for them (adas/plan_service.py)
     assist = RelayAssists(TUNING, WIRE_MOTOR_REVERSED, plan_mode="process")
+    assist.marker_source = MARKER_SOURCE
     from pi.path_gate import PathGate
     pgate = PathGate(assist.p, TUNING.speed_model)      # path-predicted emergency braking + obstacle memory
     assist.memory = pgate.memory                        # the planners avoid what the gate remembers
+    TELEPORT_HOOKS.append(lambda: assist.forget_surroundings("the simulator moved the car"))
     from pi.relay_assists import RelaySpeed
     vest = RelaySpeed(TUNING.speed_model, assist.p.lidar_x)   # throttle model + EKF with LiDAR range flow
     vest.enable_slam()                                         # loop closure for the world pose / return to start
@@ -799,7 +805,9 @@ def main():
             time.sleep(0.15)
     threading.Thread(target=_gui_idle_updater, daemon=True).start()
 
+    from pi.driver_input import drain, latest_driving, small_buffer
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    small_buffer(sock)                # never seconds of old driver commands queued (incident 1 Oct)
     sock.bind(("0.0.0.0", UDP_PORT))
     sock.settimeout(0.05)     # short, so a lost driver link can be handled smoothly (dead-man ramp)
     print(f"\nlistening for driver commands on UDP :{UDP_PORT}")
@@ -812,11 +820,29 @@ def main():
     last_physical = 0.0       # what was last sent to the motor (physical convention, + = forward)
     last_tick = time.time()
     last_zero_sent = 0.0
+    pending = []              # packets already taken from the socket, still to handle (control commands, newest drive)
+    stale_n, stale_note_t = 0, 0.0
 
     try:
         while True:
+            if TELEPORT_PENDING.is_set():             # the twin moved the car: forget the surroundings here, in the loop's own thread
+                TELEPORT_PENDING.clear()
+                for hook in TELEPORT_HOOKS:
+                    hook()
             try:
-                data, addr = sock.recvfrom(4096)       # zone lists are longer than a driving packet
+                if pending:
+                    data, addr = pending.pop(0)
+                else:
+                    data, addr = sock.recvfrom(4096)   # zone lists are longer than a driving packet
+                    # latest command wins (pi/driver_input.py): whatever queued meanwhile is taken now, stale driving packets
+                    # are dropped, control commands kept in order
+                    batch, n_stale = latest_driving([(data, addr)] + drain(sock))
+                    (data, addr), pending = batch[0], batch[1:]
+                    if n_stale:
+                        stale_n += n_stale
+                        if time.time() - stale_note_t > 1.0:
+                            dlog.event("stale driver packets dropped", n=stale_n)
+                            stale_n, stale_note_t = 0, time.time()
             except ConnectionResetError:
                 continue      # Windows only (laptop simulator): a reply went to a sender that already closed
             except socket.timeout:
@@ -835,6 +861,7 @@ def main():
                         last_seq, last_seq_t = gseq, now
                         pgate.on_scan(RelayAssists.points_vehicle_frame(gpts, assist.p.lidar_x), gseq)
                         vest.on_scan(gpts, gseq, now)
+                        pgate.memory.correct_pose(vest.pose, stamp=vest.pose_stamp)          # the obstacle memory rides on the scan-matched pose
                     ramp = deadman_pwm(last_physical, age, dt)
                     capped, _ = pgate.decide(dt, ramp, gate_delta, vest.v_gate((ramp > 0) - (ramp < 0)),
                                              ft.speed if ramp > 0 else rt.speed)
@@ -897,6 +924,7 @@ def main():
 
             if text.strip() == "ORIGIN":                         # the world frame (zones, map) starts at the car now
                 vest.reset_pose()
+                assist.parked_lane = None                        # (a lane remembered in the old world frame would be misplaced)
                 dlog.event("world origin reset")
                 sock.sendto(b"OK", addr)
                 continue
@@ -909,6 +937,16 @@ def main():
                 sock.sendto(b"OK", addr)
                 continue
 
+            def autonomy(fn, *args):
+                """Start an autonomy command; a fault in it stops the autonomy and is reported, never ends the relay."""
+                try:
+                    return fn(*args)
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    assist.nav.cancel(f"autonomy fault - stopped ({type(e).__name__})")
+                    return f"autonomy fault: {type(e).__name__}"
+
             if len(parts) >= 2 and parts[0] == "GOTO":      # click-to-go: "GOTO <x> <y> [heading deg]" (m, vehicle
                 if parts[1] == "CANCEL":                     # frame; heading 0 = ahead, + = left) / "GOTO CANCEL"
                     assist.nav.cancel("cancelled from the GUI")
@@ -917,7 +955,7 @@ def main():
                         gx, gy = float(parts[1]), float(parts[2])
                         gh = float(parts[3]) if len(parts) == 4 else None
                         gpts, _ = clr.read_points_seq()
-                        assist.goto(gx, gy, gpts, heading_deg=gh)
+                        autonomy(lambda: assist.goto(gx, gy, gpts, heading_deg=gh))
                         dlog.event("goto", x=gx, y=gy, heading_deg=gh, state=assist.nav.state, result=assist.nav.msg)
                     except ValueError:
                         pass
@@ -925,14 +963,33 @@ def main():
                 continue
 
             if len(parts) >= 1 and parts[0] == "EXPLORE":                # "EXPLORE ON" / "EXPLORE OFF"
-                res = assist.explore(len(parts) < 2 or parts[1].upper() != "OFF")
+                res = autonomy(assist.explore, len(parts) < 2 or parts[1].upper() != "OFF")
                 dlog.event("explore", state=res)
                 sock.sendto(b"OK", addr)
                 continue
 
+            if parts and parts[0] == "PARK_TARGET":                       # "PARK_TARGET <json>": strip (road edge, side, depth), click (world)
+                try:
+                    import json as _json
+                    d = _json.loads(text.strip()[len("PARK_TARGET"):])
+                    gpts, _ = clr.read_points_seq()
+                    res = autonomy(assist.park_target, d["strip"], d["click"], gpts)
+                except (ValueError, KeyError, TypeError) as e:
+                    res = f"BAD PARK_TARGET: {e}"
+                dlog.event("park target", result=res, state=assist.nav.state)
+                sock.sendto(res.encode(), addr)
+                continue
+
+            if parts and parts[0] == "PARK_MARKER":                       # reverse into the bay of the ArUco marker the rear camera sees
+                gpts, _ = clr.read_points_seq()
+                res = autonomy(assist.park_marker, gpts)
+                dlog.event("park marker", result=res, state=assist.nav.state)
+                sock.sendto(res.encode(), addr)
+                continue
+
             if parts and parts[0] == "PARK":                              # back into the nearest bay / slot beside the car
                 gpts, _ = clr.read_points_seq()
-                res = assist.park(gpts, parts[1].lower() if len(parts) > 1 else "auto")
+                res = autonomy(assist.park, gpts, parts[1].lower() if len(parts) > 1 else "auto")
                 dlog.event("park", result=res, state=assist.nav.state)
                 sock.sendto(res.encode(), addr)
                 continue
@@ -1172,6 +1229,7 @@ def main():
             # practice: actuate first, then update the estimators)
             if new_scan:
                 vest.on_scan(gpts, gseq, pkt_now)              # LiDAR range flow -> speed EKF
+                pgate.memory.correct_pose(vest.pose, stamp=vest.pose_stamp)           # the obstacle memory rides on the scan-matched pose
             if not adas_override:
                 # learned driver intent (adas/intent_net.py): will this driver handle the threat themselves?
                 # decides only whether the evasive steer may take over; braking stays pure physics
@@ -1203,9 +1261,12 @@ def main():
             if prev is not None:
                 plan = plan or {}
                 plan["maneuver"], plan["line"] = to_polar(prev[0]), to_polar(prev[1])
-            nav_gui = {"state": assist.nav.state, "msg": assist.nav.msg, "goal": None, "plan_ms": assist.nav.plan_ms}
-            if assist.nav.active:
+            nav_gui = {"state": assist.nav.state, "msg": assist.nav.msg, "goal": None, "plan_ms": assist.nav.plan_ms,
+                       "space": getattr(assist.nav, "parking_space", None)}
+            if assist.nav.active and assist.nav.goal is not None:
                 nav_gui["goal"] = to_polar(assist.nav.to_vehicle(np.array([assist.nav.goal])))[0]
+                if getattr(assist.nav, "parking_slot", None) is not None:          # parallel: the slot the car chose (corners)
+                    nav_gui["slot"] = to_polar(assist.nav.to_vehicle(np.asarray(assist.nav.parking_slot, float)))
                 npath = assist.nav.preview()
                 if npath is not None and len(npath):
                     plan = plan or {}

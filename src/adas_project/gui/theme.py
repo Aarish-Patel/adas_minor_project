@@ -222,8 +222,13 @@ def style_plot(pw, title=None):
         a = pi.getAxis(ax)
         a.setPen(pg.mkPen(C["hair2"]))
         a.setTextPen(pg.mkPen(C["dim"]))
-        a.setStyle(tickFont=font(11))
-    pi.showGrid(x=True, y=True, alpha=0.10)
+        a.setStyle(tickFont=font(13), tickTextOffset=8)
+    pi.showGrid(x=True, y=True, alpha=0.12)
     if title is not None:
-        pi.setTitle(title, color=C["text2"], size="10pt")
+        pi.setTitle(title, color=C["text2"], size="12pt")
     return pw
+
+
+def axis_label(pw, side, text):
+    """Axis caption in the type scale (12 px, dim) - pyqtgraph's default is a small black-on-anything 11 pt."""
+    pw.setLabel(side, text, color=C["dim"], **{"font-size": "12px"})

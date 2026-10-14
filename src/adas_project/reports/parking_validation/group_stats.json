@@ -1,0 +1,30 @@
+{
+ "perpendicular": {
+  "runs": 240,
+  "success_pct": 60.83333333333333,
+  "success_expect_park_pct": 55.23809523809524,
+  "collisions": 0,
+  "parked": 197,
+  "pos_med": 8.9,
+  "pos_p95": 15.0,
+  "head_med": 4.7,
+  "head_p95": 12.999999999999995,
+  "corr_med": 0.0,
+  "time_med": 6.3,
+  "path_med": 1.837
+ },
+ "parallel": {
+  "runs": 620,
+  "success_pct": 60.0,
+  "success_expect_park_pct": 57.96610169491525,
+  "collisions": 0,
+  "parked": 532,
+  "pos_med": 6.35,
+  "pos_p95": 41.945,
+  "head_med": 4.5,
+  "head_p95": 7.6,
+  "corr_med": 0.0,
+  "time_med": 17.2,
+  "path_med": 4.964499999999999
+ }
+}

@@ -1,15 +1,15 @@
 # Project status (intent-aware ADAS on an RC car: Raspberry Pi 5 + RPLIDAR A3 + ESP32)
 
-Last updated 28 Sep 2026. The task list with every open item is `TODO.md`; algorithm choices and references are in
+Last updated 30 Sep 2026. The task list with every open item is `TODO.md`; algorithm choices and references are in
 `RESEARCH.md`.
 
 ## Where things are
 
 | Piece | Where | State |
 |---|---|---|
-| Pi | `192.168.1.6`, user `pi` | powered off by the user ("the car has issues") |
-| ESP32 | `192.168.1.7` | firmware unchanged |
-| Safety relay (the ADAS on the car) | `pi/wifi_drive_safety.py`, systemd `rc-relay` | **the Pi runs an OLD version** (obstacle-memory phantom wall); deploy = TODO A1 |
+| Pi | `192.168.1.6`, user `pi` | running; supply gives no USB-PD (USB capped at 600 mA) -> LiDAR on external power |
+| ESP32 | USB serial on the Pi (Wi-Fi 192.168.1.15) | firmware unchanged; answers PING |
+| Safety relay (the ADAS on the car) | `pi/wifi_drive_safety.py`, systemd `rc-relay` | deployed 30 Sep 23:14 (commit da9d0b6 working tree, TODO AE1-AE4); backup `~/rc_car_backup_20260930_2310.tgz` |
 | Control panel | `pi/control_panel.py`, systemd `rc-panel`, port 8080 | deployed |
 | 2D live view / 3D EV dashboard | relay port 8090: `/` and `/dash` | on the laptop simulator; the car gets them with A1 |
 | Laptop digital twin | `python tools/sim_car.py --world doorway` + `python rc_controller.py --ip 127.0.0.1` | works: the unchanged relay drives a virtual car + LiDAR |

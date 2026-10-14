@@ -118,19 +118,29 @@ def small_label(text, dim=True):
     return lab
 
 
-def plot(title, left=None, bottom=None):
-    p = pg.PlotWidget(title=title)
-    theme.style_plot(p, title)
-    lg = p.addLegend(offset=(-10, 8), labelTextSize="9pt")            # top-right, on a card, not over the curves' start
-    lg.setBrush(pg.mkBrush(theme.C["surface"]))
-    lg.setPen(pg.mkPen(theme.C["hair"]))
+def plot(left=None, bottom=None):
+    """A themed plot without a title or legend of its own: chart_card() puts the title and a legend pill above it, so
+    nothing is drawn over the curves."""
+    p = pg.PlotWidget()
+    theme.style_plot(p)
     for ax in ("left", "bottom"):
         p.getAxis(ax).enableAutoSIPrefix(False)
     if left:
-        p.setLabel("left", left)
+        theme.axis_label(p, "left", left)
     if bottom:
-        p.setLabel("bottom", bottom)
+        theme.axis_label(p, "bottom", bottom)
+    p.setMinimumHeight(110)
     return p
+
+
+def chart_card(title, p, legend=(), empty=None):
+    """title + legend pill + plot on a card; empty = (glyph, headline, hint) shows a designed placeholder until
+    card.empty.set_empty(False)."""
+    from gui.controls import ChartCard, EmptyHint
+    card = ChartCard(title, p, legend)
+    if empty:
+        card.empty = EmptyHint(p, *empty)
+    return card
 
 
 # ====================================================================== Monte Carlo
@@ -211,9 +221,14 @@ class MonteCarloTab(QtWidgets.QWidget):
         self.tests.setStyleSheet(f"color: {theme.C['text2']}; font-size: 12px; font-family: 'Consolas', monospace;")
         tcard.body.addWidget(self.tests)
         ll.addWidget(tcard)
-        self.bars = plot("crashes (red) and needless interventions (orange) per system")
-        self.bars.setMinimumHeight(190)
-        ll.addWidget(self.bars, 1)
+        self.bars = plot(left="drives")
+        self.bars.setMinimumHeight(240)
+        self.bars.setMouseEnabled(False, False)
+        self.bars.hideButtons()
+        self.bars_card = chart_card("Crashes and needless interventions per system", self.bars,
+                                    [("crashes", theme.C["bad"]), ("needless interventions", theme.C["warn"])],
+                                    empty=("▓", "No results yet", "Start a Monte Carlo on the RUN tab; the bars fill as drives finish."))
+        ll.addWidget(self.bars_card, 1)
         right = QtWidgets.QWidget()
         rl = QtWidgets.QVBoxLayout(right)
         row = QtWidgets.QHBoxLayout()
@@ -222,9 +237,13 @@ class MonteCarloTab(QtWidgets.QWidget):
         self.scen.currentIndexChanged.connect(self.draw_scenario)
         row.addWidget(self.scen, 1)
         rl.addLayout(row)
-        self.map = plot("every system in the same room: x crash, star goal, dots needed / needless")
+        self.map = plot()
         self.map.setAspectLocked(True)
-        rl.addWidget(self.map, 1)
+        self.map_card = chart_card("Every system in the same room", self.map, [
+            (VARIANT_LABEL[v], VARIANT_COL[v]) for v in ("off", "brake-only", "adas", "adas+intent")] + [
+            ("intervention needed", theme.C["ok"]), ("needless", theme.C["warn"])],
+            empty=("◎", "No replay yet", "Pick a run above once the Monte Carlo has produced drives."))
+        rl.addWidget(self.map_card, 1)
         pages.addTab(left, "RESULTS")
         pages.addTab(right, "REPLAY MAP")
         pages.addTab(run_page, "RUN")
@@ -288,13 +307,25 @@ class MonteCarloTab(QtWidgets.QWidget):
                 self.table.setItem(i, j, QtWidgets.QTableWidgetItem(txt))
         self.table.resizeColumnsToContents()
         self.bars.clear()
+        self.bars_card.empty.set_empty(not vs)
         x = np.arange(len(vs))
         if vs:
-            self.bars.addItem(pg.BarGraphItem(x=x - 0.2, height=[summ[v]["crashes"] for v in vs], width=0.38,
-                                              brush=theme.C["bad"]))
-            self.bars.addItem(pg.BarGraphItem(x=x + 0.2, height=[summ[v]["needless"] for v in vs], width=0.38,
-                                              brush=theme.C["warn"]))
-            self.bars.getAxis("bottom").setTicks([[(i, VARIANT_LABEL.get(v, v)) for i, v in enumerate(vs)]])
+            crashes = [summ[v]["crashes"] for v in vs]
+            needless = [summ[v]["needless"] for v in vs]
+            for dx, vals, col in ((-0.2, crashes, "bad"), (0.2, needless, "warn")):
+                self.bars.addItem(pg.BarGraphItem(x=x + dx, height=vals, width=0.34, brush=theme.qcolor(col, 215),
+                                                  pen=pg.mkPen(theme.C[col], width=1.5)))
+                for xi, val in zip(x + dx, vals):             # the value on top of each bar
+                    t = pg.TextItem(f"{val:g}", color=theme.C["text"], anchor=(0.5, 1.0))
+                    t.setFont(theme.semibold(14))
+                    t.setPos(xi, val)
+                    self.bars.addItem(t)
+            top = max(crashes + needless + [1])
+            self.bars.setYRange(0, top * 1.22, padding=0)
+            self.bars.setXRange(-0.6, len(vs) - 0.4, padding=0)
+            ax = self.bars.getAxis("bottom")
+            ax.setStyle(tickFont=theme.semibold(14))
+            ax.setTicks([[(i, VARIANT_LABEL.get(v, v)) for i, v in enumerate(vs)]])
         if tests:
             lines = [f"Paired one-sided Wilcoxon, ADAS + intent vs ADAS ({tests.get('pairs')} paired drives):"]
             for k, t in tests.items():
@@ -307,6 +338,7 @@ class MonteCarloTab(QtWidgets.QWidget):
 
     def draw_scenario(self):
         k = self.scen.currentData()
+        self.map_card.empty.set_empty(k is None)
         if k is None:
             return
         from sim.relay_mc import scenario
@@ -340,7 +372,6 @@ DR_LABELS = {"v_max_x": ("top speed", "x fitted"), "deadband": ("throttle dead-b
 
 
 class TrainingTab(QtWidgets.QWidget):
-    device_found = QtCore.Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -390,7 +421,8 @@ class TrainingTab(QtWidgets.QWidget):
             ctl.addWidget(b)
         ctl.addStretch(1)
         self.device = QtWidgets.QLabel("")
-        self.device_found.connect(self.device.setText)
+        from gui.controls import ThreadSignal
+        self.device_found = ThreadSignal(self.device.setText)    # emitted by the device-check thread
         ctl.addWidget(self.device)
         lay.addLayout(ctl)
         self.progress = QtWidgets.QProgressBar()
@@ -412,30 +444,42 @@ class TrainingTab(QtWidgets.QWidget):
         self.data_info = small_label("")
         ll.addWidget(self.data_info)
         # right: live curves and results
-        self.p_loss = plot("validation loss per model (lower = better)", "BCE", "epoch")
-        self.p_ap = plot("validation average precision per model (higher = better)", "AP", "epoch")
-        self.p_rel = plot("calibration: predicted vs observed (diagonal = perfect)", "observed rate", "predicted P")
-        self.p_ex = plot("risk over time on a held-out drive (red band: contact within 2 s)", "", "s")
-        self.p_slices = plot("average precision per situation: grey = v2 (car until now), blue = v3 twin-trained")
+        wait = ("↗", "Waiting for training", "Curves appear here epoch by epoch once a training run starts (RUN tab).")
+        norep = ("▤", "No evaluation report yet", "Finish a training run to compare v3 with the old model on held-out drives.")
+        self.p_loss = plot("BCE", "epoch")
+        self.c_loss = chart_card("Validation loss per model (lower = better)", self.p_loss, empty=wait)
+        self.p_ap = plot("AP", "epoch")
+        self.c_ap = chart_card("Validation average precision per model (higher = better)", self.p_ap, empty=wait)
+        self.p_rel = plot("observed rate", "predicted P")
+        self.c_rel = chart_card("Calibration: predicted vs observed (diagonal = perfect)", self.p_rel,
+                                [("v2", theme.C["dim"]), ("v3 + physics floor", theme.C["accent"])],
+                                empty=norep)
+        self.p_ex = plot("", "s")
+        self.c_ex = chart_card("Risk over time on a held-out drive (red band: contact within 2 s)", self.p_ex, [
+            ("free way", theme.C["accent"]), ("speed", theme.C["s3"]), ("P v2", theme.C["dim"]), ("P v3", theme.C["accent"])], empty=norep)
+        self.p_slices = plot(None, "average precision")
+        self.c_slices = chart_card("Average precision per situation", self.p_slices,
+                                   [("v2 (car until now)", theme.C["dim"]), ("v3 (twin-trained)", theme.C["accent"])],
+                                   empty=norep)
         grid = QtWidgets.QTabWidget()                 # three pages: there is no room for five plots at once
         page = QtWidgets.QWidget()
         pl = QtWidgets.QHBoxLayout(page)
-        pl.addWidget(self.p_loss)
-        pl.addWidget(self.p_ap)
+        pl.addWidget(self.c_loss)
+        pl.addWidget(self.c_ap)
         grid.addTab(page, "training curves")
         page = QtWidgets.QWidget()
         pl = QtWidgets.QHBoxLayout(page)
-        pl.addWidget(self.p_rel, 1)
+        pl.addWidget(self.c_rel, 1)
         exw = QtWidgets.QWidget()
         el = QtWidgets.QVBoxLayout(exw)
         el.setContentsMargins(0, 0, 0, 0)
         self.ex_sel = QtWidgets.QComboBox()
         self.ex_sel.currentIndexChanged.connect(self.draw_example)
         el.addWidget(self.ex_sel)
-        el.addWidget(self.p_ex, 1)
+        el.addWidget(self.c_ex, 1)
         pl.addWidget(exw, 1)
         grid.addTab(page, "calibration + example drives")
-        grid.addTab(self.p_slices, "per situation (v2 vs v3)")
+        grid.addTab(self.c_slices, "per situation (v2 vs v3)")
         self.summary = small_label("", dim=False)
         self.summary.hide()                            # the KPI tiles above the tabs replace this text
         pages.addTab(grid, "RESULTS")
@@ -506,6 +550,9 @@ class TrainingTab(QtWidgets.QWidget):
         self.curves, self.hist = {}, {}
         self.p_loss.clear()
         self.p_ap.clear()
+        for c in (self.c_loss, self.c_ap):
+            c.legend.set([])
+            c.empty.set_empty(True)
         self.tail.reset()
         self.job.start(["-m", "sim.train_intent_torch"] + (["--quick"] if quick else []), "training")
 
@@ -520,8 +567,13 @@ class TrainingTab(QtWidgets.QWidget):
                 h[k].append(row[k])
             if name not in self.curves:
                 col = COLS[len(self.curves) % len(COLS)]
-                self.curves[name] = (self.p_loss.plot(pen=pg.mkPen(col, width=2), name=name),
-                                     self.p_ap.plot(pen=pg.mkPen(col, width=2), name=name))
+                self.curves[name] = (self.p_loss.plot(pen=pg.mkPen(col, width=2.5)),
+                                     self.p_ap.plot(pen=pg.mkPen(col, width=2.5)))
+                legend = [(n, COLS[i % len(COLS)]) for i, n in enumerate(self.curves)]
+                self.c_loss.legend.set(legend)
+                self.c_ap.legend.set(legend)
+                self.c_loss.empty.set_empty(False)
+                self.c_ap.empty.set_empty(False)
             cl, ca = self.curves[name]
             cl.setData(h["epoch"], h["val_loss"])
             ca.setData(h["epoch"], h["val_ap"])
@@ -554,6 +606,8 @@ class TrainingTab(QtWidgets.QWidget):
     def show_report(self, rep):
         if not rep:
             return
+        for c in (self.c_rel, self.c_ex, self.c_slices):
+            c.empty.set_empty(False)
         # reliability
         self.p_rel.clear()
         self.p_rel.plot([0, 1], [0, 1], pen=pg.mkPen(theme.C["hair2"], width=1, style=QtCore.Qt.DashLine))
@@ -568,8 +622,16 @@ class TrainingTab(QtWidgets.QWidget):
         y = np.arange(len(names))
         old = [sl[n]["old_v2"].get("ap") or 0 for n in names]
         new = [sl[n]["new_floor"].get("ap") or 0 for n in names]
-        self.p_slices.addItem(pg.BarGraphItem(x0=0, y=y - 0.2, height=0.38, width=old, brush=theme.C["dim"]))
-        self.p_slices.addItem(pg.BarGraphItem(x0=0, y=y + 0.2, height=0.38, width=new, brush=theme.C["accent"]))
+        for dy, vals, col in ((-0.2, old, "dim"), (0.2, new, "accent")):
+            self.p_slices.addItem(pg.BarGraphItem(x0=0, y=y + dy, height=0.34, width=vals, brush=theme.qcolor(col, 215),
+                                                  pen=pg.mkPen(theme.C[col], width=1.5)))
+            for yi, val in zip(y + dy, vals):
+                t = pg.TextItem(f"{val:.2f}", color=theme.C["text"], anchor=(0.0, 0.5))
+                t.setFont(theme.font(12))
+                t.setPos(val + 0.01, yi)
+                self.p_slices.addItem(t)
+        self.p_slices.setXRange(0, 1.08, padding=0)
+        self.p_slices.getAxis("left").setStyle(tickFont=theme.semibold(13))
         self.p_slices.getAxis("left").setTicks([[(i, n) for i, n in enumerate(names)]])
         self.p_slices.invertY(True)
         a = sl.get("all", {})
@@ -609,7 +671,7 @@ class TrainingTab(QtWidgets.QWidget):
         t = np.array(e["t"])
         y = np.array(e["y"], float)
         self.p_ex.addItem(pg.FillBetweenItem(pg.PlotDataItem(t, y), pg.PlotDataItem(t, 0 * y),
-                                             brush=pg.mkBrush(248, 113, 113, 50)))
+                                             brush=pg.mkBrush(theme.qcolor("bad", 56))))
         self.p_ex.plot(t, np.minimum(np.array(e["free"]), 2.5) / 2.5, pen=pg.mkPen(theme.C["accent"], width=1),
                        name="free way (/2.5 m)")
         self.p_ex.plot(t, np.abs(np.array(e["v"])), pen=pg.mkPen(theme.C["s3"], width=1), name="speed (m/s)")

@@ -23,6 +23,8 @@ import time
 import urllib.request
 
 import numpy as np
+import OpenGL
+OpenGL.ERROR_CHECKING = False      # see gui/ev.py
 from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
@@ -796,6 +798,16 @@ class Dashboard(QtWidgets.QMainWindow):
             self.c_rate.setData(t, h[:, 7])
 
 
+def _below_normal_priority():
+    """Windows: run the HMI below normal priority so the relay and the twin (control loop, LiDAR thread) win when they share
+    the computer. Harmless elsewhere."""
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetPriorityClass(ctypes.windll.kernel32.GetCurrentProcess(), 0x4000)
+    except Exception:
+        pass
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--host", default="127.0.0.1", help="the relay: 127.0.0.1 for the laptop simulator, "
@@ -805,15 +817,22 @@ def main():
                                                         "7 ML training lab")
     ap.add_argument("--snapshot", help="save the window as this PNG after --after seconds, then quit (tests, slides)")
     ap.add_argument("--after", type=float, default=6.0)
+    ap.add_argument("--measure", type=float, default=0.0, help="record the frames for this many seconds (after 3 s of warm-up), "
+                                                            "print FPS / frame-time / shake statistics as JSON, then quit")
+    ap.add_argument("--fps", default="auto", help="render rate: 60, 30 or auto (60, dropping to 30 if the machine cannot keep up)")
     ap.add_argument("--classic", action="store_true", help="the older tabbed dashboard instead of the EV-style one")
     ap.add_argument("--open", default="", help="EV window: open a drawer or lab at start - map, assists, setup, "
                                                "diag, events, mc, train")
     a = ap.parse_args()
+    if a.host in ("127.0.0.1", "localhost"):
+        _below_normal_priority()          # the twin / relay run on this computer: the display must never take their CPU
     pg.setConfigOptions(antialias=True)
     # the 3D views of the main window and the lab windows share one OpenGL context: pyqtgraph compiles its shaders
     # once, and a second window with its own context could not use them ("glUseProgram: invalid value")
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
     app = QtWidgets.QApplication(sys.argv)
+    from gui.controls import gui_thread_gc
+    gui_thread_gc()                                  # Python garbage (old windows' widgets) is only ever freed on the GUI thread
     if a.classic:
         app.setStyleSheet(STYLE)
         win = Dashboard(Link(a.host))
@@ -824,6 +843,7 @@ def main():
         _theme.load_mode()
         app.setStyleSheet(_theme.STYLE)
         win = EVWindow(Link(a.host))
+        win.set_fps_cap(int(a.fps) if str(a.fps).isdigit() else "auto")
     win.show()
     target = win
     if not a.classic and a.open:
@@ -832,6 +852,16 @@ def main():
             target = win.labs[a.open]
         else:
             win.toggle(a.open, True)
+    if a.measure and not a.classic:
+        def begin():
+            win.start_measure()
+            QtCore.QTimer.singleShot(int(a.measure * 1000), end)
+
+        def end():
+            import json
+            print(json.dumps(win.measure_report()), flush=True)
+            app.quit()
+        QtCore.QTimer.singleShot(3000, begin)
     if a.snapshot:
         def snap():
             target.grab().save(a.snapshot)

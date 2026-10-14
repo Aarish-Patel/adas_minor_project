@@ -183,8 +183,9 @@ def counterfactual(car, driver, t0, horizon=2.0):
     with no ADAS for `horizon` seconds (their own reactions, their own lapses). Returns "crash", "near-miss" (the
     body came within NEAR_MISS_M - ADAS evaluations count near-crashes as justified interventions too) or None."""
     from sim.hw_sim import VirtualCar
-    c2 = VirtualCar(car.world, car.p, (car.x, car.y, car.th), car.reversed, threaded=False)
-    c2.v, c2.servo, c2.servo_cmd, c2.pwm = car.v, car.servo, car.servo_cmd, car.pwm
+    import copy
+    c2 = VirtualCar(car.world, car.p, (car.x, car.y, car.th), car.reversed, threaded=False, noise=copy.deepcopy(car.noise))
+    c2.v, c2.servo, c2.servo_cmd, c2.pwm, c2.servo_wheels = car.v, car.servo, car.servo_cmd, car.pwm, car.servo_wheels
     c2.queue, c2.clock, c2.last_cmd_t = list(car.queue), car.clock, car.last_cmd_t
     d2 = driver.clone()
     t, closest = t0, 9.0
@@ -281,7 +282,8 @@ def run(args):
         a_n, a_a = (float(s) for s in os.environ["RC_EVADE_TTC"].split(","))
         assist.assists.cfg.evade_ttc, assist.assists.cfg.evade_ttc_attentive = a_n, a_a
     p = assist.p
-    car = VirtualCar(world, p, (0.0, 0.0, 0.0), threaded=False)
+    from sim.hw_sim import ActuationNoise
+    car = VirtualCar(world, p, (0.0, 0.0, 0.0), threaded=False, noise=ActuationNoise(seed))
     car.last_cmd_t = 0.0
     lidar = SimLidar(car, tun.mount.yaw_offset_deg, n=720, seed=seed)
     driver = HumanDriver(world, goal, np.random.default_rng(seed + 1000), p, K, assist.centre, style)

@@ -7,12 +7,17 @@ a moment ago and dead-reckons them as the car moves, then hands back only
 those that are currently inside the blind ring.
 
 Dead reckoning uses the estimated speed and steering, so it is only trusted
-for a few seconds and only inside the blind ring.
+for a few seconds and only inside the blind ring. Where a scan-matched pose exists
+(the relay's LocalMapOdometry, ~1 % drift against 5-10 % for speed x steering),
+`correct_pose` puts the memory on it after every scan and dead reckoning only
+bridges the 0.1 s between scans.
 """
 
 import math
 
 import numpy as np
+
+from adas.visibility import evidence, width_from_neighbours
 
 try:                                   # imported once at start-up: importing inside the scan callback cost ~0.1 s
     from scipy.spatial import cKDTree
@@ -20,6 +25,7 @@ except ImportError:                    # pragma: no cover
     cKDTree = None
 
 VOXEL = 0.02                           # m: remembered points are de-duplicated on this grid
+SCORE_MAX = 8.0                        # clamped evidence score per point (adas/visibility.py): hits add 1, see-through misses subtract
 
 
 class ObstacleMemory:
@@ -37,6 +43,8 @@ class ObstacleMemory:
         self.x = self.y = self.theta = 0.0            # dead-reckoned pose in a local frame
         self.pts = np.empty((0, 2))                   # remembered points, local frame
         self.age = np.empty(0)
+        self.score = np.empty(0)                      # evidence per point (adas/visibility.py)
+        self._judged = False                         # this scan's evidence already applied (prune_contradicted before add_scan)
 
     def advance(self, dt, v, delta):
         omega = v * math.tan(delta) / self.p.wheelbase
@@ -59,16 +67,10 @@ class ObstacleMemory:
 
     def add_scan(self, points, exclude=None):
         """points: the new scan (vehicle frame). exclude: (x, y, radius) of moving objects, not remembered."""
-        # 1) forget remembered points that this scan can see are no longer there
-        if len(self.pts) and len(points) and cKDTree is not None:
-            v = self._to_vehicle(self.pts)
-            d_lidar = np.hypot(v[:, 0] - self.p.lidar_x, v[:, 1] - self.p.lidar_y)
-            visible = d_lidar > self.blind_radius + 0.03
-            keep = ~visible
-            if visible.any():
-                dist, _ = cKDTree(points).query(v[visible], distance_upper_bound=0.10)
-                keep[visible] = np.isfinite(dist)
-            self.pts, self.age, self.seen_at = self.pts[keep], self.age[keep], self.seen_at[keep]
+        # 1) evidence from this scan: seen again / seen through (thin objects far away are not judged - adas/visibility.py)
+        if not self._judged:
+            self.judge(points)
+        self._judged = False
 
         # 2) remember the near part of the new scan, except moving objects
         if len(points):
@@ -83,31 +85,41 @@ class ObstacleMemory:
                 self.pts = np.vstack([self.pts, self._to_local(near)])
                 self.age = np.concatenate([self.age, np.zeros(len(near))])
                 self.seen_at = np.concatenate([self.seen_at, np.full(len(near), self.travel)])
-                # one point per 2 cm cell, the newest (the scan repeats the same wall ten times a second)
+                self.score = np.concatenate([self.score, np.ones(len(near))])
+                # one point per 2 cm cell, the newest (the scan repeats the same wall ten times a second), with the cell's best score
                 cells = np.floor(self.pts / VOXEL).astype(np.int64)
                 key = cells[:, 0] * 1_000_003 + cells[:, 1]
+                uk, inv = np.unique(key, return_inverse=True)
+                best = np.zeros(len(uk))
+                np.maximum.at(best, inv, self.score)
                 _, last = np.unique(key[::-1], return_index=True)
                 idx = len(key) - 1 - last
                 self.pts, self.age, self.seen_at = self.pts[idx], self.age[idx], self.seen_at[idx]
+                self.score = best[inv[idx]]
 
         if self.max_travel is None:
             keep = self.age < self.max_age
         else:
             keep = (self.travel - self.seen_at < self.max_travel) & (self.age < self.max_age)
-        self.pts, self.age, self.seen_at = self.pts[keep], self.age[keep], self.seen_at[keep]
+        self.pts, self.age, self.seen_at, self.score = self.pts[keep], self.age[keep], self.seen_at[keep], self.score[keep]
         if len(self.pts) > self.max_points:
             # thin the points far from the car first; the ones in and near the blind ring matter most
             v = self._to_vehicle(self.pts)
             d = np.hypot(v[:, 0] - self.p.lidar_x, v[:, 1] - self.p.lidar_y)
             order = np.argsort(d)[: self.max_points]
-            self.pts, self.age, self.seen_at = self.pts[order], self.age[order], self.seen_at[order]
+            self.pts, self.age, self.seen_at, self.score = self.pts[order], self.age[order], self.seen_at[order], self.score[order]
 
-    def prune_contradicted(self, scan_pts, beam_deg=4.0, slack=0.05):
-        """Drop remembered points the current scan proves are not there: at that bearing (from the LiDAR) the
-        sensor sees something FURTHER away, so the space in between is empty. Dead reckoning from an estimated
-        speed drifts; without this a remembered wall can "approach" the car and block it with nothing there.
-        A bearing with no return at all keeps its points (that is what a truly blind-close object looks like)."""
-        if not len(self.pts) or not len(scan_pts):
+    def prune_contradicted(self, scan_pts, **_):
+        """The scan's evidence against the memory (judge); the add_scan for the same scan then does not apply it again."""
+        self.judge(scan_pts)
+        self._judged = True
+
+    def judge(self, scan_pts):
+        """Apply one scan's evidence (adas/visibility.py): +1 for a point seen again, minus the miss weight for a point the scan saw
+        through - only beams within the point's own angular size count, and thin points far away are not judged; a point is dropped
+        at zero. Dead reckoning drifts, so a remembered wall can "approach" the car - the scan seeing past it removes it. A bearing
+        with no return keeps its points (that is what a truly close object looks like)."""
+        if not len(self.pts) or scan_pts is None or not len(scan_pts):
             return
         lx, ly = self.p.lidar_x, self.p.lidar_y
         v = self._to_vehicle(self.pts)
@@ -115,16 +127,32 @@ class ObstacleMemory:
         md = np.hypot(v[:, 0] - lx, v[:, 1] - ly)
         sb = np.degrees(np.arctan2(scan_pts[:, 1] - ly, scan_pts[:, 0] - lx))
         sd = np.hypot(scan_pts[:, 0] - lx, scan_pts[:, 1] - ly)
-        # farthest return per 1-degree bearing bin, then the max over +-beam_deg (wrapping round): vectorised, no
-        # Python loop over the remembered points
-        far = np.full(360, -1.0)
-        np.maximum.at(far, np.floor(sb).astype(int) % 360, sd)
-        w = int(math.ceil(beam_deg))
-        win = far.copy()
-        for k in range(1, w + 1):
-            win = np.maximum(win, np.maximum(np.roll(far, k), np.roll(far, -k)))
-        keep = win[np.floor(mb).astype(int) % 360] <= md + slack
-        self.pts, self.age, self.seen_at = self.pts[keep], self.age[keep], self.seen_at[keep]
+        hit, miss = evidence(md, mb, sd, sb, min_range=self.blind_radius, half_width=width_from_neighbours(self.pts, VOXEL))
+        self.score = np.minimum(SCORE_MAX, self.score + hit) - miss
+        keep = self.score > 0
+        self.pts, self.age, self.seen_at, self.score = self.pts[keep], self.age[keep], self.seen_at[keep], self.score[keep]
+
+    def correct_pose(self, pose, max_jump=0.25, max_turn_deg=15.0, stamp=None):
+        """Take a better pose (x, y, theta; the scan-matched world pose) for the car in the memory's frame. A jump larger than a scan's
+        worth of motion is a frame change (the world origin was reset, a relocalisation): then the remembered points keep their place
+        around the car instead. `stamp`: the pose's update counter - the same stamp again (no new scan matched) is ignored, as a stale
+        pose would pull the car back."""
+        if stamp is not None:
+            if stamp == getattr(self, "_pose_stamp", None):
+                return
+            self._pose_stamp = stamp
+        x, y, th = (float(v) for v in pose)
+        jump = math.hypot(x - self.x, y - self.y) > max_jump or abs(math.remainder(th - self.theta, 2 * math.pi)) > math.radians(max_turn_deg)
+        if jump and len(self.pts):
+            v = self._to_vehicle(self.pts)
+            self.x, self.y, self.theta = x, y, th
+            self.pts = self._to_local(v)
+        else:
+            self.x, self.y, self.theta = x, y, th
+
+    def clear(self):
+        """Forget everything (the car was moved by hand / the simulator teleported it: nothing remembered is where it was)."""
+        self.pts, self.age, self.seen_at, self.score = np.empty((0, 2)), np.empty(0), np.empty(0), np.empty(0)
 
     def blind_points(self):
         """Remembered points that lie inside the blind ring right now, in the vehicle frame."""

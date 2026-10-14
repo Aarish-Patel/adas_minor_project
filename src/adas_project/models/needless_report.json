@@ -1,0 +1,38 @@
+{
+ "n_train": 1403,
+ "n_val": 333,
+ "n_test": 742,
+ "needed_rate_test": 0.05121293800539083,
+ "baseline_p_v3": {
+  "auc": 0.637690639952153,
+  "ap": 0.0743439965450294,
+  "n": 742,
+  "positives": 38
+ },
+ "logistic": {
+  "auc": 0.68673370215311,
+  "ap": 0.09070553130302142,
+  "n": 742,
+  "positives": 38
+ },
+ "trees": {
+  "auc": 0.7508971291866029,
+  "ap": 0.13943906508753706,
+  "n": 742,
+  "positives": 38,
+  "depth": 3,
+  "iterations": 24
+ },
+ "hold_back_v3 risk": {
+  "thr_no_miss": 0.021351628005504608,
+  "needless_held_back_no_miss": 0.19886363636363635,
+  "thr_miss10": 0.03112790547311306,
+  "needless_held_back_miss10": 0.2869318181818182
+ },
+ "hold_back_needed-model": {
+  "thr_no_miss": 0.06325684632770286,
+  "needless_held_back_no_miss": 0.1747159090909091,
+  "thr_miss10": 0.06573856994015319,
+  "needless_held_back_miss10": 0.18892045454545456
+ }
+}

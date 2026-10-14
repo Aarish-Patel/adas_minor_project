@@ -39,6 +39,9 @@ REVERSE_STEP_M = 0.25
 REVERSE_N_KAPPA = 5
 
 
+WORK = {"nodes": 0, "grid_cells": 0, "pose_points": 0}   # work done by the searches (the twin turns it into the Pi's computing time, plan_service)
+
+
 class Grid:
     def __init__(self, points, x0, x1, y0, y1, res=RES):
         self.x0, self.y0, self.res = x0, y0, res
@@ -50,6 +53,7 @@ class Grid:
             ok = (ix >= 0) & (ix < self.nx) & (iy >= 0) & (iy < self.ny)
             occ[ix[ok], iy[ok]] = True
         self.occ = occ
+        WORK["grid_cells"] += self.nx * self.ny
         if distance_transform_edt is not None:
             self.dist = distance_transform_edt(~occ) * res
         else:                    # brute force fallback
@@ -69,7 +73,19 @@ class Grid:
         return np.where(inside, self.dist[ix, iy], 9.0)
 
 
+class NodeBudget(float):
+    """A search budget counted in expanded nodes instead of seconds. The twin simulates the Pi with it (plan_service.PlanService.budget):
+    a wall-clock budget made the same simulated drive give different plans depending on how busy the laptop was."""
+
+    def __mul__(self, k):
+        return NodeBudget(float(self) * k)
+
+    __rmul__ = __mul__
+
+
 class HybridAStar:
+    ESCAPE_M = 0.5            # a start closer than the margin: within this of it moves may keep the start's clearance (_search)
+
     def __init__(self, params, kappa_max=1.5, margin=0.06, step=0.15, clear_wish=0.15,
                  w_offset=0.6, w_steer=0.15, w_change=0.4, w_clear=4.0, w_reverse=3.0):
         self.p = params
@@ -201,7 +217,7 @@ class HybridAStar:
             # (the obstacle-free Dubins length was tried as a tighter heuristic: 25 % slower overall - dropped)
             return math.hypot(gx - e[0], gy - e[1])
 
-        return self._search(grid, start, seeds, analytic, h, allow_reverse, max_nodes, 0.0, budget_s, coarse)
+        return self._search(grid, start, seeds, analytic, h, allow_reverse, max_nodes, 0.0, budget_s, coarse, escape=True)
 
     def _plan_to_position(self, grid, start, goal, seeds, allow_reverse, max_nodes, budget_s, coarse):
         gx, gy = goal
@@ -228,10 +244,10 @@ class HybridAStar:
             return (arc, d) if self.clearance(grid, arc[::2]) >= m else None
 
         return self._search(grid, start, seeds, analytic, lambda e: math.hypot(gx - e[0], gy - e[1]),
-                            allow_reverse, max_nodes, 0.0, budget_s, coarse)
+                            allow_reverse, max_nodes, 0.0, budget_s, coarse, escape=True)
 
     def _search(self, grid, start, seeds, analytic, h_euclid, allow_reverse, max_nodes, w_offset, budget_s=None,
-                coarse=None):
+                coarse=None, escape=False):
         """budget_s: give up after this much computing time (the relay's planner must answer in time on the Pi).
         coarse: the coarse lattice (default: with reversing)."""
         import time
@@ -240,7 +256,13 @@ class HybridAStar:
         self.expanded = 0
         self.gave_up = None
         m = self.margin
-        if self.clearance(grid, np.array(start)) < 0.0:
+        c_start = float(self.clearance(grid, np.array(start)))
+        # click-to-go / parking (escape=True) from a start closer than the margin (just pulled out of a gap, stopped beside a parked car
+        # - and the circle cover is ~6 cm fatter than the car at the bumpers): moves near the start may keep the clearance the car already
+        # has, never less - it can leave, it cannot get closer (before 30 Sep: no move at all, "no way to the pull-up point"). The
+        # evasive planner (plan) keeps the strict rule: its start is close to the obstacle by definition.
+        self._escape = (start[0], start[1], min(m, c_start - 0.005)) if escape and c_start < m else None
+        if c_start < 0.0 and self._escape is None:
             return None                                   # already touching: nothing to plan
         # obstacle-aware 2D heuristic: Dijkstra from the goal region over free cells (inflated by half the width)
         free = grid.dist > (self.p.width / 2 + m)
@@ -287,7 +309,9 @@ class HybridAStar:
                 continue
             closed.add(key)
             self.expanded += 1
-            if budget_s is not None and self.expanded % 32 == 0 and time.perf_counter() - t_start > budget_s:
+            WORK["nodes"] += 1
+            if budget_s is not None and (self.expanded >= budget_s if isinstance(budget_s, NodeBudget) else
+                                         self.expanded % 32 == 0 and time.perf_counter() - t_start > budget_s):
                 self.gave_up = "time budget"
                 return None
             # analytic expansion to the goal: every node close in, every 4th further out (Dolgov et al.: the
@@ -298,10 +322,14 @@ class HybridAStar:
                 if fin is not None:
                     rj, d_fin = fin
                     return self._assemble(parents, nodes, i, np.column_stack([rj, np.full(len(rj), d_fin)]))
+            m_here = m
+            esc = getattr(self, "_escape", None)
+            if esc is not None and math.hypot(pose[0] - esc[0], pose[1] - esc[1]) < self.ESCAPE_M:
+                m_here = esc[2]
             for d in dirs:
                 segs = self._arcs(pose, kappas, d)                        # all primitives at once
                 clears = self._clearances(grid, segs)
-                for j in np.flatnonzero(clears >= m):
+                for j in np.flatnonzero(clears >= m_here):
                     k, seg, clear = kappas[j], segs[j], clears[j]
                     end = tuple(seg[-1])
                     cost = self.step * (1.0 + self.w_steer * abs(k) + (self.w_reverse if d < 0 else 0.0)) \

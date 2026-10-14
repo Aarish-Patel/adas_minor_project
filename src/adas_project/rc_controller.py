@@ -60,17 +60,20 @@ ACKERMANN_FACTOR = 1
 # SERVO CALIBRATION (degrees, as used by the Arduino Servo library)
 # ============================================================
 
-LEFT_RIGHT, LEFT_CENTER, LEFT_LEFT = 30, 87, 140    # center 90 -> 87: measured with the final grips (pi/center_fine.py: 86.9, t=17.7)
-RIGHT_RIGHT, RIGHT_CENTER, RIGHT_LEFT = 30, 87, 140
+# 1 Oct (after the refit): straight ahead is 70 on output 1 and 80 on output 2 (tuned by the user); the limits keep the travel
+# the car had at centre 87 (30..140): 57 below the centre (a physical left turn), 53 above it (a physical right turn).
+# The maths' "left" is physically a right turn on this car (STEERING_SIGN), so LEFT_* is the inner wheel of a right turn.
+LEFT_RIGHT, LEFT_CENTER, LEFT_LEFT = 13, 70, 123
+RIGHT_RIGHT, RIGHT_CENTER, RIGHT_LEFT = 23, 80, 133
 
 # Servo degrees per wheel degree (1.0 = servo shaft drives the wheel 1:1).
 LEFT_SCALE = 1.0
 RIGHT_SCALE = 1.0
 
 # Which ESP32 output each servo is wired to: 1 = GPIO18, 2 = GPIO19.
-# Currently swapped (left wheel is on GPIO19). Change if you rewire.
-LEFT_SERVO_CHANNEL = 2
-RIGHT_SERVO_CHANNEL = 1
+# Swapped on 1 Oct: with 2 / 1 the outer wheel of a turn steered more than the inner one (user). Change if you rewire.
+LEFT_SERVO_CHANNEL = 1
+RIGHT_SERVO_CHANNEL = 2
 
 # ============================================================
 # STEERING FEEL

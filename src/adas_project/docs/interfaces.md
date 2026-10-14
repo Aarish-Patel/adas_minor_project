@@ -170,18 +170,53 @@ JSON object, 20 Hz over UDP to subscribers (and HTTP :8090). Keys:
 | mode | "normal" / "override" |
 | drive | v, w, v_model, pwm_in, pwm_out (physical PWM), servo, centre, t, steer_max_deg, steer_cal |
 | gate | action, free_m, allowed speed (§ 9) |
-| plan | pred, left, right, hit, hit_m, ttc, state, maneuver, line (all `L` polar) |
-| nav | state, goal (`L` polar), msg |
+| plan | pred, left, right, hit, hit_m, ttc, state, maneuver, line (all `L` polar); maneuver during autonomy = the rest of the planned path, while parallel parking also the manoeuvre after the way to the slot, kept while a re-plan runs |
+| nav | state, goal (`L` polar), msg, space (label of the chosen parking slot / bay), slot (parallel parking: the chosen slot's 4 corners, `L` polar) |
 | assist | enabled {name: bool}, info {name: text}, level, phase |
 | intent | p_crash (shown risk), p_decision, trusted, attentive, reaction_m, stalled, calibrated, calib_a, calib_b |
 | world | pose (corrected, `W`), zones, zone_kph, mode (eco / normal / sport), rss_min_m, loops |
 | health, esp32 | § 14; ESP32 state, detail, reboots |
 | _pts | decimated LiDAR points, `L` polar |
+| sim | simulator only (absent on the car): walls (ground truth, `L` polar), crashed, crashes, v_true, pose (sim frame: x, y, deg), world (room name), **parking** (below) |
+
+`sim.parking` (Parking Simulator rooms `park_perp`, `park_street`; sim/parking_worlds.py), in the SIMULATOR's frame (the same frame as `sim.pose`,
+20 Hz). The relay's own pose estimate drifts away from it (dead reckoning + scan matching), so the HMI measures the frame change every packet
+from the pair (`sim.pose`, `world.pose`), eases it, and draws the layout in the relay's estimated frame - on the walls the LiDAR draws.
+What the HMI publishes (16b) is in the relay's frame. `W` units:
+| Field | Content |
+|---|---|
+| scenario | "perpendicular" / "parallel" |
+| strip | {points: polyline of the road edge of the parking lane in the direction of travel, side: +1 left / -1 right, depth: road edge to kerb (m)} - the `ParkingStrip` of adas/park_select.py |
+| spaces | the bays room only: list of {id, cx, cy, yaw, l, w (m), occupied, s0, s1, depth} for drawing. The street has NONE (`[]`): one continuous lane with cars parked at arbitrary spacing; the car finds the gaps itself (user, 30 Sep) |
+| vehicles | parked vehicles {cx, cy, yaw, l, w, h, tone} (also physical LiDAR objects) |
+| road, sidewalk | polygons (world frame) or null; lines: floor paint polylines |
+| marker | ArUco marker {id, x, y, yaw (facing direction), z, size, space} or null (perpendicular room); the id is chosen in the HMI |
 
 ## 16. OperatorCommand (HMI -> car)
 UDP text on 4210, reply "OK" or a message: `ASSIST <name|all> ON|OFF` · `MODE eco|normal|sport` · `ZONES <json>` · `ORIGIN` · `GOTO <x> <y> [heading°]`
-(vehicle frame now) · `GOTO CANCEL` · `HOME` · `EXPLORE ON|OFF` · `PARK [PARALLEL|PERPENDICULAR]` · `FOLLOW_ON|OFF` · `ADAS_OVERRIDE_ON|OFF`
+(vehicle frame now) · `GOTO CANCEL` · `HOME` · `EXPLORE ON|OFF` · `PARK [PARALLEL|PERPENDICULAR]` · `PARK_TARGET <json>` (parallel parking on a
+lane: `{"click": [x, y], "strip": {"points": [[x, y]...], "side": +-1, "depth": m}}`, `W` frame; the car finds the gaps with its LiDAR, takes the
+viable one nearest to the click, reply = its first message; the car drives to the slot's pull-up point with the click-to-go planner, measures
+the gap beside it and parks - pulling out first when it stands parked in the lane; the lane is remembered, and a later `GOTO` from inside it
+pulls out first too - ADR-038) · `PARK_MARKER` (reverse into the bay of the ArUco marker the rear camera sees) ·
+`FOLLOW_ON|OFF` · `ADAS_OVERRIDE_ON|OFF`
 · `GUI_SUBSCRIBE <port>` (renew every 2 s, expires 6 s) · `PING`.
+Simulator only (HTTP POST on :8090, tools/sim_car.py): `/api/sim/reset` · `/api/sim/world/<room>` (room = park_perp, park_street, room,
+doorway, open, corridor, gap, lounge) · `/api/sim/world/park_perp/<marker id 0-49>`.
+
+## 16b. HMI parking outputs (HMI -> planning)
+Published by the HMI's Parking Simulator map (`MapZonesPanel.parking_selected`, kept as `EVWindow.parking_published`); presentation only - the
+HMI never chooses the slot or plans. On the street a click on the lane is sent at once as `PARK_TARGET` (section 16).
+A lane drawn with the Parking lane tool (ADR-043) replaces the simulator street's lane and works without the simulator (the car):
+`gui/parking_lane.json` = `{"x0", "y0", "x1", "y1": m, relay / map frame, "road": "x0" | "x1" | "y0" | "y1"}` - an axis-aligned rectangle
+and which long side is the road edge (the opposite one is the kerb); `PARK_TARGET` carries it as the strip (road-edge points along the
+long axis, side, depth = the short side). Deleted on a room switch or an origin reset.
+| Name | Type | Notes |
+|---|---|---|
+| clicked_world_pose | [x, y, theta] | click on the parking lane, `W` frame (m, rad; theta = the lane's heading there); null when cleared |
+| s | float | street: position of the click along the lane (m) - the HMI draws a car-sized ghost there |
+| selected_space_id | str or null | bays room: the highlighted free bay (null = every bay occupied); street: null (the car chooses) |
+| occupancy | {space id: bool} | bays room only: True = occupied |
 
 ## 17. CameraState (optional)
 | Field | Type | Unit | Notes |

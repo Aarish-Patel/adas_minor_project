@@ -1,0 +1,126 @@
+{
+ "worlds": [
+  {
+   "world": "lounge",
+   "trials": 20,
+   "map_nodes": 87,
+   "map_submaps": 7,
+   "single_scan": {
+    "fix": 20,
+    "wrong": 0,
+    "none": 0,
+    "err_cm_median": 0.3378099534161741,
+    "err_cm_max": 1.0306771385022515,
+    "err_deg_median": 0.09356130062642672,
+    "ms_median": 264.79734999884386,
+    "ms_max": 322.23570000496693
+   },
+   "two_scans": {
+    "fix": 20,
+    "wrong": 0,
+    "none": 0,
+    "err_cm_median": 0.36663517744049967,
+    "err_cm_max": 0.8538954838440518,
+    "err_deg_median": 0.13258405752863214
+   }
+  },
+  {
+   "world": "room",
+   "trials": 20,
+   "map_nodes": 30,
+   "map_submaps": 3,
+   "single_scan": {
+    "fix": 20,
+    "wrong": 0,
+    "none": 0,
+    "err_cm_median": 0.40367915887235417,
+    "err_cm_max": 0.8636555151998335,
+    "err_deg_median": 0.09373227447819799,
+    "ms_median": 71.17699999071192,
+    "ms_max": 84.57129998714663
+   },
+   "two_scans": {
+    "fix": 20,
+    "wrong": 0,
+    "none": 0,
+    "err_cm_median": 0.29185524649521855,
+    "err_cm_max": 1.03608364996302,
+    "err_deg_median": 0.09165747468071996
+   }
+  },
+  {
+   "world": "open",
+   "trials": 20,
+   "map_nodes": 99,
+   "map_submaps": 8,
+   "single_scan": {
+    "fix": 0,
+    "wrong": 0,
+    "none": 20,
+    "ms_median": 270.7941500120796,
+    "ms_max": 302.1883000037633
+   },
+   "two_scans": {
+    "fix": 0,
+    "wrong": 0,
+    "none": 20
+   }
+  },
+  {
+   "world": "corridor",
+   "trials": 20,
+   "map_nodes": 17,
+   "map_submaps": 2,
+   "single_scan": {
+    "fix": 2,
+    "wrong": 0,
+    "none": 18,
+    "err_cm_median": 0.8272902218657758,
+    "err_cm_max": 0.9741201786213414,
+    "err_deg_median": 0.07626499209530116,
+    "ms_median": 63.739400007762015,
+    "ms_max": 71.44800000241958
+   },
+   "two_scans": {
+    "fix": 2,
+    "wrong": 0,
+    "none": 18,
+    "err_cm_median": 0.40961299024496356,
+    "err_cm_max": 0.6597266514591544,
+    "err_deg_median": 0.0053201607110035815
+   }
+  },
+  {
+   "world": "doorway",
+   "trials": 20,
+   "map_nodes": 43,
+   "map_submaps": 4,
+   "single_scan": {
+    "fix": 20,
+    "wrong": 0,
+    "none": 0,
+    "err_cm_median": 0.3847472124633572,
+    "err_cm_max": 1.141054030149133,
+    "err_deg_median": 0.08823765559223609,
+    "ms_median": 104.49055000208318,
+    "ms_max": 119.74239998380654
+   },
+   "two_scans": {
+    "fix": 20,
+    "wrong": 0,
+    "none": 0,
+    "err_cm_median": 0.4413861020528492,
+    "err_cm_max": 1.010833997552105,
+    "err_deg_median": 0.10259817911509911
+   }
+  }
+ ],
+ "end_to_end": {
+  "world": "lounge",
+  "relocalised": true,
+  "scans_needed": 2,
+  "err_cm": 0.2799427691039799,
+  "heading_err_deg": 0.054788244070955255,
+  "wall_s": 0.6292266999953426
+ }
+}

@@ -7,6 +7,34 @@ from gui import theme
 from gui.theme import C
 
 
+_GC = []
+
+
+def gui_thread_gc():
+    """Collect Python garbage only on the GUI thread (pyqtgraph's GarbageCollector: automatic collection off, a 1 s timer collects).
+    Automatic collection runs in whichever thread happens to allocate - a worker importing PyTorch collected widgets of a closed
+    window there, and Qt crashed (access violation). Call once after the QApplication exists; later calls do nothing."""
+    if not _GC:
+        from pyqtgraph.util.garbage_collector import GarbageCollector
+        _GC.append(GarbageCollector(interval=1.0))
+    return _GC[0]
+
+
+class ThreadSignal(QtCore.QObject):
+    """A signal a worker thread may emit at any time. The worker emits on this small bridge, which the thread keeps alive, and Qt
+    queues the call to `slot` on the GUI thread - or drops it when the receiving widget has been destroyed meanwhile (window closed,
+    or rebuilt on a theme switch). Emitting on the destroyed widget's own signal crashed the process (Windows access violation)."""
+
+    fired = QtCore.Signal(object)
+
+    def __init__(self, slot):
+        super().__init__()
+        self.fired.connect(slot)
+
+    def emit(self, value=None):
+        self.fired.emit(value)
+
+
 class FeatureTile(QtWidgets.QFrame):
     """A setting as a tile: large icon, name and ON/OFF. Click toggles. `hint` goes to the drawer's detail strip on hover.
     `danger` lights it red (ADAS override)."""
@@ -229,3 +257,104 @@ def style_danger(btn):
         f"QPushButton {{ background: transparent; border: 1px solid {C['hair2']}; border-radius: 12px; padding: 9px 20px; "
         f"color: {C['text2']}; letter-spacing: 0.8px; }} "
         f"QPushButton:hover {{ border-color: {C['bad']}; color: {C['bad']}; background: {theme.css_rgba('bad', 0.10)}; }}")
+
+
+class LegendPill(QtWidgets.QFrame):
+    """A legend as one rounded pill: a coloured dot and a small-caps name per entry. Sits on a card or over a 3D scene, so it
+    never covers the data the way a plot's own legend does. items: [(label, colour hex)]."""
+
+    def __init__(self, items=(), parent=None, over_scene=False):
+        super().__init__(parent)
+        self.setObjectName("legend")
+        bg = theme.css_rgba("surface", 0.92 if over_scene else 1.0)
+        self.setStyleSheet(f"QFrame#legend {{ background: {bg}; border: 1px solid {C['hair']}; border-radius: 14px; }} "
+                           f"QLabel {{ background: transparent; }}")
+        self._lay = QtWidgets.QHBoxLayout(self)
+        self._lay.setContentsMargins(12, 4, 12, 4)
+        self._lay.setSpacing(5)
+        self.set(items)
+
+    def set(self, items):
+        while self._lay.count():
+            w = self._lay.takeAt(0).widget()
+            if w is not None:
+                w.deleteLater()
+        for label, colour in items:
+            dot = QtWidgets.QLabel()
+            dot.setFixedSize(10, 10)
+            dot.setStyleSheet(f"background: {colour}; border-radius: 5px;")
+            self._lay.addWidget(dot)
+            lab = QtWidgets.QLabel(label)
+            lab.setFont(theme.font(12))
+            lab.setStyleSheet(f"color: {C['text2']}; margin-right: 8px;")
+            self._lay.addWidget(lab)
+        self.setVisible(bool(items))
+        self.adjustSize()
+
+
+class EmptyHint(QtWidgets.QFrame):
+    """Designed empty state laid over a widget (a chart with no data yet): an outlined glyph disc, a headline and one line of
+    what to do. Shown / hidden with set_empty(); keeps itself centred on the parent."""
+
+    def __init__(self, parent, glyph, title, text):
+        super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+        self.setStyleSheet("background: transparent;")
+        lay = QtWidgets.QVBoxLayout(self)
+        lay.setAlignment(QtCore.Qt.AlignCenter)
+        lay.setSpacing(4)
+        disc = QtWidgets.QLabel(glyph)
+        disc.setFixedSize(44, 44)
+        disc.setAlignment(QtCore.Qt.AlignCenter)
+        f = QtGui.QFont("Segoe UI Symbol")
+        f.setPixelSize(20)
+        disc.setFont(f)
+        disc.setStyleSheet(f"color: {C['dim']}; border: 1px solid {C['hair2']}; border-radius: 22px;")
+        lay.addWidget(disc, 0, QtCore.Qt.AlignHCenter)
+        t = QtWidgets.QLabel(title)
+        t.setFont(theme.semibold(13))
+        t.setStyleSheet(f"color: {C['text2']};")
+        t.setAlignment(QtCore.Qt.AlignCenter)
+        lay.addWidget(t)
+        s = QtWidgets.QLabel(text)
+        s.setStyleSheet(f"color: {C['dim']}; font-size: 12px;")
+        s.setAlignment(QtCore.Qt.AlignCenter)
+        s.setWordWrap(True)
+        s.setMaximumWidth(340)
+        lay.addWidget(s, 0, QtCore.Qt.AlignHCenter)
+        parent.installEventFilter(self)
+        self._centre()
+
+    def eventFilter(self, obj, ev):
+        if ev.type() in (QtCore.QEvent.Resize, QtCore.QEvent.Show):
+            self._centre()
+        return False
+
+    def _centre(self):
+        p = self.parentWidget()
+        self.adjustSize()
+        self.move((p.width() - self.width()) // 2, (p.height() - self.height()) // 2)
+        self.raise_()
+
+    def set_empty(self, empty):
+        self.setVisible(empty)
+        if empty:
+            self._centre()
+
+
+class ChartCard(Card):
+    """A chart on a card: title (type scale 13) and a legend pill above the plot, the plot itself without its own title or
+    legend, so nothing overlaps the curves. `plot` is a pyqtgraph PlotWidget from gui.lab_tabs.plot()."""
+
+    def __init__(self, title, plot, legend=()):
+        super().__init__(padding=12)
+        self.plot = plot
+        self.title = QtWidgets.QLabel(title)
+        self.title.setFont(theme.semibold(13))
+        self.title.setStyleSheet(f"color: {C['text']};")
+        self.title.setWordWrap(True)
+        self.body.addWidget(self.title)
+        self.legend = LegendPill(legend)
+        self.body.addWidget(self.legend, 0, QtCore.Qt.AlignLeft)
+        self.body.addWidget(plot, 1)
+        plot.card = self

@@ -31,6 +31,9 @@ class CrossingConfig:
     v_max: float = 0.8
     pass_gain_max: float = 0.35    # m/s: never more than this above the wanted speed to get past
     path_len: float = 3.0
+    away_min: float = 0.15         # m/s backing away from something coming at the car: at least this, the object's closing speed +
+    away_max: float = 0.35         # away_extra up to this (a fixed 0.15 m/s let a 0.45 m/s walker reach the car - with the twin's
+    away_extra: float = 0.05       # actuation noise, 30 Sep); the brake gate still stops the car for anything behind it
 
 
 def arc_path(kappa, direction=1, length=3.0, ds=0.05):
@@ -102,7 +105,11 @@ def decide(tracks, path, v_now, v_want, p, cfg=None, rear_free=0.0):
     ok = [v for v in cand if safe(v, cfg.time_margin if v > v_want else 0.0)]
     if not ok:
         if rear_free > 0.30:
-            return "away", -0.15, dict(info, why="it is coming at the car - backing away")
+            d = np.asarray(path[min(1, len(path) - 1), :2], float) - np.asarray(path[0, :2], float)
+            u = d / max(float(np.hypot(*d)), 1e-9)                    # the direction of travel
+            closing = max([-(t[2] * u[0] + t[3] * u[1]) for t in moving] + [0.0])
+            v_away = float(np.clip(closing + cfg.away_extra, cfg.away_min, cfg.away_max))
+            return "away", -v_away, dict(info, why="it is coming at the car - backing away")
         return "stop", 0.0, dict(info, why="no safe speed and no room behind - stopped")
     best = min(ok, key=lambda v: abs(v - v_want))
     if best > v_want + 1e-6:

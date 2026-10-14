@@ -159,3 +159,142 @@ class Odometry:
                     self.pose = np.array([tt[0] if strict else x, tt[1], th])
                     self.ref_fixes += 1
         return self.pose
+
+
+class LocalMapOdometry:
+    """Scan-to-local-map odometry: each scan is registered to a map of the recent keyframes, not to the previous scan, so errors do not
+    add up scan after scan (KISS-ICP: Vizzo, Guadagnino, Mersch, Wiesmann, Behley, Stachniss, "KISS-ICP: In Defense of Point-to-Point
+    ICP", RA-L 2023 - local voxel map, constant-velocity prediction). The registration minimises point-to-line distances to the map
+    (the map's local normals; Censi, "An ICP variant using a point-to-line metric", ICRA 2008) by Gauss-Newton with a Huber weight.
+    Degeneracy (a corridor: parallel walls say nothing about the distance along them) is read off the Gauss-Newton matrix itself: a
+    direction with too little information keeps the motion prediction instead of sliding (Zhang, Kaess & Singh, "On degeneracy of
+    optimization-based state estimation problems", ICRA 2016, solution remapping).
+
+    Same interface as `Odometry`: update(xy, t, v_pred, kappa_pred) -> pose (x, y, th) in the START frame (the first scan's), xy in the
+    same convention as Odometry (pi frame). `last_source` is 'icp', 'along_pred' (a degenerate direction kept from the prediction) or
+    'pred' (the whole step predicted)."""
+
+    VOXEL = 0.03            # m: one map point per cell (the newest)
+    MAP_RADIUS = 4.0        # m: map points further than this from the car are dropped
+    MAP_MAX = 5000
+    KF_DIST, KF_DEG = 0.08, 3.0     # a scan joins the map after this much motion
+    GATES = (0.30, 0.15, 0.08)      # m: correspondence distance, shrinking over the iterations
+    ITERS = 10
+    HUBER = 0.02
+    CONST_VEL = False
+    DEGEN_MIN = 25.0        # smallest eigenvalue of the (normalised) information matrix still trusted (inliers along a direction)
+
+    def __init__(self):
+        self.pose = np.zeros(3)
+        self.prev_pose = None
+        self.prev_t = None
+        self.map_pts = np.zeros((0, 2))
+        self.map_nrm = np.zeros((0, 2))
+        self.tree = None
+        self.kf_pose = None
+        self.n = self.fallbacks = self.along_fallbacks = self.ref_fixes = 0
+        self.last_source = None
+
+    # ------------------------------------------------------------------ map
+    def _normals(self, pts, tree, k=6):
+        """Unit normal of the local line through each point's k nearest map neighbours (PCA)."""
+        if tree is None or len(pts) < k:
+            return np.tile([0.0, 1.0], (len(pts), 1))
+        _, idx = tree.query(pts, k=k)
+        nb = self.map_pts[idx]                                   # (N, k, 2)
+        c = nb - nb.mean(axis=1, keepdims=True)
+        cov = np.einsum("nki,nkj->nij", c, c)
+        w, v = np.linalg.eigh(cov)
+        return v[:, :, 0]                                        # eigenvector of the smallest eigenvalue
+
+    def _add_to_map(self, xy):
+        c, s = np.cos(self.pose[2]), np.sin(self.pose[2])
+        w = xy @ np.array([[c, s], [-s, c]]) + self.pose[:2]
+        pts = np.vstack([self.map_pts, w])
+        cells = np.floor(pts / self.VOXEL).astype(np.int64)
+        key = cells[:, 0] * 1_000_003 + cells[:, 1]
+        _, last = np.unique(key[::-1], return_index=True)
+        keep = np.sort(len(key) - 1 - last)
+        pts = pts[keep]
+        near = np.hypot(pts[:, 0] - self.pose[0], pts[:, 1] - self.pose[1]) < self.MAP_RADIUS
+        pts = pts[near]
+        if len(pts) > self.MAP_MAX:
+            pts = pts[-self.MAP_MAX:]
+        self.map_pts = pts
+        self.tree = cKDTree(pts) if cKDTree is not None and len(pts) else None
+        self.map_nrm = self._normals(pts, self.tree)
+        self.kf_pose = self.pose.copy()
+
+    # ------------------------------------------------------------------ registration
+    def _register(self, xy, init):
+        """Point-to-line Gauss-Newton of scan xy (vehicle) onto the map from pose `init`. Returns (pose, n_inliers, rms, degenerate
+        direction or None)."""
+        x, y, th = init
+        n_in, rms, degen = 0, 9.0, None
+        for k in range(self.ITERS):
+            gate = self.GATES[min(k * len(self.GATES) // self.ITERS, len(self.GATES) - 1)]
+            c, s = np.cos(th), np.sin(th)
+            w = xy @ np.array([[c, s], [-s, c]]) + (x, y)
+            d, j = self.tree.query(w, distance_upper_bound=gate)
+            ok = np.isfinite(d)
+            n_in = int(ok.sum())
+            if n_in < 30:
+                return None
+            p, q, nr = w[ok], self.map_pts[j[ok]], self.map_nrm[j[ok]]
+            r = ((p - q) * nr).sum(1)
+            wt = np.where(np.abs(r) <= self.HUBER, 1.0, self.HUBER / np.maximum(np.abs(r), 1e-9))
+            lever = np.column_stack([-(p[:, 1] - y), p[:, 0] - x])
+            J = np.column_stack([nr, (nr * lever).sum(1)])
+            H = (J * wt[:, None]).T @ J
+            g = (J * wt[:, None]).T @ r
+            try:
+                u = -np.linalg.solve(H + 1e-6 * np.eye(3), g)
+            except np.linalg.LinAlgError:
+                return None
+            # degeneracy: the translation block's weak direction (information per inlier, so the test does not depend on the count)
+            ev, evec = np.linalg.eigh(H[:2, :2])
+            if ev[0] < self.DEGEN_MIN:
+                dvec = evec[:, 0]
+                u[:2] -= dvec * (dvec @ u[:2])                   # no update along the direction the scene does not constrain
+                degen = dvec
+            else:
+                degen = None
+            x, y, th = x + u[0], y + u[1], th + u[2]
+            rms = float(np.sqrt(np.mean(r ** 2)))
+            if abs(u[0]) + abs(u[1]) < 1e-4 and abs(u[2]) < 1e-5:
+                break
+        return np.array([x, y, th]), n_in, rms, degen
+
+    def update(self, xy, t, v_pred, kappa_pred):
+        xy = np.asarray(xy, float).reshape(-1, 2)
+        if self.tree is None:
+            if len(xy) >= 40:
+                self._add_to_map(xy)
+                self.prev_t = t
+            return self.pose
+        dt = max(t - self.prev_t, 1e-3) if self.prev_t is not None else 0.1
+        # prediction: the speed / steering model (the relay's estimate) for the step, heading from the constant-velocity history
+        x, y, th = self.pose
+        step, dth = v_pred * dt, kappa_pred * v_pred * dt
+        pred = np.array([x + step * np.cos(th + dth / 2), y + step * np.sin(th + dth / 2), th + dth])
+        if self.CONST_VEL and self.prev_pose is not None and self.prev_t is not None:
+            vel = self.pose - self.prev_pose                  # the matched motion of the last step (constant velocity, KISS-ICP)
+            if np.hypot(vel[0], vel[1]) < 0.3:
+                pred = self.pose + vel
+        res = self._register(xy, pred) if len(xy) >= 40 else None
+        self.prev_pose = self.pose.copy()
+        if res is not None and res[2] < 0.05 and abs(res[0][2] - pred[2]) < np.radians(8) and np.hypot(*(res[0][:2] - pred[:2])) < 0.25:
+            self.pose = res[0]
+            self.last_source = "along_pred" if res[3] is not None else "icp"
+            if res[3] is not None:
+                self.along_fallbacks += 1
+        else:
+            self.pose = pred
+            self.fallbacks += 1
+            self.last_source = "pred"
+        self.prev_t = t
+        self.n += 1
+        moved = np.hypot(*(self.pose[:2] - self.kf_pose[:2]))
+        if moved > self.KF_DIST or abs(self.pose[2] - self.kf_pose[2]) > np.radians(self.KF_DEG):
+            self._add_to_map(xy)
+        return self.pose

@@ -16,7 +16,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph.opengl as gl
 
 from gui import theme
-from gui.ev import CarModel, Glass, Scene, ribbon, walls_mesh
+from gui.ev import CarModel, Glass, Scene, ribbon, solid_box, wall_slabs, merge
 from gui.lab_tabs import (MC_DIR, TRAIN_DIR, VARIANT_COL, VARIANT_LABEL, MonteCarloTab, TrainingTab, read_json)
 from gui.theme import C, rgb
 from gui.widgets import Kpi, RiskBar, Stepper, risk_rgb
@@ -40,6 +40,19 @@ def _headings(xy):
 
 def _hex_rgb(h, a=1.0):
     return tuple(int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)) + (a,)
+
+
+def _scrolling(widget):
+    """The results half of a lab window in a scroll area: on a small screen it scrolls instead of squeezing the 3D stage to a
+    sliver (the charts keep a readable minimum height)."""
+    sa = QtWidgets.QScrollArea()
+    sa.setWidgetResizable(True)
+    sa.setFrameShape(QtWidgets.QFrame.NoFrame)
+    sa.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+    widget.setMinimumHeight(520)
+    widget.setObjectName("root")
+    sa.setWidget(widget)
+    return sa
 
 
 class Stage(QtWidgets.QWidget):
@@ -184,8 +197,9 @@ class TrainingWindow(QtWidgets.QMainWindow):
         ll.addLayout(krow)
         self.tab = TrainingTab()
         ll.addWidget(self.tab, 1)
-        split.addWidget(low)
-        split.setSizes([560, 470])
+        split.addWidget(_scrolling(low))
+        top.setMinimumHeight(300)
+        split.setSizes([400, 600])
         lay.addWidget(split, 1)
         self.drives = read_json(os.path.join(TRAIN_DIR, "showcase.json"), []) or []
         self.batch, self.slots = 0, []
@@ -258,7 +272,7 @@ class TrainingWindow(QtWidgets.QMainWindow):
         for k, (slot, d) in enumerate(zip(self.slots, picks)):
             off = np.array([0.0, (k - 1) * self.GAP])
             seg = np.asarray(d["segments"], float).reshape(-1, 4) + np.tile(off, 2)
-            sc.mesh(f"walls{k}", walls_mesh(seg, 0.30), C["wall"], opts="opaque")
+            sc.mesh(f"walls{k}", wall_slabs(seg, 0.30, 0.06), (*C["wall"][:3], 1.0), opts="opaque", lit=True)
             pose = np.asarray(d["pose"], float)
             pose[:, :2] += off
             band = pose[np.asarray(d["y"]) == 1, :2]
@@ -445,18 +459,15 @@ class MonteCarloWindow(QtWidgets.QMainWindow):
         ll.addLayout(self.krow)
         self.tab = MonteCarloTab()
         ll.addWidget(self.tab, 1)
-        split.addWidget(low)
+        split.addWidget(_scrolling(low))
         split.setSizes([720, 330])
         lay.addWidget(split, 1)
-        self.legend = Glass(self.stage.scene)
-        lg = QtWidgets.QHBoxLayout(self.legend)
-        lg.setContentsMargins(16, 8, 16, 8)
-        lg.setSpacing(18)
-        for v in ("off", "brake-only", "adas", "adas+intent"):
-            lab = QtWidgets.QLabel(f"<span style='color:{VARIANT_COL[v]}'>●</span>  {VARIANT_LABEL[v].upper()}")
-            lab.setFont(theme.font(11, spacing=1.0))
-            lg.addWidget(lab)
+        from gui.controls import EmptyHint, LegendPill
+        self.legend = LegendPill([(VARIANT_LABEL[v], VARIANT_COL[v]) for v in ("off", "brake-only", "adas", "adas+intent")],
+                                 self.stage.scene, over_scene=True)
         self.legend.move(20, 16)
+        self.empty = EmptyHint(self.stage.scene, "▶", "No drives to replay yet",
+                               "Start a Monte Carlo on the RUN tab below; every system's car drives the room here.")
         self.cars, self.trails, self.runs, self.key = {}, {}, [], None
         self._n_runs = 0
         self.scrubbing = False
@@ -481,7 +492,7 @@ class MonteCarloWindow(QtWidgets.QMainWindow):
         sc = self.stage.scene
         world, goal, _ = scenario(int(k[0]))
         segs = np.asarray(world.segments(), float).reshape(-1, 4)
-        sc.mesh("walls", walls_mesh(segs, 0.30), C["wall"], opts="opaque")
+        self._room(sc, world, segs)
         a = np.linspace(0, 2 * math.pi, 40)
         V = np.vstack([[goal[0], goal[1], 0.004],
                        np.column_stack([goal[0] + 0.18 * np.cos(a), goal[1] + 0.18 * np.sin(a), np.full(40, 0.004)])])
@@ -508,9 +519,25 @@ class MonteCarloWindow(QtWidgets.QMainWindow):
         pts = np.vstack([segs[:, :2], segs[:, 2:], np.atleast_2d(goal)])
         lo, hi = pts.min(axis=0), pts.max(axis=0)
         ctr, span = (lo + hi) / 2, float(max(hi - lo)) or 6.0
-        sc.setCameraPosition(pos=QtGui.QVector3D(float(ctr[0]), float(ctr[1]), 0), distance=span * 1.25, elevation=68,
+        sc.setCameraPosition(pos=QtGui.QVector3D(float(ctr[0]), float(ctr[1]), 0), distance=span * 1.25, elevation=58,
                              azimuth=180)
         self.stage.t = 0.0
+
+    @staticmethod
+    def _room(sc, world, segs):
+        """The room as solid objects: a floor plate, wall slabs and the furniture blocks with their real height, lit."""
+        from sim.world import Wall
+        walls = [o for o in world.objects if isinstance(o, Wall)]
+        blocks = [o for o in world.objects if hasattr(o, "geo")]
+        x0, y0 = segs[:, [0, 2]].min(), segs[:, [1, 3]].min()
+        x1, y1 = segs[:, [0, 2]].max(), segs[:, [1, 3]].max()
+        floor = (np.array([[x0, y0, -0.002], [x1, y0, -0.002], [x1, y1, -0.002], [x0, y1, -0.002]]),
+                 np.array([[0, 1, 2], [0, 2, 3]]))
+        sc.mesh("floor", floor, rgb("surface", 0.55))
+        sc.mesh("walls", wall_slabs(np.vstack([o.seg for o in walls]), 0.30, 0.06) if walls else None,
+                (*C["wall"][:3], 1.0), opts="opaque", lit=True)
+        sc.mesh("blocks", merge([solid_box(*o.geo[:5], o.geo[5] * 1.6) for o in blocks]) if blocks else None,
+                (*C["obstacle"][:3], 1.0), opts="opaque", lit=True)
 
     def _kpis(self):
         st = read_json(os.path.join(MC_DIR, "status.json"), {}) or {}
@@ -534,6 +561,7 @@ class MonteCarloWindow(QtWidgets.QMainWindow):
                 t_keep = self.stage.t
                 self.load()
                 self.stage.t = t_keep
+        self.empty.set_empty(not self.runs)
         if not self.runs:
             return
         n_max = max(len(tr) for _, _, tr, _ in self.runs)

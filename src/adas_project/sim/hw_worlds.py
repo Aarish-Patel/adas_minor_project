@@ -134,7 +134,11 @@ def lounge():
 WORLDS = {"parallel": parallel, "lounge": lounge, "parking": parking, "doorway": doorway, "room": room, "corridor": corridor, "gap": gap, "open": open_room}
 
 
-def build(name):
+def build(name, marker_id=23):
+    """A world by name; "park_perp" / "park_street" are the Parking Simulator rooms (sim/parking_worlds.py)."""
     if name.startswith("log:"):
         return from_log(name[4:])
+    if name in ("park_perp", "park_street"):
+        from .parking_worlds import build as build_parking
+        return build_parking(name, marker_id)
     return WORLDS[name]()
