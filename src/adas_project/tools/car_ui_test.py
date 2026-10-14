@@ -169,8 +169,10 @@ SCENARIOS = {"idle": idle, "steer": steer, "brake": brake, "reverse": reverse}
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--host", required=True)
+    ap.add_argument("--near", type=float, default=NEAR_M, help="the test's own bumper cut (m)")
     ap.add_argument("names", nargs="*", default=["idle", "steer", "brake", "reverse"])
     a = ap.parse_args()
+    globals()["NEAR_M"] = a.near
     import gui.ev as EV
     os.makedirs(OUT, exist_ok=True)
     EV.ZONES_FILE = os.path.join(OUT, "zones_test.json")      # the user's gui/zones.json is never written

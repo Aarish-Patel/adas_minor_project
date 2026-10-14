@@ -984,7 +984,10 @@ the car finds the gaps with its LiDAR and parks in the viable part of the strip 
       centres). reverse crawl 1 s ~0.1 m/s ok. brake (throttle 50): crawled 1.13 m at 0.12-0.17 m/s, the relay's gate held the car
       ("holding", dashboard EMERGENCY BRAKE) 8 cm from the wall; the test's 8 cm cut fired in the same tick. Throttle 70 reached
       0.25 m/s within 0.4 s.
-- [ ] AI4. Brake test with the test's own cut lowered (4 cm) so only the gate stops the car; then click-to-go 0.5 m, zone cap.
+- [~] AI4. Brake test with the test's own cut lowered (4 cm) so only the gate stops the car; then click-to-go 0.5 m, zone cap.
+      (14 Oct, with AJ3 deployed: crawl 1.29 m at <= 0.23 m/s, the gate alone braked and held the car 6.8 cm from the wall, test cut
+      not used; reverse ok; steering 32/42 - 70/80 - 108/118. Straight command drifted 0.178 rad (10 deg) over 1.3 m -> steering
+      bias, see AK5. Click-to-go and zone on the car still to do.)
 - [ ] AI5. USB: at boot the Pi overloaded again until the LiDAR-adapter cable / ports were redone (user, 14 Oct).
 
 ## AH. INCIDENT 1 Oct ~00:42 (user): "the controls are delayed and persist for very long after, like a 1 second delay; it just broke my
