@@ -43,12 +43,25 @@ def plan_line_job(params, kappa_max, pts, start, x_goal, max_nodes, reverse_node
 GOTO_W_REVERSE = 6.0              # click-to-go: a metre driven backwards costs as much as 7 m forwards
 
 
+COMFORT_MARGIN_M = 0.10       # click-to-go plans keep this clearance when they can (brake field ~3 cm + tracking error); the planner's
+                              # own 6 cm margin only where no path with this much room exists (clearance hierarchy, AK2)
+
+
 def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_heading=None, reverse_first=False):
     # (budget_s applies to each of the two searches)
     """Click-to-go to a goal position (and heading, if given): forward-only first - also for goals behind the car
     (a forward U-turn when there is room) - and only if no forward path exists, a search that may reverse, where
-    reversing is expensive, so it backs up only as much as the goal heading or the room needs."""
+    reversing is expensive, so it backs up only as much as the goal heading or the room needs.
+    Clearance hierarchy (research, docs/research_lidar_navigation.md section 3): a first search with COMFORT_MARGIN_M, so the path keeps
+    the brake gate's protective field plus the follower's tracking error away from obstacles and the gate does not brake on it; only if
+    that finds nothing, the planner's normal margin (narrow doorways, a car parked close)."""
     from .hybrid_astar import HybridAStar
+    if not reverse_first:
+        ha = HybridAStar(params, kappa_max=kappa_max, margin=COMFORT_MARGIN_M)
+        path = ha.plan_to_point(pts, start, goal, max_nodes=2500, budget_s=budget_s, goal_heading=goal_heading,
+                                coarse=goal_heading is not None)
+        if path is not None:
+            return path
     ha = HybridAStar(params, kappa_max=kappa_max)
     if reverse_first:                      # parking: the way in is a reverse S-curve; the forward-only stage would only burn the budget
         return ha.plan_to_point(pts, start, goal, allow_reverse=True, max_nodes=12000,

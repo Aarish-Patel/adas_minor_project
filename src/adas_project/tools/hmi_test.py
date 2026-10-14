@@ -413,6 +413,9 @@ def goto_and_home(test, goal_sim=(4.2, -0.05)):
     """ROOM: Go to through the doorway, then 'Return to start'; truth: arrive within 10 cm, back at the start within 10 cm, no contact."""
     yield from _switch_room(test, "room")
     mp = test.mp
+    from gui.parking import align_from_poses, sim_to_relay
+    st0 = test.state()
+    align0 = align_from_poses(st0["sim"]["pose"], st0["world"]["pose"])     # world frame vs truth at the start (drift = change of it)
     goal_rel = test.sim_to_relay(goal_sim)
     test.show_range([goal_rel, (0.0, 0.0)])
     test.click_widget(mp.mode["goto"])
@@ -432,6 +435,10 @@ def goto_and_home(test, goal_sim=(4.2, -0.05)):
     e_goto = math.hypot(x - goal_sim[0], y - goal_sim[1])
     shown = test.result.get("path_shown_pct")
     test.shot("at_goal")
+    st = test.state()
+    tx, ty = sim_to_relay((x, y), align0)                                     # where the car truly is, in the start's world frame
+    wx, wy = st["world"]["pose"][:2]
+    test.result["loc_err_at_goal_cm"] = round(math.hypot(tx - wx, ty - wy) * 100, 1)
     home_tile = next(t for t in mp.findChildren(QtWidgetsFeatureTile()) if "Return to start" in t.name.text())
     test.click_widget(home_tile)
     yield 0.5

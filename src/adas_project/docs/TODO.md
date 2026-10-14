@@ -960,10 +960,16 @@ the car finds the gaps with its LiDAR and parks in the viable part of the strip 
 
 ## AK. Smoothness and tuning from the research (user, 14 Oct: "make the car as smooth and well tuned as possible ... reduce unnecessary
 ##     warnings and replans"; report docs/research_lidar_navigation.md)
-- [ ] AK1. Re-plan only on invalidation: remaining-path validity on the planning cost each scan, invalid after >= 3 scans, slow first
+- [x] AK1. Re-plan only on invalidation: remaining-path validity on the planning cost each scan, invalid after >= 3 scans, slow first
       (Nav2 consistent-replanning / IsPathValid). Measure: re-plans and stops per metre in the click-to-go suite and goto_and_home.
-- [ ] AK2. Clearance hierarchy: planner lethal clearance >= brake field + p95 tracking error + localisation error, decaying cost gradient
+- [x] AK2. Clearance hierarchy: planner lethal clearance >= brake field + p95 tracking error + localisation error, decaying cost gradient
       (Smac cost_penalty) - measure the twin's tracking error first; target: no brake/hold flicker on autonomous legs.
+      (AK1+AK2 done 14 Oct: adas/autonav.py checks the path 0.3-2.5 m ahead every 0.25 s, re-plans after 2 marginal blocked checks
+      or at once when clearance < -2 cm, 0.15 m/s while pending; adas/plan_service.py plans with 10 cm comfort clearance first, the
+      6 cm margin only as fallback. Click-to-go suite (26): baseline 26 arrived / 0 collisions / 13 re-plans / 7 stops / 319 s /
+      clearance median 16.1 cm -> 26 / 0 / 13 / 9 / 324 s / 17.6 cm (neutral). Twin ROOM goto_and_home: go-to now arrives every run
+      (3.4-6.9 cm, 7 runs); return-to-start still fails 4/5 (stall at the doorway, 3 quick re-plans, 0-4 contacts) - localisation is
+      fine (0.5-1.3 cm off at the goal, new loc_err_at_goal_cm in tools/hmi_test.py) -> likely pure-pursuit corner cutting: AK4.)
 - [ ] AK3. Brake hysteresis (release at d + 3-5 cm after 2-3 clear scans) and a speed-dependent protective field.
 - [ ] AK4. Follower: RPP-style proximity and curvature slow-down, minimum speed above the dead-band, velocity-scaled lookahead.
 - [ ] AK5. Online steering bias/gain (RLS on scan-matched yaw rate) + backlash compensation (adas/online_steering.py exists - review vs RLS).

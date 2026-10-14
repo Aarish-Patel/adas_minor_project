@@ -39,6 +39,7 @@ class AutoNav:
         self._job = None                  # the search in progress (plans from a cancelled goal are dropped)
         self._job_t = 0.0
         self.stall_s, self.stalls = 0.0, 0   # stopped on the path with the throttle held -> search again
+        self._invalid_n = 0                  # consecutive path-validity checks that found the path ahead blocked
         self.reanchor = False                       # parking re-planned at the slot: the relay restarts its scan matcher's reference
         self._term_replans, self._creeps = 0, 0
         self._creep_dir, self._creep_flips = 0, 0
@@ -625,12 +626,23 @@ class AutoNav:
             return None
         P = self.path
         self.replan_t += dt
-        if self.replan_t > 0.5 and len(pts_vehicle) and not self.fixed:      # new scans: keep the plan while the rest of it is clear
+        if self.replan_t > self.VALID_EVERY_S and len(pts_vehicle) and not self.fixed:   # new scans: keep the plan while it is clear
+            # re-plan only when the path ahead is really invalid (Nav2 "replan only if path becomes invalid"): the stretch from
+            # VALID_FROM_M to VALID_TO_M ahead (the first part is the brake gate's business - near a wall the car's own tracking error
+            # makes it look blocked), blocked on VALID_N checks in a row (one noisy scan is not a blockage); meanwhile slow down
             self.replan_t = 0.0
             pts_s = self.to_start(pts_vehicle)
-            ha = HybridAStar(self.p, kappa_max=self.kappa_max)
-            g = Grid(pts_s, min(self.x, gx) - 1.5, max(self.x, gx) + 1.5, min(self.y, gy) - 1.5, max(self.y, gy) + 1.5)
-            if len(P) - self.i > 2 and ha.clearance(g, P[self.i::2, :3]) < 0.01:
+            ahead = self._path_ahead(P)
+            blocked = clear_block = False
+            if ahead is not None:
+                ha = HybridAStar(self.p, kappa_max=self.kappa_max)
+                g = Grid(pts_s, min(self.x, gx) - 1.5, max(self.x, gx) + 1.5, min(self.y, gy) - 1.5, max(self.y, gy) + 1.5)
+                c_ahead = ha.clearance(g, ahead)
+                blocked = c_ahead < 0.01
+                clear_block = c_ahead < self.HARD_BLOCK_M      # an obstacle squarely on the path: no waiting
+            self._invalid_n = self._invalid_n + 1 if blocked else 0
+            if self._invalid_n >= self.VALID_N or clear_block:
+                self._invalid_n = 0
                 self.replans += 1
                 self.msg = "path blocked - re-planning"
                 self._launch(pts_s, (self.x, self.y, self.th))
@@ -717,7 +729,23 @@ class AutoNav:
         # slow for tight curves (lateral acceleration ~0.12 g) and approaching the goal / a change of direction
         to_stop = dist_goal if k == len(P) - 1 else math.hypot(P[k, 0] - self.x, P[k, 1] - self.y)
         speed = min(self.PARK_REVERSE_V if creep else self.cruise, math.sqrt(1.2 / max(abs(kappa), 1e-3)), 0.12 + 0.6 * to_stop)
+        if self._invalid_n and not self.fixed:
+            speed = min(speed, self.PENDING_V)          # a blockage ahead is being confirmed: slow, do not stop
         return kappa, direction * speed
+
+    VALID_EVERY_S, VALID_N = 0.25, 2           # path validity: checked this often, invalid after this many blocked checks in a row
+    VALID_FROM_M, VALID_TO_M = 0.30, 2.5       # ... on this stretch ahead of the car
+    PENDING_V = 0.15                           # m/s while a blockage ahead is being confirmed
+    HARD_BLOCK_M = -0.02                       # clearance below this on the stretch ahead: re-plan at once (only marginal ones wait)
+
+    def _path_ahead(self, P):
+        """Poses of the current path from VALID_FROM_M to VALID_TO_M ahead of the car (along the path), every other one."""
+        if P is None or len(P) - self.i <= 2:
+            return None
+        seg = np.asarray(P, float)[self.i:, :3]
+        s_along = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(seg[:, :2], axis=0).T))])
+        m = (s_along >= self.VALID_FROM_M) & (s_along <= self.VALID_TO_M)
+        return seg[m][::2] if m.sum() >= 2 else None
 
     STALL_MOVE_M = 0.015      # progress: less than this in the stall time = stalled
     STROKE_END_S, STROKE_END_M = 0.6, 0.08            # held this long within this of the end of a parking stroke = the stroke is done
