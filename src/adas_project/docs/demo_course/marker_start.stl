@@ -1,0 +1,170 @@
+solid marker_start
+  facet normal 0.000000 0.000000 1.000000
+    outer loop
+      vertex 0.0000 12.0000 1.2000
+      vertex 0.0000 -12.0000 1.2000
+      vertex 80.0000 -12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 -1.000000
+    outer loop
+      vertex 80.0000 -12.0000 0.0000
+      vertex 0.0000 -12.0000 0.0000
+      vertex 0.0000 12.0000 0.0000
+    endloop
+  endfacet
+  facet normal -0.000000 0.000000 1.000000
+    outer loop
+      vertex 80.0000 -12.0000 1.2000
+      vertex 80.0000 -25.0000 1.2000
+      vertex 120.0000 0.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 -1.000000
+    outer loop
+      vertex 120.0000 0.0000 0.0000
+      vertex 80.0000 -25.0000 0.0000
+      vertex 80.0000 -12.0000 0.0000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 1.000000
+    outer loop
+      vertex 0.0000 12.0000 1.2000
+      vertex 80.0000 -12.0000 1.2000
+      vertex 120.0000 0.0000 1.2000
+    endloop
+  endfacet
+  facet normal -0.000000 0.000000 -1.000000
+    outer loop
+      vertex 120.0000 0.0000 0.0000
+      vertex 80.0000 -12.0000 0.0000
+      vertex 0.0000 12.0000 0.0000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 1.000000
+    outer loop
+      vertex 120.0000 0.0000 1.2000
+      vertex 80.0000 25.0000 1.2000
+      vertex 80.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 -1.000000
+    outer loop
+      vertex 80.0000 12.0000 0.0000
+      vertex 80.0000 25.0000 0.0000
+      vertex 120.0000 0.0000 0.0000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 1.000000
+    outer loop
+      vertex 120.0000 0.0000 1.2000
+      vertex 80.0000 12.0000 1.2000
+      vertex 0.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 -1.000000
+    outer loop
+      vertex 0.0000 12.0000 0.0000
+      vertex 80.0000 12.0000 0.0000
+      vertex 120.0000 0.0000 0.0000
+    endloop
+  endfacet
+  facet normal 0.000000 -1.000000 0.000000
+    outer loop
+      vertex 0.0000 -12.0000 0.0000
+      vertex 80.0000 -12.0000 0.0000
+      vertex 80.0000 -12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 -1.000000 0.000000
+    outer loop
+      vertex 0.0000 -12.0000 0.0000
+      vertex 80.0000 -12.0000 1.2000
+      vertex 0.0000 -12.0000 1.2000
+    endloop
+  endfacet
+  facet normal -1.000000 0.000000 0.000000
+    outer loop
+      vertex 80.0000 -12.0000 0.0000
+      vertex 80.0000 -25.0000 0.0000
+      vertex 80.0000 -25.0000 1.2000
+    endloop
+  endfacet
+  facet normal -1.000000 0.000000 0.000000
+    outer loop
+      vertex 80.0000 -12.0000 0.0000
+      vertex 80.0000 -25.0000 1.2000
+      vertex 80.0000 -12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.529999 -0.847998 0.000000
+    outer loop
+      vertex 80.0000 -25.0000 0.0000
+      vertex 120.0000 0.0000 0.0000
+      vertex 120.0000 0.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.529999 -0.847998 0.000000
+    outer loop
+      vertex 80.0000 -25.0000 0.0000
+      vertex 120.0000 0.0000 1.2000
+      vertex 80.0000 -25.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.529999 0.847998 0.000000
+    outer loop
+      vertex 120.0000 0.0000 0.0000
+      vertex 80.0000 25.0000 0.0000
+      vertex 80.0000 25.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.529999 0.847998 0.000000
+    outer loop
+      vertex 120.0000 0.0000 0.0000
+      vertex 80.0000 25.0000 1.2000
+      vertex 120.0000 0.0000 1.2000
+    endloop
+  endfacet
+  facet normal -1.000000 0.000000 0.000000
+    outer loop
+      vertex 80.0000 25.0000 0.0000
+      vertex 80.0000 12.0000 0.0000
+      vertex 80.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal -1.000000 0.000000 0.000000
+    outer loop
+      vertex 80.0000 25.0000 0.0000
+      vertex 80.0000 12.0000 1.2000
+      vertex 80.0000 25.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 1.000000 0.000000
+    outer loop
+      vertex 80.0000 12.0000 0.0000
+      vertex 0.0000 12.0000 0.0000
+      vertex 0.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 1.000000 0.000000
+    outer loop
+      vertex 80.0000 12.0000 0.0000
+      vertex 0.0000 12.0000 1.2000
+      vertex 80.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal -1.000000 0.000000 0.000000
+    outer loop
+      vertex 0.0000 12.0000 0.0000
+      vertex 0.0000 -12.0000 0.0000
+      vertex 0.0000 -12.0000 1.2000
+    endloop
+  endfacet
+  facet normal -1.000000 0.000000 0.000000
+    outer loop
+      vertex 0.0000 12.0000 0.0000
+      vertex 0.0000 -12.0000 1.2000
+      vertex 0.0000 12.0000 1.2000
+    endloop
+  endfacet
+endsolid marker_start

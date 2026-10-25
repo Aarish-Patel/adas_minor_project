@@ -288,6 +288,7 @@ SCENARIOS = {
     "park_from_far_side": lambda t: run_parking(t, 2.2, manual=TO_FAR_SIDE),     # past the gap, on the fence side of the road
     "park_then_goto": lambda t: park_then_goto(t),                # parked, then click-to-go down the road: pull out first
     "bay_park": lambda t: bay_park(t),                            # BAYS: park at the ArUco marker
+    "demo_course": lambda t: demo_course(t),                     # TODO AL: the whole demo course, station by station
     "goto_and_home": lambda t: goto_and_home(t),                  # ROOM: go to through the doorway, then return to start
     "zone_limit": lambda t: zone_limit(t),                        # ROOM: a 5 km/h zone drawn on the map, driven through by hand
     "brake_wall": lambda t: brake_wall(t),                        # ROOM: full throttle at the end wall, no steering
@@ -423,7 +424,6 @@ def goto_and_home(test, goal_sim=(4.2, -0.05)):
     test.click_map(*goal_rel)
     yield 0.5
     test.shot("goto_clicked")
-    box = {}
     gen = _hold_until_idle(test, "goto")
     try:
         while True:
@@ -582,6 +582,148 @@ def drawn_lane(test, room, corner_a, corner_b, click_sim, kerb="y1", truth_strip
                        heading_deg=round(head, 1),
                        ok=bool(inside and crashes == 0 and kerb_gap <= 0.08 and head <= 5.0 and msgs and msgs[-1].startswith("arrived")))
     mp.set_lane(None, note=False)
+
+
+def demo_course(test):
+    """TODO AL: the demo course (sim/demo_course.py) as a presenter would run it on the dashboard - speed zone, click-to-go round the
+    obstacle past the thin post, parallel parking in a drawn lane between two parked cars, return to start, then full throttle at the
+    end wall with the brake gate stopping the car. Truth checks per station, screenshots."""
+    from PySide6 import QtCore
+    from PySide6.QtTest import QTest
+    import sim.demo_course as D
+    from adas.park_select import ParkingStrip
+    yield from _switch_room(test, "demo")
+    mp = test.mp
+    res, crashes = {}, 0
+    # 1) speed zone, drawn as the presenter would (in the relay's world frame)
+    zx0, zy0 = test.sim_to_relay((D.SPEED_ZONE["x0"], D.SPEED_ZONE["y0"]))
+    zx1, zy1 = test.sim_to_relay((D.SPEED_ZONE["x1"], D.SPEED_ZONE["y1"]))
+    mp.zones = [{"kind": "rect", "x0": min(zx0, zx1), "y0": min(zy0, zy1), "x1": max(zx0, zx1), "y1": max(zy0, zy1),
+                 "kph": D.SPEED_ZONE["kph"]}]
+    mp._changed()
+    yield 1.0
+    v_zone = [0.0]
+
+    track = []
+
+    def watch_zone():
+        st = test.state().get("sim") or {}
+        x, y, _ = st.get("pose") or (0, 0, 0)
+        nav = (test.state().get("nav") or {}).get("msg")
+        if not track or math.hypot(x - track[-1][0], y - track[-1][1]) > 0.1 or nav != track[-1][3]:
+            track.append((round(x, 2), round(y, 2), round(float((st.get("pose") or (0, 0, 0))[2])), nav))
+        if D.SPEED_ZONE["x0"] <= x <= D.SPEED_ZONE["x1"] and D.SPEED_ZONE["y0"] <= y <= D.SPEED_ZONE["y1"]:
+            v_zone[0] = max(v_zone[0], abs(float(st.get("v_true") or 0.0)))
+    box = {}
+    # 2) parallel parking (first, straight from the start: drive past the gap and reverse in, the wall on the right) in a drawn lane between the two parked cars
+    a, b = test.sim_to_relay(D.LANE[0]), test.sim_to_relay(D.LANE[1])
+    test.show_range([a, b, (0.0, 0.0)])
+    test.click_widget(mp.mode["lane"])
+    yield 0.5
+    QTest.mousePress(mp.plot.viewport(), QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, test.world_to_widget(*a))
+    QTest.mouseMove(mp.plot.viewport(), test.world_to_widget(*b))
+    QTest.mouseRelease(mp.plot.viewport(), QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, test.world_to_widget(*b))
+    yield 1.0
+    test.click_widget(mp.mode["park"])
+    yield 0.6
+    test.click_map(*test.sim_to_relay(D.PARK_CLICK))
+    yield 0.5
+    test.shot("1_park_clicked")
+    gen = _hold_until_idle(test, "park", t_max=150)
+    try:
+        while True:
+            dt = next(gen)
+            watch_zone()
+            yield dt
+    except StopIteration as e:
+        box["out"] = e.value
+    msgs, c = box["out"]
+    crashes += c
+    x, y, th = test.state()["sim"]["pose"]
+    (x0, yr), (x1, yk) = D.LANE
+    strip = ParkingStrip([[x0, yr], [x1, yr]], 1 if yk > yr else -1, abs(yk - yr))
+    s_, yl = strip.to_strip(body_corners((x, y, th)))
+    lane_th = strip.point_at(float(s_.mean()))[2]
+    head = abs(math.degrees(math.remainder(math.radians(th) - lane_th, 2 * math.pi)))
+    kerb_gap = strip.depth - float(yl.max())
+    res["park"] = {"msgs": msgs[-1:] if msgs else msgs, "inside_lane": bool((yl >= -0.005).all() and kerb_gap >= 0.01),
+                   "kerb_gap_cm": round(kerb_gap * 100, 1), "heading_deg": round(head, 1), "contacts": c}
+    test.shot("2_parked")
+    mp.set_lane(None, note=False)
+    # 3) click-to-go round the obstacle (from the parking space - it pulls out first - past the thin post)
+    goal = test.sim_to_relay(D.GOAL)
+    test.show_range([goal, (0.0, 0.0), test.sim_to_relay((3.9, -1.2))])
+    test.click_widget(mp.mode["goto"])
+    yield 0.6
+    test.click_map(*goal)
+    yield 0.5
+    test.shot("3_goto_clicked")
+    track.clear()
+    gen = _hold_until_idle(test, "goto", t_max=90)
+    try:
+        while True:
+            dt = next(gen)
+            watch_zone()
+            yield dt
+    except StopIteration as e:
+        box["out"] = e.value
+    msgs, c = box["out"]
+    crashes += c
+    x, y, th = test.state()["sim"]["pose"]
+    res["goto"] = {"msgs": msgs[-1:] if msgs else msgs, "all_msgs": list(dict.fromkeys(msgs or [])), "end_pose": [round(x, 2), round(y, 2), round(th, 0)],
+                   "err_cm": round(math.hypot(x - D.GOAL[0], y - D.GOAL[1]) * 100, 1), "contacts": c,
+                   "max_v_in_zone": round(v_zone[0], 3), "zone_cap_v": round(D.SPEED_ZONE["kph"] / 14 / 3.6, 3)}
+    if res["goto"]["err_cm"] > 15:
+        res["goto"]["track"] = track
+    post = test.sim_to_relay(D.THIN_POST[:2])
+    pts = test.win.store.points()
+    res["thin_post_on_map"] = bool(len(pts) and (np.hypot(pts[:, 0] - post[0], pts[:, 1] - post[1]) < 0.08).any())
+    test.shot("4_at_goal")
+    # 4) return to start
+    home_tile = next(t for t in mp.findChildren(QtWidgetsFeatureTile()) if "Return to start" in t.name.text())
+    test.click_widget(home_tile)
+    yield 0.5
+    gen = _hold_until_idle(test, "home", t_max=150)
+    try:
+        while True:
+            yield next(gen)
+    except StopIteration as e:
+        box["out"] = e.value
+    msgs, c = box["out"]
+    crashes += c
+    x, y, th = test.state()["sim"]["pose"]
+    res["home"] = {"msgs": msgs[-1:] if msgs else msgs, "all_msgs": list(dict.fromkeys(msgs or [])), "end_pose": [round(x, 2), round(y, 2), round(th, 0)],
+                   "err_cm": round(math.hypot(x, y) * 100, 1), "heading_deg": round(abs(th), 1),
+                   "contacts": c}
+    test.shot("5_home")
+    # 5) finale: full throttle straight at the end wall - the brake gate stops the car (the zone caps it on the way)
+    mp.zones = []
+    mp._changed()
+    drv = test.driver
+    drv.servo, drv.throttle = 87, 200
+    t0, c0 = time.time(), int((test.state().get("sim") or {}).get("crashes") or 0)
+    held = 0
+    while time.time() - t0 < 25:
+        yield 0.1
+        st = test.state()
+        th_w = (st.get("world") or {}).get("pose", [0, 0, 0])[2]
+        drv.servo = 87 + max(-15.0, min(15.0, 60.0 * math.remainder(th_w, 2 * math.pi)))   # the presenter keeps it pointed at the wall
+        act = str((st.get("gate") or {}).get("action") or "")
+        held = held + 1 if act.startswith(("holding", "stopped")) and abs(float((st.get("sim") or {}).get("v_true") or 0)) < 0.01 else 0
+        if held >= 10:
+            break
+    test.shot("6_braked_at_wall")
+    drv.throttle = 0
+    yield 1.0
+    st = test.state()["sim"]
+    x, y, th = st["pose"]
+
+    c = int(st.get("crashes") or 0) - c0
+    crashes += c
+    res["brake"] = {"gap_to_wall_cm": round((D.ROOM[1] - (x + CAR["front_x"] * math.cos(math.radians(th)))) * 100, 1), "contacts": c}
+    ok = (crashes == 0 and res["goto"]["err_cm"] <= 15 and res["park"]["inside_lane"] and res["home"]["err_cm"] <= 15
+          and res["goto"]["max_v_in_zone"] <= res["goto"]["zone_cap_v"] * 1.25 and 0.0 < res["brake"]["gap_to_wall_cm"] <= 100)    # (at full throttle the gate brakes ~1.3 s ahead and holds)
+    test.result.update(res, crashes=crashes, ok=bool(ok))
 
 
 def QtWidgetsFeatureTile():

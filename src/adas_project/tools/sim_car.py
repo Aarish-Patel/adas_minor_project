@@ -49,7 +49,7 @@ def main():
                                                                    # in its control loop's thread at the next tick
 
     R.EXTRA_POST["/api/sim/reset"] = lambda: teleport(cur["start"])
-    for nm in ("park_perp", "park_street", "room", "doorway", "open", "corridor", "gap", "lounge"):
+    for nm in ("park_perp", "park_street", "room", "doorway", "open", "corridor", "gap", "lounge", "demo", "demo_dark"):
         R.EXTRA_POST[f"/api/sim/world/{nm}"] = lambda nm=nm: switch(nm)
     for i in range(50):                                            # the ArUco marker id of the perpendicular room
         R.EXTRA_POST[f"/api/sim/world/park_perp/{i}"] = lambda i=i: switch("park_perp", i)

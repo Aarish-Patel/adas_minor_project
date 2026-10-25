@@ -254,6 +254,29 @@ class PhasesTest(unittest.TestCase):
         self.assertGreater(body_clearance(lane, blocks), 0.025)
         self.assertGreater(body_clearance(lane, blocks, kerb=True), 0.015)
 
+    def test_stuck_in_the_gap_more_strokes_instead_of_pulling_out(self):
+        """Stuck half-way in a 1.3 m gap, 10 deg crooked and 8 cm short of the parking line (user, 25 Oct: "a more than 3 point parking
+        instead of replanning"): AutoNav._shuffle_in finds strokes from exactly here to the parking pose, clear of both cars - no pull-out."""
+        from adas.autonav import AutoNav
+        strip, pts, blocks, off = self._parked(1.3, kerb_gap=0.13)                       # 13 cm from the kerb; the goal 5 cm from it
+        th = math.radians(-10.0)                                                           # the car stands 10 deg crooked, nose out (lane frame)
+        c, s = math.cos(th), math.sin(th)
+        to_car = np.array([[c, -s], [s, c]])                                               # row vectors: lane offsets -> vehicle frame
+        nav = AutoNav(CAR, None)
+        g = np.array([0.0, 0.08]) @ to_car
+        nav.goal, nav.goal_heading = (float(g[0]), float(g[1])), -th
+        nav.park_request, nav.park_phase = {"strip": ((strip.pts @ to_car).tolist(), strip.side, strip.depth)}, "manoeuvre"
+        nav._shuffle_in(pts @ to_car)
+        self.assertEqual(nav.state, "driving")
+        self.assertNotEqual(nav._park, "retry_out")                                        # no pull-out
+        P = nav.path
+        self.assertIsNotNone(P)
+        self.assertLess(np.hypot(*P[0, :2]), 0.08)                                         # from where the car stands (first step)
+        self.assertLess(np.hypot(P[-1, 0] - g[0], P[-1, 1] - g[1]), 0.06)
+        self.assertGreaterEqual(int((np.diff(P[:, 3]) != 0).sum()), 1)                     # forward and back: strokes in the gap
+        lane = np.column_stack([P[:, :2] @ to_car.T + off, P[:, 2] + th])
+        self.assertGreater(body_clearance(lane, blocks), 0.02)
+
     def test_not_parked_no_pull_out(self):
         from adas.park_select import plan_pull_out
         strip, pts, _ = street([(0.0, 0.4), (1.5, 0.4)])

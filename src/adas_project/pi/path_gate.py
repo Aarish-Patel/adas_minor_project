@@ -58,7 +58,11 @@ BRAKE_GAIN = 300.0         # PWM per m/s over
 BRAKE_PWM_MAX = 80         # peak reverse pulse (was 140: the car stops within 1-2 cm on a throttle cut alone, and
                            # reverse pulses at speed shock-load the drivetrain - the rear shaft broke on 28 Sep)
 BRAKE_MAX_S = 0.2          # s of active braking per event (never enough to drive the car backwards)
-RELEASE_HOLD_S = 0.25       # s the way must stay clear before a hold lets go (~3 LiDAR scans; brake hysteresis)
+NO_BUMPER = bool(__import__("os").environ.get("RC_NO_BUMPER"))   # experiments only: the virtual bumper off
+RELEASE_HOLD_S = 0.25       # s the way must stay clear before a hold lets go (~3 LiDAR scans; brake hysteresis) - only when more
+                            # than a crawl is asked for (HYSTERESIS_V): parking strokes end against the gate's hold on purpose and
+                            # the delay made them stall (25 Oct: park_tight / lane_street failed until it was limited)
+HYSTERESIS_V = 0.15         # m/s
 LATCH_RELEASE_M = 0.08     # the hold after braking lets go once the free distance grows this much
 # ...or, once the brake pulse is over and the car stands still, when the commanded path is clear at SOME speed (user,
 # 28 Sep: a manoeuvre steering round the obstacle must not stay held because the old path was blocked - go at the
@@ -128,6 +132,7 @@ class PathGate:
         from adas.contact import ContactDetector, MIN_SPEED
         self.contact = ContactDetector(speed_model.pwm_for_speed(MIN_SPEED), speed_of=speed_model.speed)
         self._t = 0.0
+        self._ranges = (float("nan"), float("nan"))   # median distance straight ahead / behind in the last scan
         self._contact_latch = False      # the latch was set by a contact: released only by the driver (let go / reverse)
         self._release_t = 0.0            # s the way has been clear while holding (RELEASE_HOLD_S)
         self.blind_t = 0.0         # s the travel direction has been blind while driving that way
@@ -144,6 +149,12 @@ class PathGate:
         # close to see (nosing up to a wall seen before is not blind); only the truly unknown counts as blind
         blind = self.memory.blind_points()
         self.cover = sector_cover(pts_vehicle, self.p.lidar_x, near=blind)
+        # distances straight ahead / behind (median of the returns within 20 deg): motion the scan matcher may miss (virtual bumper)
+        if len(pts_vehicle):
+            dx, dy = pts_vehicle[:, 0] - self.p.lidar_x, pts_vehicle[:, 1]
+            b, r = np.degrees(np.arctan2(dy, dx)), np.hypot(dx, dy)
+            f, bk = np.abs(b) < 20, np.abs(b) > 160
+            self._ranges = (float(np.median(r[f])) if f.any() else float("nan"), float(np.median(r[bk])) if bk.any() else float("nan"))
 
     def free_distance(self, delta, direction, slop=True, margin=BODY_MARGIN_M):
         """How far the rear axle can travel along the commanded path (and its tighter/wider neighbours)
@@ -356,7 +367,8 @@ class PathGate:
         self._t += dt
         held = braking or str(self.info.get("action", "")).startswith(("holding", "stopped", "LiDAR"))
         m = self.memory
-        hit = self.contact.update(self._t, out, (m.x, m.y), held, stamp=getattr(m, "_pose_stamp", None))
+        sig = (m.x, m.y) + self._ranges                    # scan-matched pose + the distances straight ahead / behind (adas/contact._moved)
+        hit = 0 if NO_BUMPER else self.contact.update(self._t, out, sig, held, stamp=getattr(m, "_pose_stamp", None))
         if hit:
             m.add_bumper(hit)
             # hold as after an emergency stop (the latch below): no creeping back into it - released when the driver lets go or
@@ -466,7 +478,8 @@ class PathGate:
             # hysteresis (research AK3, docs/research_lidar_navigation.md section 3): the way must stay clear for RELEASE_HOLD_S (~3 scans)
             # before the hold lets go - a single clear scan near a wall released it, and the car crept, braked and held again
             self._release_t = self._release_t + dt if clear_now else 0.0
-            if l_dir != direction or (clear_now and self._release_t >= RELEASE_HOLD_S):
+            hold_s = RELEASE_HOLD_S if abs(physical) > self.model.pwm_for_speed(HYSTERESIS_V) else 0.0
+            if l_dir != direction or (clear_now and self._release_t >= hold_s):
                 self._contact_latch = False                # (a contact latch only lets go when the driver does or reverses)
                 self._release_t = 0.0
                 self.latch = None

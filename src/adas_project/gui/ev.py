@@ -1252,7 +1252,7 @@ class MapZonesPanel(QtWidgets.QWidget):
         self.park_head = section_label("Parking simulator")
         lay.addWidget(self.park_head)
         self.park_card = Card(padding=12)
-        self.park_seg = Segmented((("room", "ROOM"), ("park_perp", "BAYS"), ("park_street", "STREET")))
+        self.park_seg = Segmented((("room", "ROOM"), ("park_perp", "BAYS"), ("park_street", "STREET"), ("demo", "DEMO")))
         self.park_seg.changed.connect(self._switch_world)
         self.park_card.body.addWidget(self.park_seg)
         self.park_desc = QtWidgets.QLabel("")
@@ -1729,7 +1729,9 @@ class MapZonesPanel(QtWidgets.QWidget):
     PARK_DESC = {"room": "The plain simulator room (no parking objects).",
                  "park_perp": "Five perpendicular bays along the rear wall, two occupied; an ArUco marker marks the target bay.",
                  "park_street": "A street: one parking lane along the kerb, cars parked at different spacing - no marked spaces. "
-                                "Click where you want to park; the car finds a gap it fits into."}
+                                "Click where you want to park; the car finds a gap it fits into.",
+                 "demo": "The demo course (docs/demo_course.md): speed zone, a box to plan round, a thin post, a parking lane with two "
+                         "parked cars along the wall, the end wall for braking, a dark box off the route."}
 
     def _switch_world(self, name):
         """Ask the simulator for another room (POST /api/sim/world/<name>[/<marker id>]), then re-origin the relay's world frame

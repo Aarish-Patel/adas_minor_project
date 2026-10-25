@@ -1,0 +1,142 @@
+solid marker_corner
+  facet normal 0.000000 0.000000 1.000000
+    outer loop
+      vertex 0.0000 0.0000 1.2000
+      vertex 60.0000 0.0000 1.2000
+      vertex 60.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 -0.000000 -1.000000
+    outer loop
+      vertex 60.0000 12.0000 0.0000
+      vertex 60.0000 0.0000 0.0000
+      vertex 0.0000 0.0000 0.0000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 1.000000
+    outer loop
+      vertex 0.0000 0.0000 1.2000
+      vertex 60.0000 12.0000 1.2000
+      vertex 12.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 -0.000000 -1.000000
+    outer loop
+      vertex 12.0000 12.0000 0.0000
+      vertex 60.0000 12.0000 0.0000
+      vertex 0.0000 0.0000 0.0000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 1.000000
+    outer loop
+      vertex 0.0000 60.0000 1.2000
+      vertex 0.0000 0.0000 1.2000
+      vertex 12.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal -0.000000 0.000000 -1.000000
+    outer loop
+      vertex 12.0000 12.0000 0.0000
+      vertex 0.0000 0.0000 0.0000
+      vertex 0.0000 60.0000 0.0000
+    endloop
+  endfacet
+  facet normal 0.000000 -0.000000 1.000000
+    outer loop
+      vertex 12.0000 12.0000 1.2000
+      vertex 12.0000 60.0000 1.2000
+      vertex 0.0000 60.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 0.000000 -1.000000
+    outer loop
+      vertex 0.0000 60.0000 0.0000
+      vertex 12.0000 60.0000 0.0000
+      vertex 12.0000 12.0000 0.0000
+    endloop
+  endfacet
+  facet normal 0.000000 -1.000000 0.000000
+    outer loop
+      vertex 0.0000 0.0000 0.0000
+      vertex 60.0000 0.0000 0.0000
+      vertex 60.0000 0.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 -1.000000 0.000000
+    outer loop
+      vertex 0.0000 0.0000 0.0000
+      vertex 60.0000 0.0000 1.2000
+      vertex 0.0000 0.0000 1.2000
+    endloop
+  endfacet
+  facet normal 1.000000 0.000000 0.000000
+    outer loop
+      vertex 60.0000 0.0000 0.0000
+      vertex 60.0000 12.0000 0.0000
+      vertex 60.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 1.000000 0.000000 0.000000
+    outer loop
+      vertex 60.0000 0.0000 0.0000
+      vertex 60.0000 12.0000 1.2000
+      vertex 60.0000 0.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 1.000000 0.000000
+    outer loop
+      vertex 60.0000 12.0000 0.0000
+      vertex 12.0000 12.0000 0.0000
+      vertex 12.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 1.000000 0.000000
+    outer loop
+      vertex 60.0000 12.0000 0.0000
+      vertex 12.0000 12.0000 1.2000
+      vertex 60.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 1.000000 0.000000 0.000000
+    outer loop
+      vertex 12.0000 12.0000 0.0000
+      vertex 12.0000 60.0000 0.0000
+      vertex 12.0000 60.0000 1.2000
+    endloop
+  endfacet
+  facet normal 1.000000 0.000000 0.000000
+    outer loop
+      vertex 12.0000 12.0000 0.0000
+      vertex 12.0000 60.0000 1.2000
+      vertex 12.0000 12.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 1.000000 0.000000
+    outer loop
+      vertex 12.0000 60.0000 0.0000
+      vertex 0.0000 60.0000 0.0000
+      vertex 0.0000 60.0000 1.2000
+    endloop
+  endfacet
+  facet normal 0.000000 1.000000 0.000000
+    outer loop
+      vertex 12.0000 60.0000 0.0000
+      vertex 0.0000 60.0000 1.2000
+      vertex 12.0000 60.0000 1.2000
+    endloop
+  endfacet
+  facet normal -1.000000 0.000000 0.000000
+    outer loop
+      vertex 0.0000 60.0000 0.0000
+      vertex 0.0000 0.0000 0.0000
+      vertex 0.0000 0.0000 1.2000
+    endloop
+  endfacet
+  facet normal -1.000000 0.000000 0.000000
+    outer loop
+      vertex 0.0000 60.0000 0.0000
+      vertex 0.0000 0.0000 1.2000
+      vertex 0.0000 60.0000 1.2000
+    endloop
+  endfacet
+endsolid marker_corner

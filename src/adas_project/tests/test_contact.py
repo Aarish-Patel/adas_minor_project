@@ -37,6 +37,23 @@ class ContactTest(unittest.TestCase):
         poses = [(1.0 + 0.012 * (i % 2), 0.0, 0.0) for i in range(30)]
         self.assertIn(1, self.run_ticks(ContactDetector(pwm_min=40), 120, poses, scan_every=2))
 
+    def test_a_reversal_is_not_a_contact(self):
+        """Parking strokes: forward, then reverse - the car rolls on a moment, stops, comes back; over a short window its net movement is
+        tiny although it never stood still (false contacts at every reversal, 25 Oct)."""
+        det = ContactDetector(pwm_min=40)
+        poses = [(1.0 + 0.01 * i, 0.0, 0.0) for i in range(10)]                        # forward 0.2 m/s
+        hits = self.run_ticks(det, 120, poses)
+        back = [(1.09 + 0.004 * i - 0.0004 * i * i, 0.0, 0.0) for i in range(30)]       # reverse: rolls on, stops, comes back
+        hits += [det.update((10 + i) * 0.05, -120, p, False, stamp=(10 + i) // 2) for i, p in enumerate(back)]
+        self.assertNotIn(-1, hits)
+        self.assertNotIn(1, hits)
+
+    def test_a_frozen_pose_is_not_a_contact(self):
+        """No new scan match for a while (the matcher skipped scans, the stamp does not change): no judgement."""
+        det = ContactDetector(pwm_min=40)
+        hits = [det.update(i * 0.05, 120, (1.0, 0.0, 0.0), False, stamp=7) for i in range(40)]
+        self.assertNotIn(1, hits)
+
     def test_bumper_points_stop_the_gate(self):
         from tests.test_planning_safety import P, TUN, wall
         from pi.path_gate import PathGate

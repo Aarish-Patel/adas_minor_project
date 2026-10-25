@@ -52,6 +52,17 @@ class GuiSmoke(unittest.TestCase):
         from gui import theme
         theme.set_mode("dark")
         cls.app.setStyleSheet(theme.STYLE)
+        # the operator's own lane / zones files (gui/parking_lane.json, gui/zones.json) must neither be read nor written by the tests
+        import tempfile
+        import gui.ev as EV
+        cls._files = (EV.LANE_FILE, EV.ZONES_FILE)
+        tmp = tempfile.mkdtemp()
+        EV.LANE_FILE, EV.ZONES_FILE = os.path.join(tmp, "lane.json"), os.path.join(tmp, "zones.json")
+
+    @classmethod
+    def tearDownClass(cls):
+        import gui.ev as EV
+        EV.LANE_FILE, EV.ZONES_FILE = cls._files
 
     def test_drawers_fit_and_state_draws(self):
         from gui.ev import EVWindow

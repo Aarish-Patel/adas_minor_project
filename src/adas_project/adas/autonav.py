@@ -102,6 +102,15 @@ class AutoNav:
         if job is None:
             return
         path = job.result()
+        if getattr(self, "_park", False) == "shuffle":   # multi-point strokes from inside the gap (_shuffle_in)
+            self._park = False
+            if path is None or len(path) < 2:              # none: out of the lane and round again (vehicle frame of the shuffle launch)
+                self.state = "driving"
+                self._retry_by_pull_out(self._shuffle_pts)
+                return
+            self.path, self.i, self.replan_t, self.state = path, 0, 0.0, "driving"
+            self.msg = f"parking in {self.parking_space} - more strokes"
+            return
         if getattr(self, "_park", False) == "retry_out":  # stuck in the lane: out, then round again (vehicle frame of the launch)
             self._park = False
             request, slot, space = self.park_request, self.parking_slot, self.parking_space
@@ -333,6 +342,7 @@ class AutoNav:
         self._creep_dir, self._creep_flips = 0, 0
         self._refines, self._shifts = 0, 0
         self._stall_replans = getattr(self, "_stall_replans", 0) if self._keep_stalls else 0
+        self._shuffled = getattr(self, "_shuffled", False) if self._keep_stalls else False
         self.state = "driving"
         self.msg = "parking"
         return True
@@ -346,7 +356,7 @@ class AutoNav:
         self.goal_clicked, self.goal_moved = None, False
         self.fixed = True
         self.park_phase, self._pull_up, self._tail, self._approach_pending, self._approaches = None, None, None, False, 0
-        self._refines, self._stall_replans = 0, 0
+        self._refines, self._stall_replans, self._shuffled = 0, 0, False
         self.msg = "planning the parking manoeuvre"
         import time
         self.state = "planning"
@@ -682,15 +692,25 @@ class AutoNav:
             self.replans += 1
             self.msg = f"blocked - planning again from here ({self._stall_replans}/{self.PARK_STALL_REPLANS})"
             if self.park_request is not None and self.parking_slot is not None and self._in_lane() and self.park_phase == "manoeuvre":
-                # stuck part-way into the lane (a tight gap, the gate holding the car): pull out from exactly here and go round again - the
-                # exit strokes work from inside a gap, a search from there does not (30 Sep: tight gap and RT-pulse runs ended stuck)
-                self._retry_by_pull_out(pts_vehicle)
+                # stuck part-way into the lane (a tight gap, the gate holding the car): first more strokes from exactly here - a search to
+                # the parking pose with reversing allowed, i.e. a multi-point manoeuvre inside the gap (user, 25 Oct: "u can always do a
+                # more than 3 point parking instead of replanning 5 times"); only if that finds nothing, pull out and go round again (the
+                # exit strokes work from inside a gap; 30 Sep: tight gap and RT-pulse runs ended stuck)
+                if self.goal is not None and self.goal_heading is not None and not getattr(self, "_shuffled", False):
+                    self._shuffle_in(pts_vehicle)
+                else:
+                    self._retry_by_pull_out(pts_vehicle)
             elif self.park_request is not None and self.parking_slot is not None:
                 self._stall_refine, self._refine_pts = True, self.to_start(np.asarray(pts_vehicle, float).reshape(-1, 2))
                 self._launch_refine(pts_vehicle)
             else:
                 self.fixed, self.reverse_first = False, True
                 self._launch(self.to_start(pts_vehicle), (self.x, self.y, self.th))
+            return (0.0, 0.0) if self.state == "planning" else None
+        if getattr(self, "_shuffled", False) and self.stall_s > self.PARK_STALL_S and self.park_phase == "manoeuvre" and len(pts_vehicle):
+            # the extra strokes in the gap (_shuffle_in) are held as well: out of the lane and round again, as before them
+            self.stall_s, self._stall_ref, self.replans = 0.0, None, self.replans + 1
+            self._retry_by_pull_out(pts_vehicle)
             return (0.0, 0.0) if self.state == "planning" else None
         if self.stall_s > 0.8 and len(pts_vehicle) and not self.fixed:
             self.stall_s = 0.0
@@ -948,6 +968,22 @@ class AutoNav:
         c = 0.5 * (self.p.front_x + self.p.rear_x)
         _, y = strip.to_strip(np.array([[self.x + c * math.cos(self.th), self.y + c * math.sin(self.th)]]))
         return bool(y[0] > 0.0)
+
+    def _shuffle_in(self, pts_vehicle):
+        """Multi-point parking from where the car is stuck in the gap: a search to the same parking pose, reversing allowed (Hybrid A*
+        with cusps = forward / reverse strokes inside the gap); _collect pulls out (_retry_by_pull_out) only if it finds nothing."""
+        import time
+        pts_s = self.to_start(np.asarray(pts_vehicle, float).reshape(-1, 2))
+        self._shuffle_pts = np.asarray(pts_vehicle, float).reshape(-1, 2)
+        self.fixed, self.reverse_first, self._shuffled = False, True, True
+        self.arrive, self.heading_tol = self.PARK_ARRIVE_M * 2, math.radians(self.PARK_HEADING_TOL_DEG)
+        self.msg = "more strokes from here"
+        self._launch(pts_s, (self.x, self.y, self.th))
+        if self.state == "planning":
+            self._park = "shuffle"
+        elif self.path is None or self.state != "driving":     # the search finished at once and found nothing
+            self.state = "driving"
+            self._retry_by_pull_out(self._shuffle_pts)
 
     def _retry_by_pull_out(self, pts_vehicle):
         """Plan the way out of the lane from here (plan service); _collect then follows it and approaches the slot again."""

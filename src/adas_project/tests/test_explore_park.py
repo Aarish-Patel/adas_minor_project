@@ -94,7 +94,8 @@ class EndToEnd(unittest.TestCase):
         self.assertEqual(r["visible_contacts"], 0)
         self.assertLessEqual(r["touches"], 4)                     # brief touches of the dark box (14 Oct: 3 in 100 s), no pushing on
         self.assertGreater(r["coverage"], 0.9)
-        self.assertLess(r["t"], 120.0)                            # (was 90 s while the twin let the LiDAR see the dark box)
+        self.assertLess(r["t"], 130.0)                            # (was 90 s while the twin let the LiDAR see the dark box; 120.4 s since
+                                                                  # the bumper waits for 3 fresh scans - 26 Oct, against false contacts)
 
     def test_parallel_parks_between_two_objects(self):
         from sim.park_eval import parallel

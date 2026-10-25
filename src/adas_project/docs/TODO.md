@@ -958,6 +958,24 @@ the car finds the gaps with its LiDAR and parks in the viable part of the strip 
       stays / removed box goes, tests/test_world_store.py thin post stays from 2 m; phantom-wall test still passes. To do: Pi timing,
       deploy, check on the car with a thin post.)
 
+## AL. Demo course (user, 25 Oct: "make a demo course to show all the capabilities of the car in the sim; parts printable on a Creality K1
+##     with minimal filament; a simple course that shows all capabilities while keeping it simple for the car to do properly")
+- [x] AL1. (sim/demo_course.py) Course layout (one geometry module shared by the twin world, the print files and the doc): start, speed zone, obstacle to plan
+      round, parking lane with two parked "cars" and a gap, thin post (memory), end wall (emergency brake), optional dark box, return.
+- [x] AL2. Twin world "demo" (sim/hw_worlds.py), selectable on the dashboard (Parking Simulator: DEMO) and in tools/sim_car.py.
+- [x] AL3. (tools/demo_course_parts.py -> docs/demo_course/*.stl/.scad: post, 2 panel feet, 6 flat markers, ~46 g solid) Printable parts for a Creality K1 (220 x 220 mm bed), minimal filament: panel feet for cardboard, the thin post, floor
+      markers; STL + OpenSCAD source, gram estimate; cardboard boxes stand in for the parked cars.
+- [~] AL4. (26 Oct, 4 twin runs: park 4/4, zone held, post on map 4/4, brake 18-22 cm, goto 3/4, home 2/3, whole course 2/4; the
+      layout was changed twice for it - lane 0.5 m nearer the start so the car can turn after leaving the space, post and dark box out of
+      the turning area; remaining failures = AK12, giving up after 3 stalled re-plans beside a wall / parked car) Scripted demo run on the real dashboard against the twin (tools/hmi_test.py demo_course): every station, screenshots, truth
+      checks; iterate until the car does the whole course properly.
+- [x] AL5. (docs/demo_course.md) docs/demo_course.md: layout drawing, what to print / buy, set-up, the demo script per station, what the audience sees.
+- [x] AL6. (26 Oct: AutoNav._shuffle_in - held in the gap -> a search to the parking pose from exactly there with reversing allowed
+      (forward / reverse strokes in the gap); pull-out only if it finds nothing or its strokes are held too; test_park_select
+      stuck_in_the_gap. Parking Monte Carlo 4 seeds x 86: 224/344 vs 223/344 without, 0 collisions both - it rarely triggers in the twin; measured before the pull-out fallback for held strokes was added after the demo runs) (user, 25 Oct: "u can always do a more than 3 point parking instead of replanning 5 times") When a parking stroke ends
+      short / off-line, correct with further forward-reverse shuffles inside the space (multi-point straightening, as the W3 strokes)
+      instead of pulling out and re-planning the whole manoeuvre; count re-plans vs shuffles in the parking suite.
+
 ## AK. Smoothness and tuning from the research (user, 14 Oct: "make the car as smooth and well tuned as possible ... reduce unnecessary
 ##     warnings and replans"; report docs/research_lidar_navigation.md)
 - [x] AK1. Re-plan only on invalidation: remaining-path validity on the planning cost each scan, invalid after >= 3 scans, slow first

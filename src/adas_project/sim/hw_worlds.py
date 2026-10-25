@@ -131,7 +131,20 @@ def lounge():
     return _finish(w), (0.0, 0.0, 0.0)
 
 
-WORLDS = {"parallel": parallel, "lounge": lounge, "parking": parking, "doorway": doorway, "room": room, "corridor": corridor, "gap": gap, "open": open_room}
+def demo():
+    """The demo course (sim/demo_course.py, TODO AL), without the optional dark box (the scripted run)."""
+    from sim.demo_course import world
+    return world(dark=False)
+
+
+def demo_dark():
+    """The demo course with the dark box the LiDAR cannot see (the optional virtual-bumper station)."""
+    from sim.demo_course import world
+    return world(dark=True)
+
+
+WORLDS = {"parallel": parallel, "lounge": lounge, "parking": parking, "doorway": doorway, "room": room, "corridor": corridor, "gap": gap, "open": open_room,
+          "demo": demo, "demo_dark": demo_dark}
 
 
 def build(name, marker_id=23):
