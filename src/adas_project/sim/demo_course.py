@@ -35,6 +35,12 @@ PARK_CLICK = (1.48, -0.97)                     # click in the gap
 DARK_BOX = (3.75, 1.0, 0.25, 0.25)
 LIDAR_PLANE_M = 0.20                          # height of the car's LiDAR scan plane above the floor (measure on the car)
 MIN_OBJECT_HEIGHT_M = LIDAR_PLANE_M + 0.03
+BOX_HEIGHT_M = 0.25                           # the cardboard boxes (parked cars, obstacle, dark box): >= MIN_OBJECT_HEIGHT_M
+PANEL_HEIGHT_M, PANEL_LENGTH_M = 0.30, 1.00   # cardboard wall panels where the room has no wall
+CAR_BODY = (-0.05, 0.28, 0.20)                # the RC car from its rear axle (m): rear bumper, front bumper, width (pi/relay_assists)
+LIDAR_X_M = 0.12                              # LiDAR centre ahead of the rear axle
+CORNER_ROT_DEG = (-90.0, 180.0, 0.0, 90.0)    # lane-corner L markers at (x0, y_road), (x1, y_road), (x0, y_kerb), (x1, y_kerb): legs along the
+                                              # lane edges, into the lane
 
 
 def world(dark=True):

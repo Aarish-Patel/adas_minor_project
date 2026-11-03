@@ -1,0 +1,18 @@
+id,name,kind,x_mm,y_mm,rot_deg,L_mm,W_mm,H_mm,from_end_wall_mm,from_kerb_wall_mm,note
+W1,kerb wall (parking side),wall,1500.0,-1200.0,0,5000.0,0,300.0,,,"a real straight wall, or cardboard panels; the parking lane's kerb"
+W2,end wall = brake wall,wall,4000.0,0.0,0,0,2400.0,300.0,,,"a real wall, or panels; the car brakes in front of it"
+W3,side wall,wall,1500.0,1200.0,0,5000.0,0,300.0,,,recommended (the twin has it): a real wall or panels
+W4,back wall,wall,-1000.0,0.0,0,0,2400.0,300.0,,,recommended (the twin has it): a real wall or panels
+C1,parked car 1 (cardboard box),cardboard,565.0,-1050.0,0,330.0,200.0,250.0,3270,50,"any closed box of this footprint, standing upright"
+C2,parked car 2 (cardboard box),cardboard,2395.0,-1050.0,0,330.0,200.0,250.0,1440,50,"any closed box of this footprint, standing upright"
+O,obstacle (cardboard box),cardboard,1800.0,450.0,0,300.0,300.0,250.0,2050,1500,click-to-go plans round it
+D,dark box (optional),cardboard,3750.0,1000.0,0,250.0,250.0,250.0,125,2075,"covered in matte black felt; only for the LiDAR-blind / virtual bumper station, removed otherwise"
+T,thin post (printed thin_post.stl),print,2000.0,1050.0,0,16.0,16.0,240.0,1992,2242,Ø16 tube on a Ø60 x 2 foot
+S,start arrow (printed marker_start.stl),print,0.0,0.0,0,120,50,1.2,4000,1200,reference point = middle of the arrow's tail edge = the car's rear-axle centre; points along +x
+G,goal cross (printed marker_goal.stl),print,3000.0,200.0,0,60,60,1.2,1000,1400,reference point = the cross's centre (the car's rear axle arrives over it)
+L1,lane corner 1 (printed marker_corner.stl),print,100.0,-770.0,-90.0,60,60,1.2,3900,430,reference point = the L's outer corner = the lane corner; legs along the lane edges
+L2,lane corner 2 (printed marker_corner.stl),print,3100.0,-770.0,180.0,60,60,1.2,900,430,reference point = the L's outer corner = the lane corner; legs along the lane edges
+L3,lane corner 3 (printed marker_corner.stl),print,100.0,-1170.0,0.0,60,60,1.2,3900,30,reference point = the L's outer corner = the lane corner; legs along the lane edges
+L4,lane corner 4 (printed marker_corner.stl),print,3100.0,-1170.0,90.0,60,60,1.2,900,30,reference point = the L's outer corner = the lane corner; legs along the lane edges
+Z,speed zone 10 km/h (optional tape outline),tape,800.0,0.0,0,800.0,1000.0,0,2800,700,only drawn on the dashboard; tape on the floor is for the audience
+P,parking lane (optional tape outline),tape,1600.0,-970.0,0,3000.0,400.0,0,900,30,drawn on the dashboard over the four corner markers

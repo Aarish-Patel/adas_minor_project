@@ -978,6 +978,11 @@ the car finds the gaps with its LiDAR and parks in the viable part of the strip 
 
 ## AK. Smoothness and tuning from the research (user, 14 Oct: "make the car as smooth and well tuned as possible ... reduce unnecessary
 ##     warnings and replans"; report docs/research_lidar_navigation.md)
+- [x] AL7. (3 Nov: tools/demo_course_drawings.py -> docs/demo_course/ layout_plan, layout_3d, parts_printed, parts_cardboard,
+      dashboard_view (hmi_test demo_overview), placement.csv, course_layout.dxf, course_assembly.scad; docs/demo_course.md rewritten as
+      the build guide; tests/test_demo_course BuildPackageTest) (user, 3 Nov: "photo, dimensions, placement ... a mechanical engineer has all the information to CAD the course and make
+      the printed / cardboard parts") Build package: dimensioned plan, 3D render, dashboard shot, part drawings, placement table (CSV),
+      DXF plan and OpenSCAD assembly (tools/demo_course_drawings.py -> docs/demo_course/), build + assembly steps in docs/demo_course.md.
 - [x] AK1. Re-plan only on invalidation: remaining-path validity on the planning cost each scan, invalid after >= 3 scans, slow first
       (Nav2 consistent-replanning / IsPathValid). Measure: re-plans and stops per metre in the click-to-go suite and goto_and_home.
 - [x] AK2. Clearance hierarchy: planner lethal clearance >= brake field + p95 tracking error + localisation error, decaying cost gradient

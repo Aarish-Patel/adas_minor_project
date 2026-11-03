@@ -289,6 +289,7 @@ SCENARIOS = {
     "park_then_goto": lambda t: park_then_goto(t),                # parked, then click-to-go down the road: pull out first
     "bay_park": lambda t: bay_park(t),                            # BAYS: park at the ArUco marker
     "demo_course": lambda t: demo_course(t),                     # TODO AL: the whole demo course, station by station
+    "demo_overview": lambda t: demo_overview(t),                 # TODO AL7: the demo course seen whole on the dashboard (build guide)
     "goto_and_home": lambda t: goto_and_home(t),                  # ROOM: go to through the doorway, then return to start
     "zone_limit": lambda t: zone_limit(t),                        # ROOM: a 5 km/h zone drawn on the map, driven through by hand
     "brake_wall": lambda t: brake_wall(t),                        # ROOM: full throttle at the end wall, no steering
@@ -724,6 +725,28 @@ def demo_course(test):
     ok = (crashes == 0 and res["goto"]["err_cm"] <= 15 and res["park"]["inside_lane"] and res["home"]["err_cm"] <= 15
           and res["goto"]["max_v_in_zone"] <= res["goto"]["zone_cap_v"] * 1.25 and 0.0 < res["brake"]["gap_to_wall_cm"] <= 100)    # (at full throttle the gate brakes ~1.3 s ahead and holds)
     test.result.update(res, crashes=crashes, ok=bool(ok))
+
+
+def demo_overview(test):
+    """TODO AL7: the demo course as the dashboard shows it, the car on the start mark - screenshots for docs/demo_course.md from
+    a few fixed 3D camera positions (scene frame = the car's: x ahead, y left) and the map drawer."""
+    from PySide6 import QtGui
+    yield from _switch_room(test, "demo")
+    yield 4.0                                                    # a few scans on the map
+    test.show_range([(-1.0, -1.2), (4.0, 1.2)])
+    yield 1.0
+    test.shot("map")
+    test.win.toggle("map", False)
+    sc = test.win.scene
+    views = {"overview_high": ((1.5, 0.0, 0.0), 7.5, 55, -130), "overview_side": ((1.5, 0.0, 0.0), 6.0, 28, -110),
+             "overview_top": ((1.5, 0.0, 0.0), 7.0, 89, 180)}
+    for name, (pos, dist, elev, az) in views.items():
+        sc.cam = "overview"
+        sc.setCameraPosition(pos=QtGui.QVector3D(*pos), distance=dist, elevation=elev, azimuth=az)
+        yield 1.5
+        test.shot(name)
+    sc.camera("chase")
+    test.result.update(ok=True)
 
 
 def QtWidgetsFeatureTile():

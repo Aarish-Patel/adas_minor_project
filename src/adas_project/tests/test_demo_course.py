@@ -49,5 +49,31 @@ class WorldTest(unittest.TestCase):
         self.assertGreater(gap, 1.1)                                    # an easy parallel slot for the 0.36 m car
 
 
+class BuildPackageTest(unittest.TestCase):
+    def test_placement_matches_the_twin_and_files_are_written(self):
+        """The build package (tools/demo_course_drawings.py, TODO AL7) is made from the same layout as the twin: the gap, the kerb
+        clearance and the heights the LiDAR needs; the DXF is a well-formed group-code file."""
+        import tempfile
+        import tools.demo_course_drawings as B
+        from sim import demo_course as dc
+        obj = {o["id"]: o for o in B.objects()}
+        c1, c2 = obj["C1"], obj["C2"]
+        self.assertAlmostEqual((c2["x"] - c2["L"] / 2) - (c1["x"] + c1["L"] / 2), 1500.0, places=3)
+        self.assertEqual(B.from_walls(c1)[1], 50)                                  # 5 cm off the kerb wall
+        for k in ("C1", "C2", "O", "D", "T"):
+            self.assertGreaterEqual(obj[k]["H"], dc.MIN_OBJECT_HEIGHT_M * 1000 - 1e-6, k)
+        d = tempfile.mkdtemp()
+        B.dxf(os.path.join(d, "c.dxf"))
+        B.placement_csv(os.path.join(d, "p.csv"))
+        B.scad(os.path.join(d, "a.scad"))
+        lines = open(os.path.join(d, "c.dxf")).read().split(chr(10))
+        codes = [int(c) for c in lines[0:-1:2]]
+        self.assertEqual(lines[-2], "EOF")
+        self.assertIn(0, codes)
+        import csv
+        rows = list(csv.DictReader(open(os.path.join(d, "p.csv"), encoding="utf-8")))
+        self.assertEqual({r["id"] for r in rows}, set(obj))
+
+
 if __name__ == "__main__":
     unittest.main()
