@@ -806,3 +806,12 @@ and systemd restarts it, which re-probes the ports.
 **Consequences.** Twin, 132 randomised runs (`tools/front_bay_validation.py mc 6`): 0 collisions; 108 of the 118 that parked within 6 cm / 10 deg
 (median 2.3 cm, 2.8 deg); the strict 5 cm / 5 deg criterion 95 / 132; marker hidden or beyond ~2 m refused. Not yet measured on the car: camera mounting,
 OpenCV on the Pi, frame time on the Pi 5, detection range of the real 8 cm marker, the real stop distance from the wall.
+
+
+## ADR-049 Advisory perception in its own process; the relay's control thread stays in the relay (9 Nov 2026)
+**Context.** On the car (Pi 5 on a supply that sags: the kernel logs "Undervoltage detected!") the relay handled 12 of the controller's 50 packets a second, LiDAR rate fell to 1-5 Hz and the health
+monitor went LIMP. A sampling profile showed one Python process whose LiDAR thread (the moving-object tracker, ~half its time) and control thread (saturated) shared one interpreter lock.
+**Decision.** The tracker (advisory: warnings, crossing planner, follow mode) runs in a worker process (`pi/tracker_proc.py`) on another core, fed by the LiDAR thread, answering asynchronously; stale answers are
+not served and the in-thread tracker is the fallback. The brake gate, the speed estimate and the motor command stay in the relay's control thread (safety function: no network, no process hop). The camera service is a supervised
+child process (`pi/camera_service.py`) at low priority. Offloading to the laptop was considered and not needed for this: it would put the Wi-Fi in the loop for data the brake does not use.
+**Consequences.** Packets handled 12 -> ~62 /s on the car, relay CPU 108-127 % -> 75 %. The supply is still the root cause (named in the health state, ADR-048 / TODO AO).

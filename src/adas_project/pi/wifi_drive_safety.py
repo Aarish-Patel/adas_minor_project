@@ -288,7 +288,9 @@ class Clearance:
         self.body_min_rear = None    # closest point in the WIDE rear half (+-90deg)
         self.points = []       # latest full scan, car-frame (angle_deg, dist_m) - for the GUI
         self.scan_seq = 0      # increments with every scan (the path gate remembers each scan once)
-        self.tracker = Tracker()   # moving-object tracking (adas/tracking.py, LiDAR-only)
+        self.tracker = Tracker()   # moving-object tracking (adas/tracking.py, LiDAR-only): in-thread FALLBACK; normally the worker process below
+        self.tracker_proc = None   # pi/tracker_proc.py: the tracker on another core (started in start())
+        self._tracks_t = 0.0       # when the scan of the latest tracker result was taken
         self.tracks_info = []      # [{"id","x","y","moving"}] - for the GUI overlay
         self.raw_tracks = []       # the actual Track objects - FollowController needs these,
                                     # not the serialized dicts above
@@ -309,9 +311,21 @@ class Clearance:
             self._motion_v = v
             self._motion_offset = steer_offset_deg
 
+    def _tracker_result(self, t_scan, info, contact, tracks):
+        """A result from the tracker process (reader thread)."""
+        with self.lock:
+            self.tracks_info, self.moving_contact, self.raw_tracks, self._tracks_t = info, contact, tracks, t_scan
+
     def start(self):
         print("LiDAR info:", self.lidar.get_info())
         print("LiDAR health:", self.lidar.get_health())
+        if os.environ.get("RC_TRACKER_INLINE") != "1":
+            try:
+                from pi.tracker_proc import TrackerProcess
+                self.tracker_proc = TrackerProcess(VP, self._tracker_result)
+                print("moving-object tracker: own process", flush=True)
+            except Exception as e:                       # (never a reason not to drive: the in-thread tracker is the fallback)
+                print("tracker process not started:", e, "- tracking in the LiDAR thread", flush=True)
         self.thread.start()
 
     def _loop(self):
@@ -364,9 +378,12 @@ class Clearance:
                                    arr[:, 1] * np.sin(rad) + VP.lidar_y], axis=1)
                 else:
                     xy = np.zeros((0, 2))
-                tracks = self.tracker.update(xy, now, v, omega)
                 direction = 1 if v >= 0 else -1
-                contact = moving_object_contact(tracks, delta, direction, abs(v), VP, horizon=1.5)
+                if self.tracker_proc is not None and self.tracker_proc.submit(xy, now, v, omega, delta, direction):
+                    tracks = None                              # the worker process answers later (_tracker_result)
+                else:
+                    tracks = self.tracker.update(xy, now, v, omega)
+                    contact = moving_object_contact(tracks, delta, direction, abs(v), VP, horizon=1.5)
 
                 with self.lock:
                     self.front_track.update(best_front, now)
@@ -375,11 +392,13 @@ class Clearance:
                     self.body_min_rear = best_body_rear
                     self.points = pts
                     self.scan_seq += 1
-                    self.moving_contact = contact
-                    self.tracks_info = [{"id": tr.id, "x": round(tr.pos[0], 3),
-                                          "y": round(tr.pos[1], 3), "moving": tr.moving}
-                                         for tr in tracks]
-                    self.raw_tracks = tracks
+                    if tracks is not None:                     # tracked in this thread (fallback)
+                        self.moving_contact = contact
+                        self.tracks_info = [{"id": tr.id, "x": round(tr.pos[0], 3),
+                                              "y": round(tr.pos[1], 3), "moving": tr.moving}
+                                             for tr in tracks]
+                        self.raw_tracks = tracks
+                        self._tracks_t = now
         except Exception as e:
             print("LiDAR thread stopped:", e)
 
@@ -397,10 +416,14 @@ class Clearance:
 
     def read_tracks(self):
         with self.lock:
+            if time.time() - self._tracks_t > TRACKS_STALE_S:        # an old answer is not served (advisory data, never trusted late)
+                return [], (math.inf, math.inf, None)
             return list(self.tracks_info), self.moving_contact
 
     def read_raw_tracks(self):
         with self.lock:
+            if time.time() - self._tracks_t > TRACKS_STALE_S:
+                return []
             return list(self.raw_tracks)
 
     def read(self):
@@ -409,6 +432,8 @@ class Clearance:
 
     def stop(self):
         self.running = False
+        if self.tracker_proc is not None:
+            self.tracker_proc.stop()
         try:
             self.lidar.stop()
             self.lidar.stop_motor()
@@ -558,6 +583,7 @@ def gui_update_distances(front_track, rear_track, body_min_front, body_min_rear)
         GUI_STATE["data"]["body_min_rear"] = body_min_rear
 
 
+TRACKS_STALE_S = 0.8    # tracker results older than this are not served (pi/tracker_proc.py)
 LIDAR_RESTART_S = 8.0   # no scans this long (health FAULT "no LiDAR scans"): the relay exits and systemd restarts it, which re-probes the USB ports
 MARKER_SOURCE = None    # () -> recent ArUco observations (MarkerObs, vehicle frame): the rear camera service; tools/sim_car.py simulates one
 EXTRA_POST = {}     # path -> callable; filled by tools/sim_car.py (simulator reset), empty on the car
@@ -768,13 +794,19 @@ def main():
     # driving assists, all off until toggled on; path searches (evasive, click-to-go) run in a worker process so
     # the control loop never waits for them (adas/plan_service.py)
     assist = RelayAssists(TUNING, WIRE_MOTOR_REVERSED, plan_mode="process")
+    from pi.sampler import maybe_start as _start_sampler
+    _start_sampler()                                           # only when ~/rc_car/profile.flag exists
     from adas import camera_config
     CAMERA_CFG = camera_config.load()                          # pi/camera.json: which way the parking camera faces, the bay marker
     assist.camera_facing, assist.marker_id = CAMERA_CFG["facing"], int(CAMERA_CFG["marker_id"])
     marker_src = MARKER_SOURCE
-    if marker_src is None:                                     # the car: read the marker camera service (pi/marker_camera.py, :8091)
+    camera_service = None
+    if marker_src is None:                                     # the car: read the marker camera service (pi/marker_camera.py, :8091) ...
+        from pi.camera_service import CameraService
         from pi.marker_client import MarkerClient
         marker_src = MarkerClient(marker_id=assist.marker_id)
+        camera_service = CameraService(CAMERA_CFG)             # ... which this relay keeps running (CAMERA_CFG["autostart"], default on)
+        camera_service.start()
     assist.marker_source = marker_src
     from pi.path_gate import PathGate
     pgate = PathGate(assist.p, TUNING.speed_model)      # path-predicted emergency braking + obstacle memory
@@ -1360,6 +1392,8 @@ def main():
         esp.write(b"M 0\nSTOP\n")
         time.sleep(0.1)
         esp.close()
+        if camera_service is not None:
+            camera_service.stop()
         clr.stop()
         sock.close()
         logger.close()

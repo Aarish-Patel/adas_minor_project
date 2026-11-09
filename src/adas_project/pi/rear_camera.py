@@ -124,6 +124,8 @@ def serve(port):
                 self.send_response(200)
                 self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
                 self.end_headers()
+                with STATE["lock"]:
+                    STATE["watchers"] = STATE.get("watchers", 0) + 1       # (a service may skip the JPEG encode while nobody watches)
                 try:
                     while True:
                         with STATE["lock"]:
@@ -134,6 +136,9 @@ def serve(port):
                         time.sleep(0.05)
                 except (BrokenPipeError, ConnectionResetError, OSError):
                     pass
+                finally:
+                    with STATE["lock"]:
+                        STATE["watchers"] = max(0, STATE.get("watchers", 1) - 1)
             else:
                 self.send_response(404)
                 self.end_headers()

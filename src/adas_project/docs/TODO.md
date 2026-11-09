@@ -1147,3 +1147,14 @@ Evidence: logs/incident_20261001/20261001_003520_relay.jsonl.gz (Pi ~/logs), dri
       13 ms per frame (95th 16 ms), detects the marker. The real webcam cannot be opened yet: the `pi` user is not in the `video` group.
 - [ ] AO5. (user, needs sudo) `sudo usermod -aG video pi` + reboot; then run pi/marker_camera.py on the webcam, put the measured mounting
       (x, z, pitch_deg, hfov_deg) into pi/camera.json on the Pi, print the marker (tools/make_marker.py), and test "Park at the marker" on the car.
+
+## AP. Make the car run smoothly on an under-volted Pi (user, 9 Nov: "i cant change the rpi power stuff make this setup work properly ... get it working fast")
+- [x] AP1. Profile (pi/sampler.py, on only when ~/rc_car/profile.flag exists): the relay is ONE Python process, its threads share one interpreter lock = one core;
+      the tracker took ~half of the LiDAR thread, the control thread (gate, speed estimator, learned intent model) was saturated -> 12 of 50 driver packets/s
+      handled, loop p95 60-71 ms, LiDAR 1-5 Hz. Fix: the tracker runs in its own process (pi/tracker_proc.py; results advisory, not served when older than 0.8 s,
+      in-thread fallback if the worker dies, RC_TRACKER_INLINE=1 forces it). Measured on the car (idle car, 50 Hz idle packets, dashboard open): packets handled 12 -> ~62 /s,
+      relay CPU 108-127 % -> 75 % (+33 % tracker process), planning 41-71 ms with the relay still at 44-60 packets/s. tests/test_tracker_proc.py.
+- [x] AP2. The relay supervises the marker camera service itself (pi/camera_service.py; no systemd, no sudo; camera.json autostart / process_fps = 5); the service runs at nice 10, one OpenCV
+      thread, grabs and drops frames it does not process, encodes the JPEG stream only while a viewer is connected. tests/test_camera_service.py.
+- [ ] AP3. Still heavy on the control thread (profile, idle): the learned intent model's free-distance sweeps (~40 % of the thread before AP1), the range-flow speed estimator (~21 %), scan matching
+      (~14 %). Ideas if it is needed again: cache the intent model's arc distances per scan, or run advisory models on the laptop (the dashboard already receives every scan).

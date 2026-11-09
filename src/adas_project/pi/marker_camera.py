@@ -93,8 +93,15 @@ def main():
     ap.add_argument("--port", type=int, default=8091)
     ap.add_argument("--sim", action="store_true")
     ap.add_argument("--bench", type=int, default=0, help="process this many frames, print timing, exit")
+    ap.add_argument("--fps", type=float, default=None, help="frames processed per second (default: pi/camera.json process_fps, else 10)")
     a = ap.parse_args()
+    cv2.setNumThreads(1)                              # one core at most: the relay's control loop and the LiDAR come first on this Pi
+    try:
+        os.nice(10)
+    except (OSError, AttributeError):
+        pass
     cfg = camera_config.load(a.config)
+    process_fps = float(a.fps or cfg.get("process_fps", 10.0))
     cam = camera_config.camera_model(cfg)
     if a.sim:
         src = SyntheticSource(cam, cfg, cfg["fps"])
@@ -104,6 +111,7 @@ def main():
         src.set(cv2.CAP_PROP_FRAME_HEIGHT, cam.height)
         src.set(cv2.CAP_PROP_FPS, cfg["fps"])
         src.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        src.set(cv2.CAP_PROP_BUFFERSIZE, 1)           # the newest frame, not a queue of old ones
         if not src.isOpened():
             sys.exit(f"camera {cfg['index']} not found")
     pipe = MarkerPipeline(cam, cfg["marker_id"], cfg["marker_size_m"], cfg["facing"])
@@ -111,8 +119,13 @@ def main():
         serve(a.port)
         print(f"marker camera service on :{a.port} (/stream, /state)  {cfg['facing']} camera, marker id {cfg['marker_id']} "
               f"({cfg['marker_size_m'] * 100:.0f} cm)  source: {'synthetic' if a.sim else 'webcam ' + str(cfg['index'])}", flush=True)
-    times, n = [], 0
+    times, n, t_next = [], 0, 0.0
     while True:
+        if not a.sim and not a.bench:                 # frames between two processed ones are dropped without decoding (grab, no retrieve)
+            if time.time() < t_next:
+                src.grab()
+                continue
+            t_next = time.time() + 1.0 / process_fps
         ok, frame = src.read()
         if not ok:
             with STATE["lock"]:
@@ -130,9 +143,13 @@ def main():
                 print(f"pipeline {t_.mean():.1f} ms mean, {np.percentile(t_, 95):.1f} ms 95th, {t_.max():.1f} ms max over {len(t_)} frames")
                 return
             continue
-        ok, jpg = cv2.imencode(".jpg", vis, [cv2.IMWRITE_JPEG_QUALITY, 80])
         with STATE["lock"]:
-            STATE["json"], STATE["jpeg"] = state, jpg.tobytes()
+            watched = STATE.get("watchers", 0) > 0
+        jpeg = cv2.imencode(".jpg", vis, [cv2.IMWRITE_JPEG_QUALITY, 70])[1].tobytes() if watched else None      # encode only for a viewer
+        with STATE["lock"]:
+            STATE["json"] = state
+            if jpeg is not None:
+                STATE["jpeg"] = jpeg
 
 
 if __name__ == "__main__":

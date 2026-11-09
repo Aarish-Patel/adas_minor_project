@@ -49,7 +49,7 @@ A 5 cm error in `x` or `z` moves the estimated bay by about as much; the LiDAR m
    Keep the car's own JSON files (`pi/tuning_real_car.json`, `pi/car_model.json`, ...).
 3. The camera service needs OpenCV with the `aruco` module on the Pi: it has OpenCV 4.6.0 (checked 9 Nov; the code supports 4.6 and 4.7+). The `pi` user must be
    in the `video` group to open the webcam: `sudo usermod -aG video pi`, then reboot the Pi (a password is asked: type it yourself).
-4. Start the service: `python3 ~/rc_car/pi/marker_camera.py` (first with `--bench 50` to see the frame time; without a camera: `--sim`).
+4. The relay starts and supervises the camera service itself (`pi/camera.json`: `autostart`, `process_fps` 5; set `autostart` to false to save the webcam's power). By hand: `python3 ~/rc_car/pi/marker_camera.py` (`--bench 50` shows the frame time; without a camera: `--sim`).
    The dashboard's **Camera** drawer then shows the stream with the marker outlined, "marker 23: seen, 1.2 m away".
 5. Restart the relay once so it reads `pi/camera.json` (control panel -> Drive). It writes the tuned wheel centres on start.
 
