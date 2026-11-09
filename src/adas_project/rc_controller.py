@@ -63,7 +63,7 @@ ACKERMANN_FACTOR = 1
 # 1 Oct (after the refit): straight ahead is 70 on output 1 and 80 on output 2 (tuned by the user); the limits keep the travel
 # the car had at centre 87 (30..140): 57 below the centre (a physical left turn), 53 above it (a physical right turn).
 # The maths' "left" is physically a right turn on this car (STEERING_SIGN), so LEFT_* is the inner wheel of a right turn.
-LEFT_RIGHT, LEFT_CENTER, LEFT_LEFT = 13, 70, 123
+LEFT_RIGHT, LEFT_CENTER, LEFT_LEFT = 19, 76, 129      # 9 Nov: output 1 centre 70 -> 76 (user: left wheel straight at 76), limits moved with it
 RIGHT_RIGHT, RIGHT_CENTER, RIGHT_LEFT = 23, 80, 133
 
 # Servo degrees per wheel degree (1.0 = servo shaft drives the wheel 1:1).

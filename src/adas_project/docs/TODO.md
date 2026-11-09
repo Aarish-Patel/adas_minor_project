@@ -1098,3 +1098,15 @@ Evidence: logs/incident_20261001/20261001_003520_relay.jsonl.gz (Pi ~/logs), dri
       switch, marker source) - each gets a real-car path or is marked twin-only.
 - [ ] AD5. Real-car parking specifics: the rear camera service for the marker, the LiDAR mount height vs the boxes used as cars, the
       steer-before-moving delay and the gate's creep limit measured on the car (no calibration without the user's OK).
+
+## AM. Real-car set-up, 9 Nov
+- [x] AM1. (user, 9 Nov: left wheel crooked at rest; "calibrate lidar center") Servo output 1 centre 70 -> 76 (left wheel straight, right wheel fine at
+      80), limits moved with it (19 / 129); rc_controller.py and the Pi's pi/tuning_real_car.json (backup ~/tuning_real_car.json.bak_20261109).
+      LiDAR front: bearing of the object +27.1 deg (sd 0.05, 40 scans, 0.37 m) -> mount yaw_offset 62.96 -> 90.06 (backup ~/tuning_real_car.json.bak2_20261109);
+      check: relay front distance 0.204 m = 0.366 - 0.16 (LiDAR to bumper). Pi is now at 192.168.1.10 (was .15).
+- [ ] AM2. The relay never re-probes the serial ports: when the LiDAR adapter re-enumerated (ttyUSB1 -> ttyUSB2) it sat in FAULT "no LiDAR scans"
+      until restarted. Re-run find_ports when the LiDAR thread dies / no scans for a few seconds.
+- [ ] AM3. The calibration rig (pi/lidar_steering_diag.py Rig) centres both servos at "A 90 90", not at the car's centres (70 / 80, now 76 / 80): the wheels
+      swing right whenever a calibration starts. Use the tuning's centres there (and keep that in mind for pi/center_fine.py).
+- [ ] AM4. The ESP32 firmware writes no servo pulse until the first command (targets start unset), so the wheels rest loose after power-up: send the
+      tuned centres at boot / when the relay starts.
