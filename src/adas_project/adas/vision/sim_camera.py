@@ -85,7 +85,10 @@ class SimCamera:
                 cv2.fillConvexPoly(frame, uv[list(faces[i])].astype(np.int32), (shade[i], shade[i], shade[i] + 30))
         for (mid, cx, cy, cz, facing, size) in markers:
             d = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-            img = cv2.aruco.generateImageMarker(d, mid, 200)
+            if hasattr(cv2.aruco, "generateImageMarker"):                   # OpenCV 4.7+; the Pi has 4.6 (drawMarker)
+                img = cv2.aruco.generateImageMarker(d, mid, 200)
+            else:
+                img = cv2.aruco.drawMarker(d, mid, 200)
             img = cv2.copyMakeBorder(img, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
             n = np.array([math.cos(facing), math.sin(facing), 0.0])
             right = np.array([-math.sin(facing), math.cos(facing), 0.0])

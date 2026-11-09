@@ -1142,3 +1142,8 @@ Evidence: logs/incident_20261001/20261001_003520_relay.jsonl.gz (Pi ~/logs), dri
       the LiDAR stays on its own power bank. Then re-run `python tools/preflight.py --host 192.168.1.10` and watch `journalctl -k | grep -i volt`.
 - [ ] AO3. Click-to-go / return to start / parallel parking on the car are NOT yet judged: the first attempt ran on an under-voltage Pi
       ("path blocked - stopped" with the car idle). Repeat after AO2.
+- [x] AO4. (9 Nov, camera plugged in: Lenovo FHD Webcam 17ef:4831 on /dev/video0) The Pi has OpenCV 4.6.0 with aruco, which has no ArucoDetector /
+      generateImageMarker (4.7+): adas.markers.aruco_detector() and the synthetic camera now work with both; marker_camera.py on the Pi: synthetic source
+      13 ms per frame (95th 16 ms), detects the marker. The real webcam cannot be opened yet: the `pi` user is not in the `video` group.
+- [ ] AO5. (user, needs sudo) `sudo usermod -aG video pi` + reboot; then run pi/marker_camera.py on the webcam, put the measured mounting
+      (x, z, pitch_deg, hfov_deg) into pi/camera.json on the Pi, print the marker (tools/make_marker.py), and test "Park at the marker" on the car.

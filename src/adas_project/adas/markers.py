@@ -113,13 +113,29 @@ def pose_from_corners(corners_px, marker_id, size, cam, t=0.0):
                      t=t, size_px=float(side))
 
 
+def aruco_detector(dictionary_name="DICT_4X4_50", subpixel=False):
+    """A function gray image -> (corners, ids) for ArUco markers, for OpenCV 4.7+ (the ArucoDetector class, the laptop) and for the 4.6 of the
+    Pi (the module functions). `subpixel`: sub-pixel corner refinement (the PnP of a small marker wants corners better than a pixel)."""
+    import cv2
+    aruco = cv2.aruco
+    dictionary = aruco.getPredefinedDictionary(getattr(aruco, dictionary_name))
+    if hasattr(aruco, "ArucoDetector"):
+        params = aruco.DetectorParameters()
+        if subpixel:
+            params.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
+        detector = aruco.ArucoDetector(dictionary, params)
+        return lambda gray: detector.detectMarkers(gray)[:2]
+    params = aruco.DetectorParameters_create()
+    if subpixel:
+        params.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
+    return lambda gray: aruco.detectMarkers(gray, dictionary, parameters=params)[:2]
+
+
 def detect_image(frame_bgr, cam, sizes, default_size=0.10, dictionary_name="DICT_4X4_50"):
     """Detect ArUco markers in a real camera frame. sizes: {marker_id: side length in metres}."""
     import cv2
-    dictionary = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, dictionary_name))
-    detector = cv2.aruco.ArucoDetector(dictionary, cv2.aruco.DetectorParameters())
     gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY) if frame_bgr.ndim == 3 else frame_bgr
-    corners, ids, _ = detector.detectMarkers(gray)
+    corners, ids = aruco_detector(dictionary_name)(gray)
     out = []
     if ids is None:
         return out

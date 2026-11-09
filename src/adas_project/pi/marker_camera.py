@@ -26,7 +26,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
 from adas import camera_config                                      # noqa: E402
-from adas.markers import pose_from_corners                          # noqa: E402
+from adas.markers import aruco_detector, pose_from_corners              # noqa: E402
 from pi.rear_camera import STATE, serve                             # noqa: E402  (the same small HTTP server and state box)
 
 
@@ -52,16 +52,14 @@ class MarkerPipeline:
     def __init__(self, cam, marker_id, size_m, facing):
         import cv2
         self.cv2, self.cam, self.id, self.size, self.facing = cv2, cam, int(marker_id), float(size_m), facing
-        params = cv2.aruco.DetectorParameters()
-        params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX      # PnP at 1-1.5 m wants corners better than a pixel
-        self.detector = cv2.aruco.ArucoDetector(cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50), params)
+        self.detect = aruco_detector("DICT_4X4_50", subpixel=True)           # (OpenCV 4.6 on the Pi, 4.7+ on the laptop: adas.markers)
         self.fps, self.t_last = 0.0, None
 
     def process(self, frame, t):
         cv2 = self.cv2
         t0 = time.perf_counter()
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if frame.ndim == 3 else frame
-        corners, ids, _ = self.detector.detectMarkers(gray)
+        corners, ids = self.detect(gray)
         vis = frame.copy() if frame.ndim == 3 else cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
         markers = []
         if ids is not None:
