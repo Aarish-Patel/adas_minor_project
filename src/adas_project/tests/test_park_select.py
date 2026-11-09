@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from adas.markers import MarkerObs, marker_corners_3d, pose_from_corners, project
 from adas.park_select import (KERB_CLEAR_M, KERB_FAR_M, KERB_GAP_M, KERB_MIN_M, ParkingStrip, find_gaps, fuse_markers, min_space_length, plan_parallel,
-                              plan_perpendicular, rear_camera, refine_parallel)
+                              front_camera, plan_perpendicular, rear_camera, refine_parallel)
 from adas.vehicle_params import VehicleParams
 
 CAR = VehicleParams(wheelbase=0.20, width=0.20, front_overhang=0.08, rear_overhang=0.05)   # the laptop car: 0.33 x 0.20 m
@@ -369,6 +369,91 @@ class PerpendicularTest(unittest.TestCase):
         """The rear camera model + the 16 cm marker: visible at 0.6-2.4 m (the perpendicular bay's start is ~2.5 m from the wall)."""
         for d in (0.6, 1.0, 1.6, 2.2):
             self.assertIsNotNone(observe((-d, 0.0), 0.0), d)
+
+
+FRONT = front_camera()
+MARKER_8CM = 0.08                                                      # the small printed marker of the home demo
+
+
+def observe_front(marker_xy, facing=math.pi, size=MARKER_8CM, z=0.10, noise=0.0, rng=None):
+    """The front camera's view of a wall marker (vehicle frame) -> the pose estimated from its noisy corners (`facing` = the direction
+    the marker's normal points: pi for a wall ahead of an x-forward car, facing the car)."""
+    c = marker_corners_3d(size)
+    n = np.array([math.cos(facing), math.sin(facing), 0.0])
+    right = np.cross(np.array([0.0, 0.0, 1.0]), n)
+    pts = np.array([[marker_xy[0], marker_xy[1], z]]) + c[:, :1] * right + c[:, 1:2] * np.array([[0.0, 0.0, 1.0]])
+    px, _ = project(FRONT, pts)
+    if noise:
+        px = px + rng.normal(0, noise, px.shape)
+    return pose_from_corners(px, 23, size, FRONT)
+
+
+def bay_scene(wall_x, bay_w=0.45, depth=0.5, y=0.0):
+    """LiDAR-like returns of a bay in a wall ahead (vehicle frame): the back wall and the end faces of two neighbouring boxes."""
+    pts = [(wall_x, yy) for yy in np.linspace(y - 1.0, y + 1.0, 120)]
+    for side in (-1, 1):
+        edge = y + side * bay_w / 2
+        pts += [(wall_x - t, edge + side * 0.0) for t in np.linspace(0.0, depth, 30)]
+        pts += [(wall_x - depth, edge + side * t) for t in np.linspace(0.0, 0.25, 12)]
+    return np.array(pts)
+
+
+class NoseInTest(unittest.TestCase):
+    """Bay parking nose in with the FRONT camera (TODO AN1): drive forward into the bay, front bumper `stop_gap` from the wall."""
+
+    def test_front_camera_sees_a_small_marker_from_the_stop_to_the_bay_entrance(self):
+        for d in (0.30, 0.6, 1.0, 1.5):                                   # marker distance from the vehicle origin (rear axle)
+            o = observe_front((d + FRONT.x, 0.0))
+            self.assertIsNotNone(o, d)
+            self.assertGreater(o.size_px, 20.0, d)                         # ArUco needs ~20 px on a side (the 8 cm marker at 1.5 m: 24)
+
+    def test_goal_front_bumper_off_the_wall_and_heading_into_it(self):
+        obs = observe_front((1.5, 0.05))
+        plan = plan_perpendicular(obs, CAR, nose_in=True)
+        gx, gy, gh = plan.parking_goal
+        self.assertAlmostEqual(math.degrees(_wrap(math.radians(gh) - 0.0)), 0.0, delta=3.0)         # toward +x, into the wall
+        self.assertAlmostEqual(obs.x - (gx + CAR.front_x * math.cos(math.radians(gh))), 0.13, delta=0.01)
+        self.assertAlmostEqual(gy, obs.y, delta=0.03)                                                 # on the marker's centre line
+
+    def test_path_drives_forward_in_and_ends_on_the_goal(self):
+        for start in ((0, 0, 0.0), (0.0, 0.25, 0.3), (0.1, -0.25, -0.35), (-0.3, 0.0, 0.0)):
+            obs = observe_front((1.6 - start[0], 0.05 - start[1]))
+            plan = plan_perpendicular(obs, CAR, pose=start, nose_in=True)
+            path = plan.planned_path
+            self.assertIsNotNone(path, start)
+            gx, gy, gh = plan.parking_goal
+            self.assertLess(math.hypot(path[-1, 0] - gx, path[-1, 1] - gy), 0.01)
+            self.assertLess(abs(math.degrees(_wrap(path[-1, 2] - math.radians(gh)))), 1.0)
+            self.assertEqual(path[-1, 3], 1)                                # the last move is forward
+            self.assertTrue((path[-14:, 3] == 1).all())                      # a straight run on the centre line at the end
+            line = path[-8:, :2]
+            self.assertLess(np.abs(np.cross(line[-1] - line[0], line[0] - np.array([gx, gy]))).max() / 0.1, 0.01)
+
+    def test_too_close_to_turn_in_backs_out_first(self):
+        obs = observe_front((1.0, 0.25))                                    # the bay is off to one side and close: reverse to a staging pose
+        plan = plan_perpendicular(obs, CAR, nose_in=True)
+        path = plan.planned_path
+        self.assertIsNotNone(path)
+        self.assertEqual(path[0, 3], -1)
+        self.assertEqual(path[-1, 3], 1)
+
+    def test_path_stays_clear_of_the_bay_walls_and_the_wall(self):
+        from adas.park_select import _obb_clearance
+        wall_x = 1.6
+        pts = bay_scene(wall_x)
+        obs = observe_front((wall_x - 0.02, 0.0), noise=0.4, rng=np.random.default_rng(3))
+        plan = plan_perpendicular(obs, CAR, points=pts, nose_in=True)
+        path = plan.planned_path
+        self.assertIsNotNone(path)
+        worst = min(float(_obb_clearance(p[None, :3], pts, CAR)[0]) for p in path[::3])
+        self.assertGreater(worst, 0.02)
+        gx, gy, gh = plan.parking_goal
+        self.assertAlmostEqual(wall_x - (gx + CAR.front_x), 0.13, delta=0.02)      # the LiDAR's wall, not the marker's range, sets the stop
+
+    def test_reverse_in_is_unchanged(self):
+        plan = plan_perpendicular(observe((-1.0, 0.1), 0.0), CAR)
+        self.assertEqual(plan.planned_path[-1, 3], -1)
+        self.assertFalse(plan.request["nose_in"])
 
 
 def _wrap(a):

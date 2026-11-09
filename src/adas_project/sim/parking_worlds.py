@@ -2,7 +2,8 @@
 layout the HMI draws (spaces as objects, parked vehicles, road, sidewalk, ArUco marker).
 
   park_perp    perpendicular bays: a room whose rear wall carries an ArUco marker over the target bay; five 46 cm bays in a
-               row, two of them occupied by parked vehicles; the car starts facing away from the wall (reverse-in)
+               row, two of them occupied by parked vehicles; the car starts facing away from the wall (reverse-in, rear camera) or
+               facing it (nose in, front camera: pi/camera.json)
   park_street  a parallel-parking street: road, one continuous parking lane along the kerb with cars parked at arbitrary
                spacing (no spaces or bays: the car finds the gaps itself), sidewalk and facade
 
@@ -37,8 +38,15 @@ def _vehicle(cx, cy, yaw, tone, length=CAR_L, width=CAR_W, height=0.12):
     return {"cx": cx, "cy": cy, "yaw": yaw, "l": length, "w": width, "h": height, "tone": tone}
 
 
-def perpendicular(marker_id=23):
-    """Five perpendicular bays along the rear wall (x = -3.0), the car at the origin facing +x (its rear towards the wall)."""
+def perpendicular(marker_id=23, facing=None):
+    """Five perpendicular bays along the back wall (x = -3.0). Rear camera (`facing` "rear"): the car at the origin facing +x, its rear
+    towards the wall (reverse in). Front camera ("front", the home demo): the car 1.5 m from the wall facing it, the marker at the
+    camera's height and as small as pi/camera.json says (nose in). `facing` defaults to that file's, as the relay reads it."""
+    from adas import camera_config
+    cfg = camera_config.load()
+    facing = facing or cfg["facing"]
+    front = facing == "front"
+    m_size, m_z = (float(cfg["marker_size_m"]), float(cfg.get("z", 0.10))) if front else (MARKER_SIZE, 0.09)
     w = World()
     x_wall = -3.0
     room_walls(w, x_wall, 2.0, -1.6, 1.6)
@@ -61,15 +69,15 @@ def perpendicular(marker_id=23):
     lines.append([[x_wall + BAY_D, strip_y0], [x_wall + BAY_D, strip_y0 + 5 * BAY_W]])
     for pts in lines:
         w.add(FloorLine(pts, width=0.02))
-    w.add(Marker(marker_id, x_wall, 0.0, 0.0, z=0.09, size=MARKER_SIZE))
+    w.add(Marker(marker_id, x_wall, 0.0, 0.0, z=m_z, size=m_size))
     w.layout = {
         "scenario": "perpendicular",
         "strip": {"points": [[x_wall + BAY_D, strip_y0], [x_wall + BAY_D, strip_y0 + 5 * BAY_W]], "side": 1},
         "spaces": spaces, "vehicles": vehicles, "lines": lines,
         "road": None, "sidewalk": None,
-        "marker": {"id": int(marker_id), "x": x_wall, "y": 0.0, "yaw": 0.0, "z": 0.09, "size": MARKER_SIZE, "space": "P2"},
+        "marker": {"id": int(marker_id), "x": x_wall, "y": 0.0, "yaw": 0.0, "z": m_z, "size": m_size, "space": "P2"},
     }
-    return _finish(w), (0.0, 0.0, 0.0)
+    return _finish(w), ((x_wall + 1.5, 0.0, math.pi) if front else (0.0, 0.0, 0.0))
 
 
 # The parallel street: ONE continuous parking lane along the kerb - no spaces, no bays, no paint between cars (as on a real street).

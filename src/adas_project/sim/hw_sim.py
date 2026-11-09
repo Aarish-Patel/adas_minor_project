@@ -264,8 +264,9 @@ class SimLidar:
     """Stands in for the RPLIDAR (same methods as pi/lidar_dense.DenseLidar / the rplidar library)."""
 
     def __init__(self, car, yaw_offset_deg, lidar_x=0.12, n=1360, rate_hz=10.0, noise=0.008, dropout=0.04,
-                 min_range=0.20, max_range=12.0, usb_stalls=False, seed=1):
+                 min_range=0.20, max_range=12.0, usb_stalls=False, seed=1, dies_after_s=None):
         self.car, self.yaw, self.lx = car, yaw_offset_deg, lidar_x
+        self.dies_at = None if dies_after_s is None else time.time() + dies_after_s       # the adapter drops off USB: no scans from then on
         self.n, self.period = n, 1.0 / rate_hz
         self.noise, self.dropout, self.min_r, self.max_r = noise, dropout, min_range, max_range
         self.usb_stalls = usb_stalls
@@ -324,6 +325,10 @@ class SimLidar:
         while self.running:
             next_t += self.period
             time.sleep(max(0.0, next_t - time.time()))
+            if self.dies_at is not None and time.time() > self.dies_at:
+                while self.running:                                  # silent for good (the real stream ends; the relay's health says so)
+                    time.sleep(0.2)
+                return
             if self.usb_stalls and time.time() > stall_at:          # the cp210x timeouts seen on the car
                 time.sleep(self.rng.uniform(0.3, 1.2))
                 stall_at = time.time() + self.rng.uniform(20, 60)

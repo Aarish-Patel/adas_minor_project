@@ -82,9 +82,21 @@ def pose_from_corners(corners_px, marker_id, size, cam, t=0.0):
     import cv2
     obj = marker_corners_3d(size)
     img = np.asarray(corners_px, dtype=np.float64).reshape(4, 2)
-    ok, rvec, tvec = cv2.solvePnP(obj, img, cam.K, None, flags=cv2.SOLVEPNP_IPPE_SQUARE)
-    if not ok:
+    if not np.isfinite(img).all():
         return None
+    ok, rvec, tvec = cv2.solvePnP(obj, img, cam.K, None, flags=cv2.SOLVEPNP_IPPE_SQUARE)
+    if not ok or not (np.isfinite(rvec).all() and np.isfinite(tvec).all()):
+        # IPPE's two solutions coincide when the marker is seen exactly head-on (nose-in parking looks straight at it) and it can return
+        # NaN: refine iteratively from a frontal guess (the marker's normal turned toward the camera, depth from its apparent size)
+        side = float(np.linalg.norm(img[1] - img[0]))
+        if side < 1.0:
+            return None
+        z0 = cam.fx * size / side
+        c = img.mean(axis=0)
+        t0 = np.array([[(c[0] - cam.width / 2.0) * z0 / cam.fx], [(c[1] - cam.height / 2.0) * z0 / cam.fx], [z0]])
+        ok, rvec, tvec = cv2.solvePnP(obj, img, cam.K, None, np.array([[math.pi], [0.0], [0.0]]), t0, True, cv2.SOLVEPNP_ITERATIVE)
+        if not ok or not (np.isfinite(rvec).all() and np.isfinite(tvec).all()):
+            return None
     Rm, _ = cv2.Rodrigues(rvec)
     R = cam.rotation()
     origin = np.array([cam.x, cam.y, cam.z])

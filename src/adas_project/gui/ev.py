@@ -1386,8 +1386,13 @@ class MapZonesPanel(QtWidgets.QWidget):
         park = FeatureTile("\u24c5", "Auto-park", "finds a bay beside the car and backs into it (hold the throttle)",
                            state=False, momentary=True, compact=True)
         park.clicked.connect(lambda: (self.link.send("PARK"), self.on_event("auto-park requested")))
+        self.park_marker_tile = FeatureTile("\u24c5", "Park at the marker", "parks in the bay whose wall carries the ArUco marker the camera "
+                                            "sees: nose in with a front camera, reversing in with a rear one (hold the throttle)",
+                                            state=False, momentary=True, compact=True)
+        self.park_marker_tile.clicked.connect(lambda: (self.link.send("PARK_MARKER"), self.on_event("parking at the marker requested")))
         g3.addWidget(self.explore_tile, 0, 0)
         g3.addWidget(park, 0, 1)
+        g3.addWidget(self.park_marker_tile, 1, 0)
         lay.addLayout(g3)
         lay.addWidget(section_label("Map and zones"))
         g2 = QtWidgets.QGridLayout()
@@ -1878,6 +1883,19 @@ class MapZonesPanel(QtWidgets.QWidget):
                                     "occupancy": {s["id"]: s["occupied"] for s in self.parking.spaces} if self.parking else {}})
         self.parking_changed.emit()
 
+    def _marker_tile_label(self, cam):
+        """The marker tile says whether the parking camera sees the bay marker right now (the presenter checks before pressing)."""
+        if not cam:
+            text = "Park at the marker"
+        elif not cam.get("service"):
+            text = "Park at the marker \u00b7 camera off"
+        elif cam.get("seen"):
+            text = f"Park at the marker \u00b7 seen {cam.get('dist', 0):.1f} m"
+        else:
+            text = "Park at the marker \u00b7 not seen"
+        if self.park_marker_tile.name.text() != text:
+            self.park_marker_tile.name.setText(text)
+
     def show_state(self, st):
         world = st.get("world") or {}
         self.pose = tuple(world.get("pose") or (0.0, 0.0, 0.0))
@@ -1886,6 +1904,7 @@ class MapZonesPanel(QtWidgets.QWidget):
             self.send_zones()
         if not self.isVisible():
             return
+        self._marker_tile_label(st.get("camera"))
         if self._map_version != self.store.version:                  # the map cells only change now and then
             self._map_version = self.store.version
             wp = self.store.points()
@@ -1936,6 +1955,7 @@ class RearCameraPanel(QtWidgets.QWidget):
     def __init__(self, host, port=8091):
         super().__init__()
         self.url, self.state_url = f"http://{host}:{port}/stream", f"http://{host}:{port}/state"
+        self.facing = "rear"                                             # from the service's /state (a front camera hides the reverse overlays)
         self.kappa, self.running, self.have = 0.0, False, False
         self.hazards, self.speed = None, 0.0
         lay = QtWidgets.QVBoxLayout(self)
@@ -1970,7 +1990,7 @@ class RearCameraPanel(QtWidgets.QWidget):
         self.state_ready = ThreadSignal(self._on_state)
 
     def placeholder(self):
-        self.view.setText("\u25c9\n\nNO REAR CAMERA\n\nConnect the webcam to the Pi and start\npi/rear_camera.py  (or  --sim  to try it)")
+        self.view.setText("\u25c9\n\nNO CAMERA\n\nConnect the webcam to the Pi and start\npi/marker_camera.py (parking marker) or pi/rear_camera.py\n(reverse view)  -  or  --sim  to try it")
         self.view.setFont(theme.font(13, spacing=1.0))
 
     def set_steering(self, kappa):
@@ -2022,7 +2042,7 @@ class RearCameraPanel(QtWidgets.QWidget):
             self.placeholder()
             return
         self.have = True
-        if self.guides.isChecked() or self.ghost.isChecked():
+        if self.facing != "front" and (self.guides.isChecked() or self.ghost.isChecked()):      # (reverse overlays are for the rear camera)
             try:
                 from adas.vision import guidelines as gl
                 from tools.camera_calibrate import load_camera
@@ -2049,6 +2069,15 @@ class RearCameraPanel(QtWidgets.QWidget):
     def _on_state(self, st):
         if not st or not st.get("ok"):
             self.status.setText("camera service not reachable")
+            return
+        self.facing = st.get("facing", self.facing)
+        self.guides.setVisible(self.facing != "front")
+        self.ghost.setVisible(self.facing != "front")
+        if "markers" in st:                                                  # the marker camera service (pi/marker_camera.py)
+            ms = st["markers"]
+            line = (f"marker {st.get('marker_id')}: seen, {ms[0]['dist']:.2f} m away, {math.degrees(ms[0]['bearing']):+.0f} deg" if ms
+                    else f"marker {st.get('marker_id')}: not seen")
+            self.status.setText(f"{st.get('facing', '')} camera  -  {line}\n{st.get('fps', 0):.0f} fps, {st.get('pipeline_ms', 0):.0f} ms per frame")
             return
         o, q = st.get("odometry"), st.get("quality") or {}
         parts = [f"{st.get('fps', 0):.0f} fps, {st.get('pipeline_ms', 0):.0f} ms per frame"]
@@ -2490,7 +2519,7 @@ class EVWindow(QtWidgets.QMainWindow):
         self.events = EmptyList("No events yet.\nCommands you send from the map and the car's notices appear here.")
         self.panels = {"map": ("Map and zones", MapZonesPanel(link, self.store, self.add_event)),
                        "assists": ("Assists", AssistsPanel(link)), "setup": ("Car setup", CarSetupPanel(link.host)),
-                       "rear": ("Rear camera", RearCameraPanel(link.host)),
+                       "rear": ("Camera", RearCameraPanel(link.host)),
                        "diag": ("Diagnostics", DiagnosticsPanel()), "events": ("Events", self.events)}
         self.docks = {}
         for key, (title, w) in self.panels.items():
@@ -2586,7 +2615,7 @@ class EVWindow(QtWidgets.QMainWindow):
         lay.setContentsMargins(14, 6, 14, 6)
         self.app_btns = {}
         for key, text in (("map", "⌖  Map && zones"), ("assists", "◎  Assists"), ("setup", "⚙  Car setup"),
-                          ("rear", "◉  Rear camera"),
+                          ("rear", "◉  Camera"),
                           ("diag", "∿  Diagnostics"), ("events", "☰  Events")):
             b = QtWidgets.QPushButton(text)
             b.setObjectName("app")

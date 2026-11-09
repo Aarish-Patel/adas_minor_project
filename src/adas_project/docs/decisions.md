@@ -784,3 +784,25 @@ ignored the flag, and objects in hand-built worlds were never marked dark) and `
 after a contact.
 Exploring the twin ROOM (dark box now truly invisible): coverage 100 %, 0 contacts with anything the LiDAR sees, 3 brief touches of the
 dark box (with back-up-first re-plans and the speed-dependent window: 95-100 % coverage, 2-3 touches, 48-101 s across runs) (20 before contact points counted beyond the blind ring, the bumper never fired at PWM 40 before the threshold change).
+
+
+## ADR-048 Bay parking nose in with a front camera; the marker camera is its own service (9 Nov 2026)
+**Context.** The home demo has the camera on the FRONT of the car, a small ArUco marker on the bay's back wall, and no course. The bay planner only
+reversed in (rear camera, `plan_perpendicular`), the real car had no marker source at all (`MARKER_SOURCE = None`; only the twin simulated one) and
+no way to start bay parking from the dashboard (the bay selection exists only in the simulator).
+**Decision.** (1) `plan_perpendicular(nose_in=True)`: forward Dubins to a pose on the bay axis 0.30 m out, then straight in; when the car is too close or
+too far to one side for that, back out to a staging pose on the axis (farther out than the car stands, nearest first) and drive in. The front bumper
+stops `STOP_GAP_FRONT_M` = 13 cm from the wall (the brake gate holds a car ~10 cm from a wall ahead); `AutoNav._wall_stop` follows the LiDAR's wall on
+the last FORWARD leg, as it did on the last reverse leg. The camera decides *which bay*, the LiDAR the wall's line and distance (unchanged principle,
+ADR-040). (2) `pi/camera.json` (facing, marker id and size, mounting) is read by the relay, the twin and the camera service; `facing` selects nose-in
+or reverse-in. (3) `pi/marker_camera.py` is a separate process (hard rule 5: no vision in the control loop) with OpenCV ArUco detection and sub-pixel
+corners, serving /state and /stream on :8091; the relay reads it through `pi/marker_client.py` (a polling thread; a dead service = "marker not
+visible"). (4) A "Park at the marker" tile on the dashboard shows whether the marker is seen before the presenter presses it.
+**Found on the way.** `solvePnP` (IPPE_SQUARE) returns NaN for a marker seen exactly head-on - what nose-in parking looks at - and the planner then got a
+NaN goal ("no way to park there"); `pose_from_corners` now falls back to an iterative solve from a frontal guess and rejects non-finite poses, and the
+relay drops them before planning. The relay also wrote `A 90 90` to the servos when it started (the wheels turned whenever it restarted): it now writes
+the tuned centres. A LiDAR that drops off USB (re-enumerates as another ttyUSB) left the relay in FAULT for ever: after 8 s of "no LiDAR scans" it exits
+and systemd restarts it, which re-probes the ports.
+**Consequences.** Twin, 132 randomised runs (`tools/front_bay_validation.py mc 6`): 0 collisions; 108 of the 118 that parked within 6 cm / 10 deg
+(median 2.3 cm, 2.8 deg); the strict 5 cm / 5 deg criterion 95 / 132; marker hidden or beyond ~2 m refused. Not yet measured on the car: camera mounting,
+OpenCV on the Pi, frame time on the Pi 5, detection range of the real 8 cm marker, the real stop distance from the wall.

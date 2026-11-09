@@ -558,6 +558,7 @@ def gui_update_distances(front_track, rear_track, body_min_front, body_min_rear)
         GUI_STATE["data"]["body_min_rear"] = body_min_rear
 
 
+LIDAR_RESTART_S = 8.0   # no scans this long (health FAULT "no LiDAR scans"): the relay exits and systemd restarts it, which re-probes the USB ports
 MARKER_SOURCE = None    # () -> recent ArUco observations (MarkerObs, vehicle frame): the rear camera service; tools/sim_car.py simulates one
 EXTRA_POST = {}     # path -> callable; filled by tools/sim_car.py (simulator reset), empty on the car
 TELEPORT_HOOKS = []  # simulator only: run when the twin moves the car by hand (reset, room switch); filled in main()
@@ -749,7 +750,10 @@ def main():
     esp_link = EspLink(open_esp, esp_port, lidar_port, on_event=lambda msg, **kw: dlog.event(msg, **kw))
     time.sleep(1.0)
     esp = LoggedSerial(esp_link, dlog)
-    esp.write(b"A 90 90\nM 0\n")
+    from adas.servo import output_offsets, steering_centre
+    c0 = steering_centre(TUNING.servo)                                  # the wheels straight ahead (the tuned centres of both servos), motor off:
+    a1, a2 = (c0 + o for o in output_offsets(TUNING.servo))             # not the old fixed 90 / 90, which turned them whenever the relay started
+    esp.write(f"A {a1:.1f} {a2:.1f}\nM 0\n".encode())
 
     clr = Clearance(lidar_port)
     clr.log = dlog
@@ -764,7 +768,14 @@ def main():
     # driving assists, all off until toggled on; path searches (evasive, click-to-go) run in a worker process so
     # the control loop never waits for them (adas/plan_service.py)
     assist = RelayAssists(TUNING, WIRE_MOTOR_REVERSED, plan_mode="process")
-    assist.marker_source = MARKER_SOURCE
+    from adas import camera_config
+    CAMERA_CFG = camera_config.load()                          # pi/camera.json: which way the parking camera faces, the bay marker
+    assist.camera_facing, assist.marker_id = CAMERA_CFG["facing"], int(CAMERA_CFG["marker_id"])
+    marker_src = MARKER_SOURCE
+    if marker_src is None:                                     # the car: read the marker camera service (pi/marker_camera.py, :8091)
+        from pi.marker_client import MarkerClient
+        marker_src = MarkerClient(marker_id=assist.marker_id)
+    assist.marker_source = marker_src
     from pi.path_gate import PathGate
     pgate = PathGate(assist.p, TUNING.speed_model)      # path-predicted emergency braking + obstacle memory
     assist.memory = pgate.memory                        # the planners avoid what the gate remembers
@@ -802,6 +813,7 @@ def main():
             with GUI_STATE["lock"]:
                 GUI_STATE["data"]["esp32"] = esp_link.status()
                 GUI_STATE["data"]["health"] = health.status()
+                GUI_STATE["data"]["camera"] = assist.camera_status()            # (while idle too: the presenter checks the marker before driving)
             time.sleep(0.15)
     threading.Thread(target=_gui_idle_updater, daemon=True).start()
 
@@ -822,9 +834,22 @@ def main():
     last_zero_sent = 0.0
     pending = []              # packets already taken from the socket, still to handle (control commands, newest drive)
     stale_n, stale_note_t = 0, 0.0
+    lidar_gone_since, lidar_check_t = None, 0.0
 
     try:
         while True:
+            if time.time() - lidar_check_t >= 1.0:           # the LiDAR watchdog (TODO AM2 / AN5)
+                lidar_check_t = time.time()
+                hs = health.status()
+                if hs["state"] == "fault" and any("no LiDAR" in c for c in hs["causes"]):
+                    lidar_gone_since = lidar_gone_since or lidar_check_t
+                    if lidar_check_t - lidar_gone_since >= LIDAR_RESTART_S:
+                        print(f"\nno LiDAR scans for {LIDAR_RESTART_S:.0f} s (the USB adapter re-enumerated or dropped): exiting so that systemd "
+                              f"starts the relay again and finds it on its new port")
+                        dlog.event("lidar lost - restarting the relay", seconds=LIDAR_RESTART_S)
+                        raise SystemExit(1)
+                else:
+                    lidar_gone_since = None
             if TELEPORT_PENDING.is_set():             # the twin moved the car: forget the surroundings here, in the loop's own thread
                 TELEPORT_PENDING.clear()
                 for hook in TELEPORT_HOOKS:
@@ -1279,6 +1304,7 @@ def main():
                 GUI_STATE["data"]["gate"] = gate_info
                 GUI_STATE["data"]["plan"] = plan
                 GUI_STATE["data"]["nav"] = nav_gui
+                GUI_STATE["data"]["camera"] = assist.camera_status()
                 GUI_STATE["data"]["drive"] = {"v": round(vest.v, 3), "w": round(vest.w, 3),
                                               "v_model": round(vest.model_est.v, 3), "pwm_in": -pwm_commanded if WIRE_MOTOR_REVERSED else pwm_commanded,
                                               "pwm_out": -pwm_sent if WIRE_MOTOR_REVERSED else pwm_sent,

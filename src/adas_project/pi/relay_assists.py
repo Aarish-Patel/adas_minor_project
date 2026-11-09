@@ -671,6 +671,8 @@ class RelayAssists:
 
     # --- parking selection (adas/park_select.py): planned in the plan service, the plan is followed as it is (AutoNav.start_plan)
     marker_source = None        # () -> [MarkerObs] of the rear camera in the vehicle frame (camera service / simulator), or None
+    camera_facing = "rear"      # "front": park nose in (the camera sees the bay's wall ahead); "rear": reverse in (pi/camera.json sets it)
+    marker_id = 23              # the bay marker's ArUco id (pi/camera.json)
 
     def park_target(self, strip, click, points=None):
         """Parallel-park on the parking strip as near to `click` as a free gap allows (reverse S / multi-point). strip = {"points":
@@ -695,18 +697,34 @@ class RelayAssists:
                                     float(strip.get("depth", LANE_DEPTH_M)), to_v(click), pts)
         return self.nav.msg if ok else "no free gap on the strip fits the car, or no way in"
 
+    def camera_status(self):
+        """For the dashboard: which way the parking camera faces and whether it sees the bay marker right now (and how far, which side)."""
+        st = {"facing": self.camera_facing, "marker_id": self.marker_id, "service": self.marker_source is not None, "seen": False}
+        if self.marker_source is None:
+            return st
+        live = getattr(self.marker_source, "service_ok", True)
+        st["service"] = bool(live)
+        obs = [o for o in (self.marker_source() or []) if o.id == self.marker_id] if live else []
+        if obs:
+            o = max(obs, key=lambda o: o.t)
+            st.update(seen=True, dist=round(float(o.dist), 2), bearing_deg=round(math.degrees(o.bearing), 1), age_s=round(time.time() - o.t, 2))
+        return st
+
     def park_marker(self, points=None, marker=None):
-        """Reverse into the bay whose rear-wall ArUco marker the rear camera sees (perpendicular, reverse-in, nose out)."""
+        """Park in the bay whose wall carries the ArUco marker the camera sees (perpendicular): nose in with the front camera, reversing in
+        (nose out) with the rear one."""
         from adas.park_select import fuse_markers
         from adas.plan_service import plan_perpendicular_job
         obs = [marker] if marker is not None else (list(self.marker_source() or []) if self.marker_source else [])
+        obs = [o for o in obs if all(math.isfinite(v) for v in (o.x, o.y, o.facing))]       # (never plan from a NaN pose)
         if not obs:
             return "marker not visible"
         raw = points if points else self._last_raw
         if self.assists.phase is not None:
             self.assists._stop_evading("autonomy started")
         self.odo, self.nav_pose, self._odo_origin = None, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)   # a new start frame (a re-anchored origin is stale)
-        ok = self.nav.start_parking(plan_perpendicular_job, self.p, fuse_markers(obs), self._planning_points(raw) if raw else None)
+        ok = self.nav.start_parking(plan_perpendicular_job, self.p, fuse_markers(obs), self._planning_points(raw) if raw else None,
+                                    self.camera_facing == "front")
         return self.nav.msg if ok else "no way into the bay from here"
 
     def _explore_tick(self, points, now):

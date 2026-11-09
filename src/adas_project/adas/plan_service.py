@@ -105,10 +105,11 @@ def plan_refine_job(params, strip_pts, side, depth, click, slot, pts):
     return refine_parallel(ParkingStrip(strip_pts, side, depth), click, slot, params, points=pts)
 
 
-def plan_perpendicular_job(params, marker, pts):
-    """Parking: the bay behind the rear-wall ArUco marker (MarkerObs in the vehicle frame). Returns a ParkingPlan."""
+def plan_perpendicular_job(params, marker, pts, nose_in=False):
+    """Parking: the bay at the ArUco marker on its wall (MarkerObs in the vehicle frame): reverse in (rear camera) or drive in nose first
+    (`nose_in`, front camera). Returns a ParkingPlan."""
     from .park_select import plan_perpendicular
-    return plan_perpendicular(marker, params, pose=(0.0, 0.0, 0.0), points=pts)
+    return plan_perpendicular(marker, params, pose=(0.0, 0.0, 0.0), points=pts, nose_in=nose_in)
 
 
 # ------------------------------------------------------------------ the service

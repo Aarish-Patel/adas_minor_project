@@ -449,15 +449,16 @@ class AutoNav:
                                                             # within this of the expected wall line; share of a new measurement taken
 
     def _wall_stop(self, pts_vehicle):
-        """Bay (perpendicular) parking: on the last reverse leg the LiDAR sees the rear wall - move the goal and the rest of the leg along
-        the bay axis so the rear bumper stops `stop_gap` from the wall as MEASURED, not as the camera's range and the odometry put it
-        (parking sensors do the same on a car). Only the returns straight behind the car (within its width + 5 cm of the centre line)
-        count - not a neighbour's wall."""
+        """Bay (perpendicular) parking: on the last leg the LiDAR sees the bay's wall - move the goal and the rest of the leg along the bay
+        axis so the bumper (rear, or the front when parking nose in) stops `stop_gap` from the wall as MEASURED, not as the camera's range
+        and the odometry put it (parking sensors do the same on a car). Only the returns straight ahead of the car's end (within its width
+        + 5 cm of the centre line) count - not a neighbour's wall."""
         req = self.park_request
         if req is None or "wall" not in req or self.path is None or not len(pts_vehicle) or self.i >= len(self.path):
             return
-        if self.path[self.i, 3] >= 0 or (self.path[self.i:, 3] > 0).any():
-            return                                          # not on the last (reverse) leg yet
+        last = 1 if req.get("nose_in") else -1              # the last leg runs into the bay: forward when parking nose in
+        if self.path[self.i, 3] != last or (self.path[self.i:, 3] != last).any():
+            return                                          # not on the last leg yet
         dist = math.hypot(self.x - self.goal[0], self.y - self.goal[1])
         if dist > self.WALL_NEAR_M or dist < self.WALL_FREEZE_M:
             return                                          # (at the stop: no more chasing the LiDAR's noise)

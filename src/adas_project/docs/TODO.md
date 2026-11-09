@@ -1104,9 +1104,29 @@ Evidence: logs/incident_20261001/20261001_003520_relay.jsonl.gz (Pi ~/logs), dri
       80), limits moved with it (19 / 129); rc_controller.py and the Pi's pi/tuning_real_car.json (backup ~/tuning_real_car.json.bak_20261109).
       LiDAR front: bearing of the object +27.1 deg (sd 0.05, 40 scans, 0.37 m) -> mount yaw_offset 62.96 -> 90.06 (backup ~/tuning_real_car.json.bak2_20261109);
       check: relay front distance 0.204 m = 0.366 - 0.16 (LiDAR to bumper). Pi is now at 192.168.1.10 (was .15).
-- [ ] AM2. The relay never re-probes the serial ports: when the LiDAR adapter re-enumerated (ttyUSB1 -> ttyUSB2) it sat in FAULT "no LiDAR scans"
+- [x] AM2. (done in AN5) The relay never re-probes the serial ports: when the LiDAR adapter re-enumerated (ttyUSB1 -> ttyUSB2) it sat in FAULT "no LiDAR scans"
       until restarted. Re-run find_ports when the LiDAR thread dies / no scans for a few seconds.
-- [ ] AM3. The calibration rig (pi/lidar_steering_diag.py Rig) centres both servos at "A 90 90", not at the car's centres (70 / 80, now 76 / 80): the wheels
+- [~] AM3. (the relay's own start-up write is fixed in AN5; the calibration rig lidar_steering_diag.Rig still writes A 90 90) The calibration rig (pi/lidar_steering_diag.py Rig) centres both servos at "A 90 90", not at the car's centres (70 / 80, now 76 / 80): the wheels
       swing right whenever a calibration starts. Use the tuning's centres there (and keep that in mind for pi/center_fine.py).
-- [ ] AM4. The ESP32 firmware writes no servo pulse until the first command (targets start unset), so the wheels rest loose after power-up: send the
+- [x] AM4. (the relay sends the tuned centres when it starts, AN5; the firmware is unchanged) The ESP32 firmware writes no servo pulse until the first command (targets start unset), so the wheels rest loose after power-up: send the
       tuned centres at boot / when the relay starts.
+
+## AN. Home demo (user, 9 Nov: "we arent going to do a course, we will show the car working in our house and put a camera on the FRONT of the
+##     car for parking in a bay with a small ArUco on the wall of the bay; make sure everything is ready and good to show")
+- [x] AN1. (adas/park_select.plan_perpendicular(nose_in), AutoNav._wall_stop on the last forward leg, ADR-048; twin: dashboard bay_park 0.7 cm / 0.8 deg;
+      tools/front_bay_validation.py: 22/22 deterministic; Monte Carlo 132 runs: 0 collisions, 108 of 118 parked within 6 cm / 10 deg (median 2.3 cm, 2.8 deg), strict 5 cm / 5 deg 95/132;
+      found + fixed: solvePnP NaN for a head-on marker) Bay parking nose-in with a FRONT camera: plan_perpendicular(nose_in=True) (forward Dubins to a pose on the bay axis, straight
+      forward in, front bumper `stop_gap` from the wall; fallback: reverse to a staging pose first), AutoNav._wall_stop on the last FORWARD leg,
+      plan job, relay PARK_MARKER by the configured camera facing; the rear-camera reverse-in stays. Twin test + validation numbers.
+- [x] AN2. (pi/marker_camera.py + pi/marker_client.py + pi/camera.json + adas/camera_config.py; synthetic source 3 ms/frame on the laptop; NOT yet run with a webcam or on the Pi: OpenCV-aruco on the Pi unchecked) Real marker source: a camera service for the front (or rear) webcam that detects the ArUco marker (OpenCV) and publishes
+      MarkerObs in the vehicle frame (pi/marker_camera.py, :8091 /stream + /state, compatible with the dashboard's camera drawer); the relay
+      reads it (MARKER_SOURCE is None on the car today); camera mount + marker size in a small config; works without calibration (pinhole from
+      the field of view), better with adas/camera_front.json from tools/camera_calibrate.py (a calibration: only when the user asks).
+- [x] AN3. ("Park at the marker" tile with live status, Camera drawer for a front camera; screenshots reports/hmi_test/bay_park_01_marker_tile.png, reports/camera_drawer.png) Dashboard: a "Park in bay (camera)" tile for the real car (the bay selection only exists in the simulator), camera drawer label,
+      status of the marker (seen / distance) so the presenter knows before pressing; verify on the dashboard with screenshots.
+- [x] AN4. (tools/make_marker.py -> docs/home_demo/aruco_23_80mm.png/.pdf, decodes as id 23, 79.9 mm at 300 dpi) Printable marker (DICT_4X4_50, id 23, size set from the config) as an image at true scale + bay set-up (boxes, marker height).
+- [x] AN5. (relay exits after 8 s without LiDAR scans so systemd restarts it and re-probes the ports, tests/test_marker_camera LidarWatchdogTest via tools/sim_car.py --lidar-dies-after; the relay writes the tuned wheel centres at start instead of 90/90; tools/preflight.py with tests; NOT yet tried on the car) Robustness for a demo: the relay re-finds the LiDAR when it re-enumerates or drops (AM2); servos get the tuned centres when the
+      relay starts (AM4); a pre-flight check script (power, relay health, LiDAR rate, camera, marker seen, ORIGIN).
+- [x] AN6. (docs/home_demo.md) docs/home_demo.md: what to set up in a house, the demo script per feature (manual + safety, click-to-go, return to start,
+      parallel parking with boxes, bay parking with the camera, speed zone, thin objects, dark object), pre-flight checklist, what to say.
+- [ ] AN7. Deploy to the car when it is back (backup first, car json files untouched), camera service start, test each feature on the car.

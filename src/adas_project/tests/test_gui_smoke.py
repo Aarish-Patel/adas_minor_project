@@ -58,11 +58,19 @@ class GuiSmoke(unittest.TestCase):
         cls._files = (EV.LANE_FILE, EV.ZONES_FILE)
         tmp = tempfile.mkdtemp()
         EV.LANE_FILE, EV.ZONES_FILE = os.path.join(tmp, "lane.json"), os.path.join(tmp, "zones.json")
+        with open(os.path.join(tmp, "camera.json"), "w") as f:                  # the bay world follows pi/camera.json (the home demo's front
+            f.write('{"facing": "rear"}')                                       # camera): these tests are about the reverse-in layout
+        cls._cam_env = os.environ.get("RC_CAMERA_CONFIG")
+        os.environ["RC_CAMERA_CONFIG"] = os.path.join(tmp, "camera.json")
 
     @classmethod
     def tearDownClass(cls):
         import gui.ev as EV
         EV.LANE_FILE, EV.ZONES_FILE = cls._files
+        if cls._cam_env is None:
+            os.environ.pop("RC_CAMERA_CONFIG", None)
+        else:
+            os.environ["RC_CAMERA_CONFIG"] = cls._cam_env
 
     def test_drawers_fit_and_state_draws(self):
         from gui.ev import EVWindow
@@ -520,6 +528,28 @@ class GuiSmoke(unittest.TestCase):
             w.close()
         finally:
             EV.LANE_FILE = saved
+
+
+    def test_marker_tile_and_front_camera_drawer(self):
+        """The home demo's 'Park at the marker' tile says whether the camera sees the marker; a front camera hides the reverse overlays (AN3)."""
+        from gui.ev import EVWindow
+        w = EVWindow(Link(None))
+        mp = w.panels["map"][1]
+        t = mp.park_marker_tile
+        sent = []
+        mp.link = type("L", (), {"send": staticmethod(sent.append), "host": "x"})()
+        for cam, expect in ((None, "Park at the marker"), ({"service": False}, "camera off"), ({"service": True, "seen": False}, "not seen"),
+                            ({"service": True, "seen": True, "dist": 1.23}, "seen 1.2 m")):
+            mp._marker_tile_label(cam)
+            self.assertIn(expect, t.name.text())
+        t.clicked.emit()
+        self.assertIn("PARK_MARKER", sent)
+        rear = w.panels["rear"][1]
+        rear._on_state({"ok": True, "facing": "front", "marker_id": 23, "markers": [{"dist": 0.9, "bearing": 0.05}], "fps": 10, "pipeline_ms": 3})
+        self.assertTrue(rear.guides.isHidden() and rear.ghost.isHidden())
+        self.assertIn("seen", rear.status.text())
+        rear._on_state({"ok": True, "facing": "front", "marker_id": 23, "markers": [], "fps": 10, "pipeline_ms": 3})
+        self.assertIn("not seen", rear.status.text())
 
 
 if __name__ == "__main__":

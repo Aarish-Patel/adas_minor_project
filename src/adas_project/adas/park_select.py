@@ -37,6 +37,7 @@ CLEAR_M = 0.04            # body clearance kept to neighbours, kerb and wall
 COMFORT_CLEAR_M = 0.13    # tried first for the S and the approach; CLEAR_M is the fallback
 END_MARGIN_M = 0.04       # a space must be at least the car's length + 2 x this
 STOP_GAP_M = 0.06         # perpendicular: rear bumper to the wall at the goal
+STOP_GAP_FRONT_M = 0.13   # perpendicular, nose in: front bumper to the wall at the goal (the brake gate holds a car ~10 cm from a wall ahead)
 ALIGN_M = 0.30            # perpendicular: straight reverse on the centre line at the end
 DS = 0.02                 # path sampling
 LANE_DEPTH_M = 0.38       # parking lane: road edge to kerb (1:14 street; the HMI sends the strip's own depth)
@@ -678,6 +679,19 @@ def rear_camera():
     return Camera(x=-0.05, z=0.12, pitch_deg=8.0, yaw_deg=180.0, hfov_deg=70.0)
 
 
+def front_camera():
+    """The front camera for nose-in bay parking (adas.markers.Camera, looking ahead from the bumper). x 0.25 = just behind the nose (front
+    bumper 0.28), z 0.10 and pitch 5 deg: a wall marker at the camera's height is seen from ~0.15 m (the stop) out to ~1.5 m for an 8 cm
+    marker. The numbers are a guess: MEASURE them on the car (docs/home_demo.md) and put them in pi/camera.json."""
+    from .markers import Camera
+    return Camera(x=0.25, z=0.10, pitch_deg=5.0, yaw_deg=0.0, hfov_deg=70.0)
+
+
+def camera_for(facing):
+    """The camera model for the mounting `facing` ("front" / "rear")."""
+    return front_camera() if facing == "front" else rear_camera()
+
+
 def detect_rear_marker(frame_bgr, marker_id, size_m, cam=None):
     """The rear-wall marker in a camera frame: MarkerObs in the vehicle frame (position, facing) or None."""
     from .markers import detect_image
@@ -696,9 +710,10 @@ def fuse_markers(obs_list):
     return obs_list[0].__class__(id=obs_list[0].id, corners=obs_list[0].corners, x=x, y=y, z=obs_list[0].z, facing=facing)
 
 
-def _open_side(poses, m, n, car, gap):
-    """Rear corners of the body stay on the open side of the wall plane (through m, normal n)."""
-    rear, hw = car.rear_x, car.width / 2
+def _open_side(poses, m, n, car, gap, nose_in=False):
+    """The corners of the end that goes to the wall (rear, or the front when parking nose in) stay on the open side of the wall plane
+    (through m, normal n)."""
+    rear, hw = (car.front_x if nose_in else car.rear_x), car.width / 2
     for dy in (-hw, hw):
         cx = poses[:, 0] + rear * np.cos(poses[:, 2]) - dy * np.sin(poses[:, 2])
         cy = poses[:, 1] + rear * np.sin(poses[:, 2]) + dy * np.cos(poses[:, 2])
@@ -741,12 +756,15 @@ def wall_from_lidar(points, m, n, along=0.6, band=0.15, min_points=12, max_turn_
     return mm, nn
 
 
-def plan_perpendicular(marker, car, pose=(0.0, 0.0, 0.0), space_id=None, stop_gap=STOP_GAP_M, kappa=KAPPA_PARK, align_m=ALIGN_M,
-                       points=None):
-    """Reverse into a bay whose rear wall carries `marker` (MarkerObs, vehicle frame at observation time; `pose` = the vehicle
-    pose in the working frame then). The car ends on the marker's centre line, nose out, rear bumper `stop_gap` from the wall. With
-    `points` (LiDAR, working frame) the wall's line and distance come from the LiDAR (wall_from_lidar), the bay's place from the marker;
-    on the last reverse leg the stop follows the wall as measured (AutoNav._wall_stop)."""
+def plan_perpendicular(marker, car, pose=(0.0, 0.0, 0.0), space_id=None, stop_gap=None, kappa=KAPPA_PARK, align_m=ALIGN_M,
+                       points=None, nose_in=False):
+    """Park in a bay whose back wall carries `marker` (MarkerObs, vehicle frame at observation time; `pose` = the vehicle pose in the
+    working frame then). Reverse in (rear camera, default): the car ends on the marker's centre line, nose out, rear bumper `stop_gap`
+    from the wall. Nose in (`nose_in`, front camera): it drives forward into the bay, ends on the centre line facing the wall, front
+    bumper `stop_gap` from it (STOP_GAP_FRONT_M). With `points` (LiDAR, working frame) the wall's line and distance come from the LiDAR
+    (wall_from_lidar), the bay's place from the marker; on the last leg the stop follows the wall as measured (AutoNav._wall_stop)."""
+    if stop_gap is None:
+        stop_gap = STOP_GAP_FRONT_M if nose_in else STOP_GAP_M
     c, s = math.cos(pose[2]), math.sin(pose[2])
     m = np.array([pose[0] + c * marker.x - s * marker.y, pose[1] + s * marker.x + c * marker.y])
     f = _wrap(marker.facing + pose[2])
@@ -755,31 +773,42 @@ def plan_perpendicular(marker, car, pose=(0.0, 0.0, 0.0), space_id=None, stop_ga
     if wall is not None:                                  # camera: WHICH bay (the marker's place on the wall); LiDAR: the wall's line
         m, n = wall
         f = math.atan2(n[1], n[0])
-    goal = np.array([*(m + n * (stop_gap + abs(car.rear_x))), f])
-    pre = np.array([*(goal[:2] + n * align_m), f])
-    stage = np.array([*(goal[:2] + n * (align_m + 0.45)), f])
+    h = _wrap(f + math.pi) if nose_in else f              # the car's heading at the goal: toward the wall (nose in) / away from it
+    reach = abs(car.front_x) if nose_in else abs(car.rear_x)
+    goal = np.array([*(m + n * (stop_gap + reach)), h])
+    pre = np.array([*(goal[:2] + n * align_m), h])
+    start = np.array(pose, float)
     ha = HybridAStar(car, kappa_max=kappa, margin=CLEAR_M)
     pts = np.asarray(points, float).reshape(-1, 2) if points is not None and len(points) else np.empty((0, 2))
-    start = np.array(pose, float)
+    d_in = 1 if nose_in else -1                          # the direction of the last, straight leg on the bay axis
     tail = _with_dir(np.column_stack([np.array([pre[:2] - n * d for d in np.arange(DS, align_m + 1e-9, DS)]),
-                                      np.full(int(round(align_m / DS)), f)]), -1)
+                                      np.full(int(round(align_m / DS)), h)]), d_in)
     tail[-1, :3] = goal
-    ok = lambda p: _open_side(p, m, n, car, stop_gap) and (len(pts) == 0 or _clear(ha, pts, p, CLEAR_M))
+    ok = lambda p: _open_side(p, m, n, car, stop_gap, nose_in) and (len(pts) == 0 or _clear(ha, pts, p, CLEAR_M))
+    turn = lambda P: np.abs(np.diff(np.unwrap(np.concatenate([[start[2]], P[:, 2]])))).sum() < math.radians(270)
     path = None
     R = 1.0 / kappa
-    P = dubins.sample_reverse(tuple(start), tuple(pre), R)                       # one reverse move
-    if P is not None and np.abs(np.diff(np.unwrap(np.concatenate([[start[2]], P[:, 2]])))).sum() < math.radians(270) \
-            and ok(P):
-        path = np.vstack([_with_dir(P, -1), tail])
-    else:                                                                        # forward to a staging pose, then reverse
-        F = dubins.sample(tuple(start), tuple(stage), R)
-        if F is not None and np.abs(np.diff(np.unwrap(np.concatenate([[start[2]], F[:, 2]])))).sum() < math.radians(270) \
-                and ok(F):
-            back = _with_dir(np.column_stack([np.array([stage[:2] - n * d for d in np.arange(DS, 0.45 + 1e-9, DS)]),
-                                              np.full(int(round(0.45 / DS)), f)]), -1)
-            path = np.vstack([_with_dir(F, 1), back, tail])
+    one = dubins.sample if nose_in else dubins.sample_reverse
+    two = dubins.sample_reverse if nose_in else dubins.sample
+    P = one(tuple(start), tuple(pre), R)                                         # one move on the bay's side of travel
+    if P is not None and turn(P) and ok(P):
+        path = np.vstack([_with_dir(P, d_in), tail])
+    else:                                                                        # the other way to a staging pose, then straight in
+        runs = [align_m + 0.45]                                                  # (staging poses on the axis, nearest first)
+        if nose_in:                                                              # nose in: farther out than the car stands, so it can back out
+            far = float((start[:2] - goal[:2]) @ n) + 0.2
+            runs = [max(runs[0], far + k) for k in (0.15, 0.45, 0.75, 1.05, 1.35)]
+        for stage_run in runs:
+            stage = np.array([*(goal[:2] + n * stage_run), h])
+            F = two(tuple(start), tuple(stage), R)
+            if F is not None and turn(F) and ok(F):
+                run_m = stage_run - align_m
+                steps = np.arange(DS, run_m + 1e-9, DS)
+                run = _with_dir(np.column_stack([np.array([stage[:2] - n * d for d in steps]), np.full(len(steps), h)]), d_in)
+                path = np.vstack([_with_dir(F, -d_in), run, tail])
+                break
     sid = marker.id if space_id is None else space_id
     g = (float(goal[0]), float(goal[1]), math.degrees(goal[2]))
     # the rear wall (through the marker, normal toward the bay): the LiDAR measures it on the last reverse leg and the stop follows it
-    req = {"wall": (m.tolist(), n.tolist()), "stop_gap": float(stop_gap)}
+    req = {"wall": (m.tolist(), n.tolist()), "stop_gap": float(stop_gap), "nose_in": bool(nose_in)}
     return ParkingPlan(sid, g, path, None, req) if path is not None else ParkingPlan(sid, g, None)

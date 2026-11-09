@@ -48,6 +48,7 @@ KERB_MIN_CM, KERB_MAX_CM = 1.0, 8.0            # a parallel-parked body: clear o
 T_OBSERVE = (0.3, 1.5)                 # s: the still car watches the marker
 T_MAX = 70.0
 STOP_GAP = 0.06                        # m rear bumper to the wall (adas.park_select.STOP_GAP_M; ground truth uses the spec value)
+STOP_GAP_FRONT = 0.13                  # m front bumper to the wall when parking nose in with the front camera (STOP_GAP_FRONT_M)
 WALL_X = -3.0                          # sim.parking_worlds.perpendicular
 BAY_W = 0.46
 Y_EDGE, Y_ROAD0, Y_FACE, CAR_W = 0.55, -0.85, 1.45, 0.20     # street geometry (as sim.parking_worlds.parallel_street)
@@ -87,6 +88,25 @@ def perpendicular_cases():
     out.append(("perp_drift_strong", dict(base, drift_cm_s=5.0, drift_deg_s=1.5)))
     out.append(("perp_offset_left", dict(base, start_y=0.25, start_deg=8.0)))
     out.append(("perp_offset_right", dict(base, start_y=-0.25, start_deg=-8.0)))
+    # nose in with the FRONT camera and the small 8 cm marker (the home demo, TODO AN1): the car starts `dist_m` (rear axle) from the wall
+    # facing it; an 8 cm marker is over the 18 px detection limit up to ~2.0 m from the camera
+    fb = dict(base, camera="front", dist_m=1.5)
+    front = [("front_perfect", dict(fb, pixel_noise=0.0, detect_prob=1.0)), ("front_nominal", dict(fb))]
+    for d in (5, 10, 20):
+        front.append((f"front_rot{d}", dict(fb, marker_deg=float(d))))
+    for f in (0.25, 0.5, 0.75):
+        front.append((f"front_drop{int(f * 100)}", dict(fb, frame_drop=f)))
+    front.append(("front_occluder_side", dict(fb, occluder="side")))
+    front.append(("front_occluder_full", dict(fb, occluder="full", expect="refuse")))
+    for d in (0.9, 1.2, 1.8, 2.2, 3.0):
+        front.append((f"front_dist{d:.1f}", dict(fb, dist_m=d, expect="refuse" if d >= 2.9 else "park")))
+    for sg in (0.01, 0.02, 0.04):
+        front.append((f"front_lidar{int(sg * 100)}cm", dict(fb, lidar_sigma=sg)))
+    front.append(("front_drift_mild", dict(fb, drift_cm_s=2.0, drift_deg_s=0.5)))
+    front.append(("front_drift_strong", dict(fb, drift_cm_s=5.0, drift_deg_s=1.5)))
+    front.append(("front_offset_left", dict(fb, start_y=0.25, start_deg=8.0)))
+    front.append(("front_offset_right", dict(fb, start_y=-0.25, start_deg=-8.0)))
+    out += front
     for _, p in out:
         p.setdefault("expect", "park")
     return [(n, "perpendicular", p) for n, p in out]
@@ -158,7 +178,7 @@ def build_perpendicular(p, rng_jitter=None):
     from sim.hw_worlds import _finish
     from sim.parking_worlds import perpendicular
     from sim.world import Box, Marker
-    world, _ = perpendicular(23)
+    world, _ = perpendicular(23, facing="front" if p["camera"] == "front" else "rear")
     for o in world.objects:
         if isinstance(o, Marker):
             o.yaw = math.radians(p["marker_deg"])
@@ -166,7 +186,7 @@ def build_perpendicular(p, rng_jitter=None):
         # a box (a bag, a person's legs): "full" sits on the rear camera's line of sight to the marker (hides it), "side" beside
         # the path (visible marker, an obstacle the plan has to keep clear of)
         y = 0.0 if p["occluder"] == "full" else 0.30
-        world.add(Box(WALL_X + 0.9, y, 0.12, 0.14, 0.0, height=0.25, style="box", colour="#b45309"))
+        world.add(Box(WALL_X + (1.0 if p["camera"] == "front" else 0.9), y, 0.12, 0.14, 0.0, height=0.25, style="box", colour="#b45309"))
     _finish(world)
     return world
 
@@ -376,8 +396,9 @@ def _why(row, r, st):
 
 # ------------------------------------------------------------------------------------------------ perpendicular
 def _run_perpendicular(name, p, seed, mc, rng):
-    from adas.park_select import fuse_markers, plan_perpendicular, rear_camera
+    from adas.park_select import front_camera, fuse_markers, plan_perpendicular, rear_camera
     from sim.marker_sensor import MarkerSensor
+    front = p["camera"] == "front"
     dist = p["dist_m"]
     sy, sd = p["start_y"], p["start_deg"]
     pixel, drop = p["pixel_noise"], p["frame_drop"]
@@ -387,8 +408,8 @@ def _run_perpendicular(name, p, seed, mc, rng):
         dist += float(rng.uniform(-0.15, 0.15))
         pixel = float(rng.uniform(0.3, 1.2)) if pixel > 0 else 0.0
     world = build_perpendicular(p)
-    start = (WALL_X + dist + 0.05, sy, math.radians(sd))          # rear axle; camera 5 cm behind it
-    cam = rear_camera() if p["camera"] == "rear" else legacy_rear_camera()
+    start = (WALL_X + dist, sy, math.pi + math.radians(sd)) if front else (WALL_X + dist + 0.05, sy, math.radians(sd))   # rear axle
+    cam = front_camera() if front else rear_camera() if p["camera"] == "rear" else legacy_rear_camera()
     sensor = MarkerSensor(cam, pixel_noise=pixel, detect_prob=p["detect_prob"], seed=seed)
     frames_seen = {"n": 0, "frames": 0}
 
@@ -406,6 +427,7 @@ def _run_perpendicular(name, p, seed, mc, rng):
     def plan_fn(assist, pts, st):
         info = {"marker_frames": frames_seen["frames"], "marker_obs": frames_seen["n"]}
         assist.marker_source = lambda: st["sensed"]
+        assist.camera_facing = "front" if front else "rear"
         msg = assist.park_marker(pts)                     # RelayAssists -> plan service -> AutoNav.start_plan
         if msg == "marker not visible":
             info["refused"] = "marker not detected"
@@ -416,7 +438,7 @@ def _run_perpendicular(name, p, seed, mc, rng):
     fault = _make_fault(p["lidar_sigma"] + (float(rng.uniform(0, 0.015)) if mc else 0.0), seed=seed)
     r, st = _execute(world, start, seed, p, plan_fn, None, mc, rng, sensing=sensing, fault=fault)
     a = r["assist"].p
-    goal = (WALL_X + STOP_GAP + a.rear_overhang, 0.0, 0.0)
+    goal = (WALL_X + STOP_GAP_FRONT + a.front_x, 0.0, math.pi) if front else (WALL_X + STOP_GAP + a.rear_overhang, 0.0, 0.0)
     x, y, th, *_ = (r["x"], r["y"], r["th"])
     ex, ey, eh = x - goal[0], y - goal[1], math.degrees(_wrap(th - goal[2]))
     err = {"pos_err_cm": round(math.hypot(ex, ey) * 100, 1), "lat_err_cm": round(abs(ey) * 100, 1),

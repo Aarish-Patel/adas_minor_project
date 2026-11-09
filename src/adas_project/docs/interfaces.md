@@ -176,6 +176,7 @@ JSON object, 20 Hz over UDP to subscribers (and HTTP :8090). Keys:
 | intent | p_crash (shown risk), p_decision, trusted, attentive, reaction_m, stalled, calibrated, calib_a, calib_b |
 | world | pose (corrected, `W`), zones, zone_kph, mode (eco / normal / sport), rss_min_m, loops |
 | health, esp32 | § 14; ESP32 state, detail, reboots |
+| camera | the parking camera (pi/camera.json): `facing` front / rear, `marker_id`, `service` (the camera service answers with a fresh frame), `seen` (an observation of the marker less than 1.5 s old), `dist` (m) and `bearing_deg` of the newest, `age_s`; also while the car is idle |
 | _pts | decimated LiDAR points, `L` polar |
 | sim | simulator only (absent on the car): walls (ground truth, `L` polar), crashed, crashes, v_true, pose (sim frame: x, y, deg), world (room name), **parking** (below) |
 
@@ -198,7 +199,7 @@ UDP text on 4210, reply "OK" or a message: `ASSIST <name|all> ON|OFF` · `MODE e
 lane: `{"click": [x, y], "strip": {"points": [[x, y]...], "side": +-1, "depth": m}}`, `W` frame; the car finds the gaps with its LiDAR, takes the
 viable one nearest to the click, reply = its first message; the car drives to the slot's pull-up point with the click-to-go planner, measures
 the gap beside it and parks - pulling out first when it stands parked in the lane; the lane is remembered, and a later `GOTO` from inside it
-pulls out first too - ADR-038) · `PARK_MARKER` (reverse into the bay of the ArUco marker the rear camera sees) ·
+pulls out first too - ADR-038) · `PARK_MARKER` (park in the bay of the ArUco marker the camera sees: drive in nose first with a FRONT camera, reverse in with a rear one - `pi/camera.json` `facing`; reply "marker not visible" when no observation of the configured id is less than 1.5 s old) ·
 `FOLLOW_ON|OFF` · `ADAS_OVERRIDE_ON|OFF`
 · `GUI_SUBSCRIBE <port>` (renew every 2 s, expires 6 s) · `PING`.
 Simulator only (HTTP POST on :8090, tools/sim_car.py): `/api/sim/reset` · `/api/sim/world/<room>` (room = park_perp, park_street, room,

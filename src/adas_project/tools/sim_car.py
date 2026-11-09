@@ -20,6 +20,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--world", default="doorway")
     ap.add_argument("--usb-stalls", action="store_true", help="reproduce the LiDAR USB stalls seen on the car")
+    ap.add_argument("--lidar-dies-after", type=float, default=None, help="the LiDAR stops delivering scans after this many seconds (the relay's watchdog test)")
     a = ap.parse_args()
     os.environ.setdefault("RC_LOG_DIR", os.path.join(ROOT, "logs", "sim"))
 
@@ -32,7 +33,7 @@ def main():
     car = VirtualCar(world, car_params(R.TUNING.mount), start, R.TUNING.servo.motor_reversed)
     R.find_ports = lambda *args, **kw: ("SIM_LIDAR", "SIM_ESP32")
     R.serial.Serial = lambda *args, **kw: SimESP32(car)
-    R.open_lidar = lambda port, *args, **kw: SimLidar(car, R.TUNING.mount.yaw_offset_deg, usb_stalls=a.usb_stalls)
+    R.open_lidar = lambda port, *args, **kw: SimLidar(car, R.TUNING.mount.yaw_offset_deg, usb_stalls=a.usb_stalls, dies_after_s=a.lidar_dies_after)
     cur = {"name": a.world, "start": start}
 
     def switch(name, marker_id=23):
@@ -69,9 +70,11 @@ def main():
     # the rear camera: the twin's marker sensor (sim/marker_sensor.py) sees the wall marker of the perpendicular room; the relay
     # plans from the observations of the last 1.5 s (the car is standing when PARK_MARKER is given)
     from types import SimpleNamespace
-    from adas.park_select import rear_camera
+    from adas import camera_config
     from sim.marker_sensor import MarkerSensor
-    sensor, recent = MarkerSensor(rear_camera(), seed=1), []
+    cam_cfg = camera_config.load()                                                            # pi/camera.json, as on the car
+    cam_cfg["width"], cam_cfg["height"] = 640, 480
+    sensor, recent = MarkerSensor(camera_config.camera_model(cam_cfg), seed=1), []
 
     def watch_markers():
         while True:

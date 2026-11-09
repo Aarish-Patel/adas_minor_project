@@ -388,11 +388,23 @@ def _hold_until_idle(test, tag, t_max=60.0, throttle=150):
 
 
 def bay_park(test):
-    """BAYS: 'Park at the marker' - reverse into the bay of the ArUco marker; truth: <= 5 cm, <= 5 deg (sim.parking_e2e's goal)."""
+    """BAYS: 'Park at the marker' - into the bay of the ArUco marker: nose in with the front camera (pi/camera.json, the home demo; front
+    bumper 13 cm from the wall, facing it) or reversing in with the rear camera (rear bumper 6 cm from it); truth: <= 5 cm, <= 5 deg."""
+    from adas import camera_config
+    front = camera_config.load()["facing"] == "front"
     yield from _switch_room(test, "park_perp")
     st = test.state()
     marker = st["sim"]["parking"]["marker"]
     test.shot("before")
+    w = test.mp
+    sa = w
+    while sa is not None and not isinstance(sa, QtWidgetsScrollArea()):
+        sa = sa.parentWidget()
+    if sa is not None:                                              # the Autonomy tiles: "Park at the marker . seen 1.2 m" (AN3)
+        sa.ensureWidgetVisible(w.park_marker_tile, 0, 120)
+        yield 1.0
+        test.shot("marker_tile")
+        test.result["marker_tile"] = w.park_marker_tile.name.text()
     test.click_widget(test.mp.park_go)
     yield 0.5
     box = {}
@@ -405,9 +417,9 @@ def bay_park(test):
     msgs, crashes = box["out"]
     test.shot("end")
     x, y, th = test.state()["sim"]["pose"]
-    gx, gy = marker["x"] + 0.06 + 0.05, marker["y"]
-    err, head = math.hypot(x - gx, y - gy), abs(math.remainder(math.radians(th), 2 * math.pi))
-    test.result.update(msgs=msgs, crashes=crashes, pos_err_cm=round(err * 100, 1), head_deg=round(math.degrees(head), 1),
+    gx, gy = (marker["x"] + 0.13 + CAR["front_x"], marker["y"]) if front else (marker["x"] + 0.06 + 0.05, marker["y"])
+    err, head = math.hypot(x - gx, y - gy), abs(math.remainder(math.radians(th) - (math.pi if front else 0.0), 2 * math.pi))
+    test.result.update(msgs=msgs, crashes=crashes, camera="front" if front else "rear", pos_err_cm=round(err * 100, 1), head_deg=round(math.degrees(head), 1),
                        ok=bool(crashes == 0 and err <= 0.05 and math.degrees(head) <= 5 and msgs and msgs[-1].startswith("arrived")))
 
 
@@ -747,6 +759,11 @@ def demo_overview(test):
         test.shot(name)
     sc.camera("chase")
     test.result.update(ok=True)
+
+
+def QtWidgetsScrollArea():
+    from PySide6 import QtWidgets
+    return QtWidgets.QScrollArea
 
 
 def QtWidgetsFeatureTile():

@@ -1,0 +1,13 @@
+{
+  "facing": "front",
+  "marker_id": 23,
+  "marker_size_m": 0.08,
+  "x": 0.25,
+  "z": 0.10,
+  "pitch_deg": 5.0,
+  "hfov_deg": 70.0,
+  "index": 0,
+  "width": 640,
+  "height": 480,
+  "fps": 15
+}
