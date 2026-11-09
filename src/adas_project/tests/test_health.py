@@ -87,5 +87,42 @@ class HealthTest(unittest.TestCase):
         self.assertEqual(h.state, "fault")
 
 
+class UndervoltageTest(unittest.TestCase):
+    """The Pi's supply alarm (kernel hwmon rpi_volt in0_lcrit_alarm) is a named LIMP cause, kept for UNDERVOLT_HOLD_S."""
+
+    def make(self, tmp, alarm):
+        from pi.health import HealthMonitor
+        d = os.path.join(tmp, "hwmon0")
+        os.makedirs(d, exist_ok=True)
+        path = os.path.join(d, "in0_lcrit_alarm")
+        with open(path, "w") as f:
+            f.write(alarm)
+        return HealthMonitor(temp_path=os.path.join(tmp, "none"), volt_glob=os.path.join(tmp, "hwmon*", "in0_lcrit_alarm")), path
+
+    def test_alarm_names_the_cause_and_clears_after_the_hold(self):
+        from pi.health import UNDERVOLT_HOLD_S
+        with tempfile.TemporaryDirectory() as tmp:
+            h, path = self.make(tmp, "1")
+            t = drive(h, 0.0, 4.0)
+            self.assertEqual(h.state, "limp")
+            self.assertTrue(any("under-voltage" in c for c in h.causes), h.causes)
+            with open(path, "w") as f:
+                f.write("0")
+            t = drive(h, t, UNDERVOLT_HOLD_S + 4.0)
+            self.assertEqual(h.state, "normal", h.causes)
+
+    def test_no_alarm_no_cause(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            h, _ = self.make(tmp, "0")
+            drive(h, 0.0, 5.0)
+            self.assertEqual(h.state, "normal", h.causes)
+
+    def test_a_machine_without_the_sensor_is_unaffected(self):
+        from pi.health import HealthMonitor
+        h = HealthMonitor(temp_path="/nonexistent", volt_glob="/nonexistent/*/in0_lcrit_alarm")
+        drive(h, 0.0, 5.0)
+        self.assertEqual(h.state, "normal", h.causes)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -76,6 +76,7 @@ Then: car on its mark, **ORIGIN**, `rc_controller.py` running, a slow look round
 ## If something goes wrong
 | Dashboard says | Cause | Do |
 |---|---|---|
+| HEALTH LIMP: Pi supply under-voltage | the Pi's power supply sags (it throttles, the LiDAR and ESP32 USB adapters time out, the car feels laggy) | use a 5 V / 5 A supply or a UBEC from the battery with a short, thick cable; `journalctl -k \| grep -i volt` on the Pi shows each event |
 | HEALTH FAULT: no LiDAR scans | the LiDAR's USB adapter dropped (loose cable, power bank empty) | reseat the cable, charge the bank; the relay restarts itself after 8 s and finds it again |
 | the car only drives forward / never reverses | the motor driver's direction line (ESP32 GPIO 26) | check that wire and the driver's ground; it worked again after reseating on 9 Nov |
 | "Park at the marker . not seen" | marker out of view, too far (> 1.8 m), too oblique, glare | move the car closer and square to the wall; shade the marker |

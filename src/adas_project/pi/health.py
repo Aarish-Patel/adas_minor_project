@@ -8,6 +8,8 @@ Watched every tick of the relay:
   driver link    packet rate from the controller (WiFi drops)
   ESP32 link     pi/esp_link.py state (answering / silent / lost)
   temperature    the Pi's SoC temperature (it throttles at 80-85 C, and a throttled Pi brakes late)
+  supply         the Pi's under-voltage alarm (kernel hwmon `rpi_volt`): below ~4.65 V the Pi throttles its CPU (the control loop and the LiDAR
+                 rate fall) and the USB serial adapters time out - seen on the car 9 Nov as "driver link lossy", LiDAR drop-outs, ESP32 reboots
 States:
   normal    nothing wrong
   limp      reduced power: throttle capped at LIMP_PWM (slower = shorter stopping distance) until the cause is gone
@@ -18,6 +20,7 @@ Each cause is latched until it has been absent for CLEAR_S, so the state does no
 import collections
 import time
 
+UNDERVOLT_HOLD_S = 10.0       # an under-voltage alarm keeps the cause for this long
 LIMP_PWM = 120.0
 CLEAR_S = 2.0
 WINDOW_S = 2.0
@@ -29,8 +32,9 @@ HOT_C = 80.0
 
 
 class HealthMonitor:
-    def __init__(self, temp_path="/sys/class/thermal/thermal_zone0/temp"):
-        self.temp_path = temp_path
+    def __init__(self, temp_path="/sys/class/thermal/thermal_zone0/temp", volt_glob="/sys/class/hwmon/hwmon*/in0_lcrit_alarm"):
+        self.temp_path, self.volt_glob = temp_path, volt_glob
+        self.undervolt_t = None         # the last time the Pi's under-voltage alarm was set
         self.scans = collections.deque()
         self.loops = collections.deque()
         self.packets = collections.deque()
@@ -61,7 +65,21 @@ class HealthMonitor:
         if now - self.temp_t > 2.0:
             self.temp_t = now
             self.temp_c = self._read_temp()
+            if self._undervoltage():
+                self.undervolt_t = now
         self._evaluate(now, esp_state)
+
+    def _undervoltage(self):
+        """True while the Pi's supply alarm is set (the kernel's rpi_volt hwmon device; none on a laptop / the twin)."""
+        import glob
+        for path in glob.glob(self.volt_glob):
+            try:
+                with open(path) as f:
+                    if f.read().strip() == "1":
+                        return True
+            except (OSError, ValueError):
+                pass
+        return False
 
     def _read_temp(self):
         try:
@@ -90,6 +108,8 @@ class HealthMonitor:
             seen["link"] = ("limp", f"driver link lossy ({len(self.packets) / WINDOW_S:.0f} packets/s)")
         if self.temp_c is not None and self.temp_c >= HOT_C:
             seen["temp"] = ("limp", f"Pi hot ({self.temp_c:.0f} C)")
+        if self.undervolt_t is not None and now - self.undervolt_t < UNDERVOLT_HOLD_S:
+            seen["supply"] = ("limp", "Pi supply under-voltage: use a 5 V / 5 A supply or a shorter, thicker power cable")
         for k, (lvl, det) in seen.items():
             self.active[k] = (lvl, det, now)
         for k in [k for k, (_, _, t) in self.active.items() if k not in seen and now - t > CLEAR_S]:

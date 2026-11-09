@@ -1130,3 +1130,15 @@ Evidence: logs/incident_20261001/20261001_003520_relay.jsonl.gz (Pi ~/logs), dri
 - [x] AN6. (docs/home_demo.md) docs/home_demo.md: what to set up in a house, the demo script per feature (manual + safety, click-to-go, return to start,
       parallel parking with boxes, bay parking with the camera, speed zone, thin objects, dark object), pre-flight checklist, what to say.
 - [ ] AN7. Deploy to the car when it is back (backup first, car json files untouched), camera service start, test each feature on the car.
+
+## AO. Car checks, 9 Nov evening
+- [x] AO1. (user screenshot: "HEALTH LIMP: driver link lossy (10 packets/s)", "path blocked - stopped") Root cause found on the Pi: the supply
+      is under-voltage - `journalctl -k` shows "Undervoltage detected!" every few seconds, `hwmon rpi_volt in0_lcrit_alarm` = 1, and `cp210x ... failed set
+      request status -110` on both USB serial adapters (ESP32, LiDAR). The relay handled ~12 of 50 packets/s (idle car; the health monitor counts handled
+      packets, the relay keeps the newest command by design), loop p95 60-71 ms, LiDAR 5.5 Hz once; the same on the old relay files (A/B: not caused by
+      the AN deploy). Same family as the LiDAR USB drop-outs and the ESP32 "power dip" reboots earlier today. pi/health.py now names it
+      (LIMP cause "Pi supply under-voltage: use a 5 V / 5 A supply or a shorter, thicker power cable", held 10 s; tests/test_health UndervoltageTest).
+- [ ] AO2. (hardware, user) A proper Pi 5 supply: 5 V / 5 A (27 W) USB-C PD, or a UBEC 5 V / 5 A from the car's battery, with a short thick cable;
+      the LiDAR stays on its own power bank. Then re-run `python tools/preflight.py --host 192.168.1.10` and watch `journalctl -k | grep -i volt`.
+- [ ] AO3. Click-to-go / return to start / parallel parking on the car are NOT yet judged: the first attempt ran on an under-voltage Pi
+      ("path blocked - stopped" with the car idle). Repeat after AO2.
