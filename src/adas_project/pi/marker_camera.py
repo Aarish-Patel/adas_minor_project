@@ -102,6 +102,9 @@ def main():
         pass
     cfg = camera_config.load(a.config)
     process_fps = float(a.fps or cfg.get("process_fps", 10.0))
+    rotate_deg = int(cfg.get("rotate_deg", 0)) % 360
+    if rotate_deg not in (0, 180):
+        sys.exit(f"camera.json: rotate_deg must be 0 or 180, not {rotate_deg}")
     cam = camera_config.camera_model(cfg)
     if a.sim:
         src = SyntheticSource(cam, cfg, cfg["fps"])
@@ -134,6 +137,8 @@ def main():
             continue
         if frame.shape[1] != cam.width:
             frame = cv2.resize(frame, (cam.width, cam.height))
+        if rotate_deg == 180:                         # a camera mounted upside down: turned upright here, so the detection, the pose and the stream agree
+            frame = cv2.rotate(frame, cv2.ROTATE_180)
         vis, state = pipe.process(frame, time.time())
         times.append(state["pipeline_ms"])
         n += 1

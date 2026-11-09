@@ -6,6 +6,7 @@
     x, z, pitch_deg, hfov_deg   mounting: metres ahead of the rear axle, height, tilt down, horizontal field of view (optional: the
                    defaults of adas.park_select.front_camera / rear_camera)
     index, width, height, fps   the webcam for the camera service (pi/marker_camera.py)
+    rotate_deg     0, or 180 for a camera mounted upside down (the service turns the frame upright before detection and streaming)
 A calibration (tools/camera_calibrate.py, only when asked) writes the same keys plus fx, cx ... to `adas/camera_<facing>.json`; its
 mounting numbers and field of view then replace the guessed ones.
 """
@@ -15,7 +16,7 @@ import os
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 CONFIG_PATH = os.path.join(ROOT, "pi", "camera.json")
-DEFAULTS = {"facing": "front", "marker_id": 23, "marker_size_m": 0.08, "index": 0, "width": 640, "height": 480, "fps": 15}
+DEFAULTS = {"facing": "front", "marker_id": 23, "marker_size_m": 0.08, "index": 0, "width": 640, "height": 480, "fps": 15, "rotate_deg": 0}
 MOUNT_KEYS = ("x", "y", "z", "pitch_deg", "yaw_deg", "hfov_deg")
 
 

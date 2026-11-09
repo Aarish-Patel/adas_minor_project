@@ -11,5 +11,6 @@
   "height": 480,
   "fps": 15,
   "autostart": true,
-  "process_fps": 5
+  "process_fps": 5,
+  "rotate_deg": 180
 }

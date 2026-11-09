@@ -33,6 +33,14 @@ class CameraConfigTest(unittest.TestCase):
             rear = camera_config.camera_model(camera_config.load(write_config(d, facing="rear")))
             self.assertEqual(rear.yaw_deg, 180.0)
 
+    def test_upside_down_camera_setting(self):
+        from adas import camera_config
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(camera_config.load(write_config(d, facing="front"))["rotate_deg"], 0)         # default: upright
+            self.assertEqual(camera_config.load(write_config(d, facing="front", rotate_deg=180))["rotate_deg"], 180)
+        with open(os.path.join(os.path.dirname(__file__), "..", "pi", "camera.json")) as f:
+            self.assertEqual(json.load(f)["rotate_deg"], 180)                                              # the home demo's webcam is mounted upside down
+
     def test_bad_facing_is_refused(self):
         from adas import camera_config
         with tempfile.TemporaryDirectory() as d:
