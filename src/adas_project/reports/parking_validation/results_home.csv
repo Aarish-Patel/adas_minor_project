@@ -1,0 +1,73 @@
+name,group,seed,mc,expect,success,failure,planned,refused,arrived,pos_err_cm,lat_err_cm,long_err_cm,head_err_deg,inside,kerb_gap_cm,corrections,gear_changes,planned_gear_changes,replans,strokes,collisions,min_clear_cm,time_s,path_m,sim_end_s,start_x,start_y,start_deg,target,selected,selection_ok,click,spaces,free_spaces,space_len_cm,space_ratio,plan_ms,marker_frames,marker_obs,marker_facing_deg,nav_msg,wall_s
+home_d60_g154_open,parallel,0,0,park,1,,1,0,1,12.7,12.6,1.6,3.4,1,16.7,4,3,0,0,1,0,4.8,21.0,4.454,22.5,0.0,-0.15,0,1.07,1.07,1,in the 154 cm gap,2,1,154,4.67,2,,,,arrived,5.5
+home_d60_g154_open,parallel,1,0,park,1,,1,0,1,12.3,12.2,1.0,0.9,1,17.0,6,5,0,0,1,0,4.8,22.6,4.539,24.1,0.0,-0.15,0,1.07,1.06,1,in the 154 cm gap,2,1,154,4.67,2,,,,arrived,5.8
+home_d60_g154_open,parallel,2,0,park,1,,1,0,1,12.9,12.6,2.5,2.9,1,16.8,2,1,0,0,1,0,4.8,21.3,4.387,22.8,0.0,-0.15,0,1.07,1.06,1,in the 154 cm gap,2,1,154,4.67,1,,,,arrived,5.4
+home_d60_g154_dead,parallel,0,0,park,1,,1,0,1,14.6,14.4,2.0,5.0,1,18.0,4,3,0,0,1,0,4.8,24.6,4.967,26.1,0.0,-0.15,0,1.07,1.08,1,in the 154 cm gap,2,1,154,4.67,2,,,,arrived,6.6
+home_d60_g154_dead,parallel,1,0,park,1,,1,0,1,13.2,13.2,0.5,3.0,1,17.3,4,3,0,0,1,0,4.8,24.7,4.92,26.2,0.0,-0.15,0,1.07,1.08,1,in the 154 cm gap,2,1,154,4.67,2,,,,arrived,6.7
+home_d60_g154_dead,parallel,2,0,park,1,,1,0,1,11.8,11.7,0.6,0.2,1,16.7,10,7,0,0,3,0,4.8,28.0,5.236,29.5,0.0,-0.15,0,1.07,1.08,1,in the 154 cm gap,2,1,154,4.67,3,,,,arrived,7.6
+home_d60_g100_open,parallel,0,0,park,1,,1,0,1,13.7,13.7,0.5,1.4,1,18.3,5,3,0,0,2,0,4.8,19.9,3.869,21.4,0.0,-0.15,0,0.80,0.80,1,in the 100 cm gap,2,1,100,3.03,17,,,,arrived,5.8
+home_d60_g100_open,parallel,1,0,park,1,,1,0,1,12.8,12.7,1.4,3.9,1,16.6,4,4,0,0,0,0,4.8,19.4,3.755,20.9,0.0,-0.15,0,0.80,0.80,1,in the 100 cm gap,2,1,100,3.03,16,,,,arrived,5.2
+home_d60_g100_open,parallel,2,0,park,1,,1,0,1,13.8,13.2,4.1,1.9,1,17.6,7,4,0,0,3,0,4.8,21.5,4.038,23.0,0.0,-0.15,0,0.80,0.80,1,in the 100 cm gap,2,1,100,3.03,21,,,,arrived,6.0
+home_d60_g100_dead,parallel,0,0,park,1,,1,0,1,11.7,11.6,1.0,0.0,1,16.6,2,2,0,0,0,0,4.8,18.5,3.729,20.0,0.0,-0.15,0,0.80,0.79,1,in the 100 cm gap,2,1,100,3.03,20,,,,arrived,5.1
+home_d60_g100_dead,parallel,1,0,park,1,,1,0,1,13.2,12.6,4.0,2.1,1,17.0,3,2,0,0,1,0,4.8,19.5,3.755,21.0,0.0,-0.15,0,0.80,0.79,1,in the 100 cm gap,2,1,100,3.03,13,,,,arrived,5.8
+home_d60_g100_dead,parallel,2,0,park,1,,1,0,1,13.7,13.4,2.9,2.1,1,17.8,7,4,0,0,3,0,4.8,21.5,4.011,23.0,0.0,-0.15,0,0.80,0.80,1,in the 100 cm gap,2,1,100,3.03,11,,,,arrived,6.0
+home_d60_g80_open,parallel,0,0,park,1,,1,0,1,13.5,13.4,0.8,2.6,1,17.7,7,5,0,0,2,0,4.8,21.7,3.947,23.2,0.0,-0.15,0,0.70,0.69,1,in the 80 cm gap,2,0,80,2.42,25,,,,arrived,6.6
+home_d60_g80_open,parallel,1,0,park,1,,1,0,1,12.7,12.6,1.3,0.8,1,17.4,7,5,0,0,2,0,4.8,21.7,3.925,23.2,0.0,-0.15,0,0.70,0.69,1,in the 80 cm gap,2,0,80,2.42,30,,,,arrived,6.2
+home_d60_g80_open,parallel,2,0,park,1,,1,0,1,13.5,13.5,0.1,1.5,1,18.0,11,8,0,0,3,0,4.8,22.9,4.102,24.4,0.0,-0.15,0,0.70,0.70,1,in the 80 cm gap,2,0,80,2.42,34,,,,arrived,6.5
+home_d60_g80_dead,parallel,0,0,park,1,,1,0,1,13.3,13.3,0.1,1.0,1,18.0,7,5,0,0,2,0,4.8,21.3,3.89,22.8,0.0,-0.15,0,0.70,0.70,1,in the 80 cm gap,2,0,80,2.42,28,,,,arrived,6.4
+home_d60_g80_dead,parallel,1,0,park,1,,1,0,1,13.1,13.0,1.0,0.4,1,17.9,7,5,0,0,2,0,4.8,21.0,3.806,22.5,0.0,-0.15,0,0.70,0.70,1,in the 80 cm gap,2,0,80,2.42,18,,,,arrived,5.9
+home_d60_g80_dead,parallel,2,0,park,1,,1,0,1,14.0,13.9,1.6,2.7,1,18.2,11,8,0,0,3,0,4.5,22.6,4.072,24.1,0.0,-0.15,0,0.70,0.69,1,in the 80 cm gap,2,0,80,2.42,25,,,,arrived,6.6
+home_d60_g70_open,parallel,0,0,park,1,,1,0,1,13.3,13.2,1.2,1.9,1,17.7,7,5,0,0,2,0,4.8,20.3,3.713,21.8,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,30,,,,arrived,5.8
+home_d60_g70_open,parallel,1,0,park,1,,1,0,1,13.4,13.0,3.6,2.6,1,17.2,8,5,0,0,3,0,4.8,22.4,3.715,23.9,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,43,,,,arrived,7.0
+home_d60_g70_open,parallel,2,0,park,1,,1,0,1,14.7,14.7,0.6,3.8,1,18.6,13,9,0,0,4,0,4.8,22.6,3.931,24.1,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,46,,,,arrived,6.9
+home_d60_g70_dead,parallel,0,0,park,0,too far from the kerb (45.6 cm),1,0,0,51.6,49.7,14.0,50.5,0,45.6,4,3,0,1,0,0,2.8,45.3,6.846,46.8,0.0,-0.15,0,0.65,0.65,1,in the 70 cm gap,2,0,70,2.12,33,,,,path blocked - stopped,21.8
+home_d60_g70_dead,parallel,1,0,park,0,too far from the kerb (45.4 cm),1,0,0,51.1,49.5,12.5,51.8,0,45.4,4,3,0,1,0,0,4.4,44.9,6.714,46.4,0.0,-0.15,0,0.65,0.66,1,in the 70 cm gap,2,0,70,2.12,44,,,,path blocked - stopped,21.0
+home_d60_g70_dead,parallel,2,0,park,0,no plan: no safe path to that point,0,1,0,,,,,0,,0,0,0,0,0,0,5.0,,0.0,15.8,0.0,-0.15,0,0.65,,0,in the 70 cm gap,2,0,70,2.12,40,,,,no safe path to that point,12.1
+home_d50_g154_open,parallel,0,0,park,1,,1,0,1,2.2,1.6,1.5,0.2,1,6.6,8,7,0,0,1,0,4.8,22.6,4.569,24.1,0.0,-0.15,0,1.07,1.06,1,in the 154 cm gap,2,1,154,4.67,3,,,,arrived,6.3
+home_d50_g154_open,parallel,1,0,park,1,,1,0,1,2.0,1.7,0.9,3.0,1,5.9,3,3,0,0,0,0,4.8,21.5,4.458,23.0,0.0,-0.15,0,1.07,1.07,1,in the 154 cm gap,2,1,154,4.67,1,,,,arrived,5.2
+home_d50_g154_open,parallel,2,0,park,1,,1,0,1,2.0,1.3,1.5,1.8,1,5.8,1,1,0,0,0,0,4.8,21.7,4.406,23.2,0.0,-0.15,0,1.07,1.06,1,in the 154 cm gap,2,1,154,4.67,4,,,,arrived,5.8
+home_d50_g154_dead,parallel,0,0,park,1,,1,0,1,1.6,1.3,1.0,0.5,1,6.2,10,9,0,0,1,0,4.8,44.6,8.331,46.1,0.0,-0.15,0,1.07,1.05,1,in the 154 cm gap,2,1,154,4.67,2,,,,arrived,12.1
+home_d50_g154_dead,parallel,1,0,park,0,timeout / stuck: parking at strip 1.08 m (gap measured alongside),1,0,0,11.8,4.0,11.1,17.9,1,4.4,11,11,0,0,0,0,4.4,,12.409,70.0,0.0,-0.15,0,1.07,1.08,1,in the 154 cm gap,2,1,154,4.67,2,,,,parking at strip 1.08 m (gap measured alongside),18.7
+home_d50_g154_dead,parallel,2,0,park,0,position error,1,0,0,13.6,4.1,13.0,20.7,1,3.9,7,1,0,6,0,0,3.9,34.2,3.923,35.7,0.0,-0.15,0,1.07,1.08,1,in the 154 cm gap,2,1,154,4.67,4,,,,stuck - no way through from here,10.8
+home_d50_g100_open,parallel,0,0,park,0,position error,1,0,0,11.2,5.1,9.9,28.4,1,3.5,9,3,0,6,0,0,3.5,30.3,3.387,31.8,0.0,-0.15,0,0.80,0.80,1,in the 100 cm gap,2,1,100,3.03,18,,,,stuck - no way through from here,9.6
+home_d50_g100_open,parallel,1,0,park,1,,1,0,1,2.3,2.2,0.7,4.3,1,6.0,2,2,0,0,0,0,4.3,20.3,3.707,21.8,0.0,-0.15,0,0.80,0.79,1,in the 100 cm gap,2,1,100,3.03,19,,,,arrived,6.3
+home_d50_g100_open,parallel,2,0,park,0,position error,1,0,0,12.7,7.6,10.1,37.3,1,4.6,7,1,0,6,0,0,4.6,29.1,3.34,30.6,0.0,-0.15,0,0.80,0.80,1,in the 100 cm gap,2,1,100,3.03,13,,,,stuck - no way through from here,8.9
+home_d50_g100_dead,parallel,0,0,park,0,position error,1,0,0,12.6,4.2,11.9,27.1,1,2.8,7,1,0,6,0,0,2.8,29.2,3.382,30.7,0.0,-0.15,0,0.80,0.79,1,in the 100 cm gap,2,1,100,3.03,21,,,,stuck - no way through from here,9.3
+home_d50_g100_dead,parallel,1,0,park,0,position error,1,0,0,11.1,7.2,8.5,31.7,1,5.0,7,1,0,6,0,0,4.8,28.9,3.328,30.4,0.0,-0.15,0,0.80,0.79,1,in the 100 cm gap,2,1,100,3.03,9,,,,stuck - no way through from here,9.1
+home_d50_g100_dead,parallel,2,0,park,0,position error,1,0,0,13.1,8.1,10.2,44.0,1,4.5,7,1,0,6,0,0,4.5,29.0,3.365,30.5,0.0,-0.15,0,0.80,0.79,1,in the 100 cm gap,2,1,100,3.03,10,,,,stuck - no way through from here,8.9
+home_d50_g80_open,parallel,0,0,park,0,position error,1,0,0,8.0,5.4,5.9,22.4,1,4.9,10,4,0,6,0,0,4.8,30.4,3.477,31.9,0.0,-0.15,0,0.70,0.69,1,in the 80 cm gap,2,0,80,2.42,24,,,,stuck - no way through from here,9.5
+home_d50_g80_open,parallel,1,0,park,0,position error,1,0,0,9.1,4.9,7.7,24.4,1,4.0,9,3,0,6,0,0,4.0,31.5,3.493,33.0,0.0,-0.15,0,0.70,0.70,1,in the 80 cm gap,2,0,80,2.42,22,,,,stuck - no way through from here,10.2
+home_d50_g80_open,parallel,2,0,park,0,position error,1,0,0,14.6,8.8,11.6,50.2,1,4.7,11,5,0,6,0,0,4.7,32.0,3.663,33.5,0.0,-0.15,0,0.70,0.69,1,in the 80 cm gap,2,0,80,2.42,28,,,,stuck - no way through from here,9.9
+home_d50_g80_dead,parallel,0,0,park,0,position error,1,0,0,8.3,5.0,6.7,25.5,1,3.8,9,3,0,6,0,0,3.8,30.5,3.479,32.0,0.0,-0.15,0,0.70,0.69,1,in the 80 cm gap,2,0,80,2.42,17,,,,stuck - no way through from here,10.5
+home_d50_g80_dead,parallel,1,0,park,1,,1,0,1,2.4,2.3,0.5,3.8,1,6.3,9,8,0,0,1,0,4.0,22.5,3.67,24.0,0.0,-0.15,0,0.70,0.69,1,in the 80 cm gap,2,0,80,2.42,22,,,,arrived,6.7
+home_d50_g80_dead,parallel,2,0,park,0,position error,1,0,0,13.9,7.3,11.8,46.8,1,3.4,11,5,0,6,0,0,3.4,31.8,3.65,33.3,0.0,-0.15,0,0.70,0.69,1,in the 80 cm gap,2,0,80,2.42,16,,,,stuck - no way through from here,10.1
+home_d50_g70_open,parallel,0,0,park,1,,1,0,1,3.2,2.9,1.2,2.5,1,7.2,11,8,0,0,3,0,3.1,22.4,3.754,23.9,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,39,,,,arrived,6.9
+home_d50_g70_open,parallel,1,0,park,0,heading error,1,0,0,6.3,5.2,3.6,26.1,1,3.9,11,5,0,6,0,0,3.9,31.0,3.325,32.5,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,35,,,,stuck - no way through from here,10.1
+home_d50_g70_open,parallel,2,0,park,0,position error,1,0,0,10.0,8.1,5.8,52.2,1,4.0,13,7,0,6,0,0,4.0,32.1,3.556,33.6,0.0,-0.15,0,0.65,0.66,1,in the 70 cm gap,2,0,70,2.12,28,,,,stuck - no way through from here,10.1
+home_d50_g70_dead,parallel,0,0,park,0,too far from the kerb (37.1 cm),1,0,0,43.2,41.1,13.4,49.1,0,37.1,2,2,0,0,0,0,2.8,33.4,6.896,34.9,0.0,-0.15,0,0.65,0.65,1,in the 70 cm gap,2,0,70,2.12,56,,,,no safe path to that point,10.7
+home_d50_g70_dead,parallel,1,0,park,0,no plan: no safe path to that point,0,1,0,,,,,0,,0,0,0,0,0,0,5.0,,0.0,6.0,0.0,-0.15,0,0.65,,0,in the 70 cm gap,2,0,70,2.12,37,,,,no safe path to that point,3.8
+home_d50_g70_dead,parallel,2,0,park,0,no plan: no safe path to that point,0,1,0,,,,,0,,0,0,0,0,0,0,5.0,,0.0,6.0,0.0,-0.15,0,0.65,,0,in the 70 cm gap,2,0,70,2.12,41,,,,no safe path to that point,3.6
+home_d40_g154_open,parallel,0,0,park,1,,1,0,1,2.8,2.0,1.9,2.1,1,6.4,3,3,0,0,0,0,4.8,19.2,4.071,20.7,0.0,-0.15,0,1.07,1.07,1,in the 154 cm gap,2,1,154,4.67,2,,,,arrived,5.4
+home_d40_g154_open,parallel,1,0,park,1,,1,0,1,2.5,2.0,1.5,4.0,1,5.8,1,1,0,0,0,0,4.8,19.5,4.063,21.0,0.0,-0.15,0,1.07,1.07,1,in the 154 cm gap,2,1,154,4.67,1,,,,arrived,5.3
+home_d40_g154_open,parallel,2,0,park,1,,1,0,1,2.0,1.8,1.0,2.0,1,6.2,2,1,0,0,1,0,4.8,21.0,4.257,22.5,0.0,-0.15,0,1.07,1.08,1,in the 154 cm gap,2,1,154,4.67,3,,,,arrived,5.8
+home_d40_g154_dead,parallel,0,0,park,1,,1,0,1,2.6,1.6,2.1,4.0,1,5.5,1,1,0,0,0,0,4.8,19.2,4.072,20.7,0.0,-0.15,0,1.07,1.07,1,in the 154 cm gap,2,1,154,4.67,2,,,,arrived,5.4
+home_d40_g154_dead,parallel,1,0,park,1,,1,0,1,2.6,1.9,1.8,4.2,1,5.8,1,1,0,0,0,0,4.8,19.3,4.097,20.8,0.0,-0.15,0,1.07,1.07,1,in the 154 cm gap,2,1,154,4.67,2,,,,arrived,5.4
+home_d40_g154_dead,parallel,2,0,park,1,,1,0,1,2.8,2.0,1.9,2.2,1,6.4,1,1,0,0,0,0,4.8,19.8,4.075,21.3,0.0,-0.15,0,1.07,1.07,1,in the 154 cm gap,2,1,154,4.67,2,,,,arrived,5.5
+home_d40_g100_open,parallel,0,0,park,0,position error,1,0,0,13.8,5.7,12.6,26.0,1,4.5,9,3,0,6,0,0,4.5,30.3,3.228,31.8,0.0,-0.15,0,0.80,0.79,1,in the 100 cm gap,2,1,100,3.03,18,,,,stuck - no way through from here,9.7
+home_d40_g100_open,parallel,1,0,park,0,position error,1,0,0,14.3,5.7,13.2,21.9,1,5.3,15,9,0,6,0,0,4.8,51.6,7.298,53.1,0.0,-0.15,0,0.80,0.78,1,in the 100 cm gap,2,1,100,3.03,19,,,,stuck - no way through from here,15.3
+home_d40_g100_open,parallel,2,0,park,0,position error,1,0,0,12.1,5.9,10.5,27.0,1,4.5,7,1,0,6,0,0,4.5,28.2,3.225,29.7,0.0,-0.15,0,0.80,0.81,1,in the 100 cm gap,2,1,100,3.03,11,,,,stuck - no way through from here,9.0
+home_d40_g100_dead,parallel,0,0,park,0,position error,1,0,0,12.3,6.6,10.4,25.0,1,5.6,7,1,0,6,0,0,4.8,27.3,3.195,28.8,0.0,-0.15,0,0.80,0.80,1,in the 100 cm gap,2,1,100,3.03,16,,,,stuck - no way through from here,9.0
+home_d40_g100_dead,parallel,1,0,park,0,timeout / stuck: driving to strip 0.79 m (re-planned),1,0,0,17.5,7.3,15.8,36.0,0,4.6,12,9,0,3,0,0,4.6,,11.249,70.0,0.0,-0.15,0,0.80,0.79,1,in the 100 cm gap,2,1,100,3.03,14,,,,driving to strip 0.79 m (re-planned),20.4
+home_d40_g100_dead,parallel,2,0,park,0,position error,1,0,0,12.7,5.5,11.5,31.8,1,3.3,7,1,0,6,0,0,3.3,28.4,3.257,29.9,0.0,-0.15,0,0.80,0.80,1,in the 100 cm gap,2,1,100,3.03,13,,,,stuck - no way through from here,9.0
+home_d40_g80_open,parallel,0,0,park,0,position error,1,0,0,8.9,3.9,8.0,26.3,1,2.7,9,3,0,6,0,0,2.7,30.2,3.377,31.7,0.0,-0.15,0,0.70,0.71,1,in the 80 cm gap,2,0,80,2.42,18,,,,stuck - no way through from here,9.4
+home_d40_g80_open,parallel,1,0,park,0,position error,1,0,0,12.7,1.5,12.6,6.5,1,4.7,9,3,0,6,0,0,4.7,32.4,3.354,33.9,0.0,-0.15,0,0.70,0.69,1,in the 80 cm gap,2,0,80,2.42,12,,,,stuck - no way through from here,10.3
+home_d40_g80_open,parallel,2,0,park,0,heading error,1,0,0,6.6,4.6,4.7,30.1,1,2.7,7,1,0,6,0,0,2.7,28.4,3.238,29.9,0.0,-0.15,0,0.70,0.70,1,in the 80 cm gap,2,0,80,2.42,25,,,,stuck - no way through from here,9.0
+home_d40_g80_dead,parallel,0,0,park,0,too far from the kerb (22.4 cm),1,0,1,18.0,17.5,4.1,0.2,0,22.4,9,5,0,0,4,0,3.5,33.4,7.729,34.9,0.0,-0.15,0,0.70,0.70,1,in the 80 cm gap,2,0,80,2.42,12,,,,arrived,10.3
+home_d40_g80_dead,parallel,1,0,park,0,no plan: no safe path to that point,0,1,0,,,,,0,,0,0,0,0,0,0,5.0,,0.0,2.1,0.0,-0.15,0,0.70,,0,in the 80 cm gap,2,0,80,2.42,13,,,,no safe path to that point,0.5
+home_d40_g80_dead,parallel,2,0,park,0,too far from the kerb (26.3 cm),1,0,1,22.2,21.6,5.1,1.0,0,26.3,11,6,0,0,5,0,4.0,35.5,7.995,37.0,0.0,-0.15,0,0.70,0.71,1,in the 80 cm gap,2,0,80,2.42,19,,,,arrived,11.1
+home_d40_g70_open,parallel,0,0,park,0,heading error,1,0,0,6.1,5.9,1.3,21.5,1,5.6,11,5,0,6,0,0,4.8,31.7,3.204,33.2,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,35,,,,stuck - no way through from here,11.3
+home_d40_g70_open,parallel,1,0,park,0,heading error,1,0,0,5.4,4.0,3.6,19.6,1,4.0,11,5,0,6,0,0,4.0,30.0,3.215,31.5,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,21,,,,path blocked - stopped,10.2
+home_d40_g70_open,parallel,2,0,park,0,heading error,1,0,0,6.1,5.4,2.9,26.7,1,4.1,11,5,0,6,0,0,4.1,29.2,3.23,30.7,0.0,-0.15,0,0.65,0.66,1,in the 70 cm gap,2,0,70,2.12,36,,,,stuck - no way through from here,9.5
+home_d40_g70_dead,parallel,0,0,park,0,heading error,1,0,0,6.6,6.6,0.6,23.9,1,5.7,13,7,0,6,0,0,4.8,30.7,3.286,32.2,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,19,,,,stuck - no way through from here,9.1
+home_d40_g70_dead,parallel,1,0,park,1,,1,0,1,2.1,1.8,1.2,2.7,1,6.0,6,6,0,0,0,0,4.6,21.2,3.377,22.7,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,24,,,,arrived,6.4
+home_d40_g70_dead,parallel,2,0,park,0,heading error,1,0,0,5.8,5.2,2.6,27.5,1,3.7,12,5,0,7,0,0,3.7,28.9,3.189,30.4,0.0,-0.15,0,0.65,0.64,1,in the 70 cm gap,2,0,70,2.12,26,,,,stuck - no way through from here,8.3

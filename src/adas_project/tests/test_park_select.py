@@ -11,7 +11,7 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 from adas.markers import MarkerObs, marker_corners_3d, pose_from_corners, project
-from adas.park_select import (KERB_CLEAR_M, KERB_FAR_M, KERB_GAP_M, KERB_MIN_M, ParkingStrip, find_gaps, fuse_markers, min_space_length, plan_parallel,
+from adas.park_select import (STOP_GAP_FRONT_M, KERB_CLEAR_M, KERB_FAR_M, KERB_GAP_M, KERB_MIN_M, ParkingStrip, find_gaps, fuse_markers, min_space_length, plan_parallel,
                               front_camera, plan_perpendicular, rear_camera, refine_parallel)
 from adas.vehicle_params import VehicleParams
 
@@ -412,7 +412,7 @@ class NoseInTest(unittest.TestCase):
         plan = plan_perpendicular(obs, CAR, nose_in=True)
         gx, gy, gh = plan.parking_goal
         self.assertAlmostEqual(math.degrees(_wrap(math.radians(gh) - 0.0)), 0.0, delta=3.0)         # toward +x, into the wall
-        self.assertAlmostEqual(obs.x - (gx + CAR.front_x * math.cos(math.radians(gh))), 0.13, delta=0.01)
+        self.assertAlmostEqual(obs.x - (gx + CAR.front_x * math.cos(math.radians(gh))), STOP_GAP_FRONT_M, delta=0.01)
         self.assertAlmostEqual(gy, obs.y, delta=0.03)                                                 # on the marker's centre line
 
     def test_path_drives_forward_in_and_ends_on_the_goal(self):
@@ -448,7 +448,7 @@ class NoseInTest(unittest.TestCase):
         worst = min(float(_obb_clearance(p[None, :3], pts, CAR)[0]) for p in path[::3])
         self.assertGreater(worst, 0.02)
         gx, gy, gh = plan.parking_goal
-        self.assertAlmostEqual(wall_x - (gx + CAR.front_x), 0.13, delta=0.02)      # the LiDAR's wall, not the marker's range, sets the stop
+        self.assertAlmostEqual(wall_x - (gx + CAR.front_x), STOP_GAP_FRONT_M, delta=0.02)      # the LiDAR's wall, not the marker's range, sets the stop
 
     def test_reverse_in_is_unchanged(self):
         plan = plan_perpendicular(observe((-1.0, 0.1), 0.0), CAR)
@@ -458,6 +458,86 @@ class NoseInTest(unittest.TestCase):
 
 def _wrap(a):
     return math.atan2(math.sin(a), math.cos(a))
+
+class HomeBayScanTest(unittest.TestCase):
+    """The car's real scan of the home bay (tests/data/home_bay_scan.json, 10 Nov): plans, however the lane is placed against the scan."""
+
+    @classmethod
+    def setUpClass(cls):
+        import json
+        cls.d = json.load(open(os.path.join(os.path.dirname(__file__), "data", "home_bay_scan.json")))
+
+    def placed(self, deg, dy):
+        c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+        rot = lambda P: np.column_stack([c * P[:, 0] - s * P[:, 1], s * P[:, 0] + c * P[:, 1] + dy])
+        edge = rot(np.array(self.d["edge"], float))
+        return ParkingStrip(edge, 1, self.d["depth"]), tuple(rot(np.array([self.d["click"]], float))[0])
+
+    def test_plans_for_lane_poses_that_a_drifting_heading_gives(self):
+        pts, car = np.array(self.d["pts"], float), VehicleParams()
+        for deg in (-4, 0, 3, 6):                                             # (dead-reckoned heading drifts a few degrees: 3 deg = 8 cm at 1.5 m)
+            for dy in (-0.04, 0.0, 0.04):
+                strip, click = self.placed(deg, dy)
+                plan = plan_parallel(strip, click, car, points=pts, approach=False)
+                self.assertIsNotNone(plan.planned_path, f"no plan at {deg} deg, {dy} m")
+
+    def test_refine_after_the_approach_finds_the_gap(self):
+        from adas.park_select import refine_parallel
+        pts, car = np.array(self.d["pts"], float), VehicleParams()
+        strip, click = self.placed(3, 0.0)
+        first = plan_parallel(strip, click, car, points=pts, approach=False)
+        plan = refine_parallel(strip, click, first.slot, car, points=pts)
+        self.assertIsNotNone(plan.planned_path, "the gap 'was shorter than it looked'")
+
+
+class DeepBayBetweenWallsTest(unittest.TestCase):
+    """The home bay (10 Nov): a lane 0.6 m deep for a 0.14 m car, a wall across each end and a wall along the kerb, 1.54 m free between."""
+
+    @staticmethod
+    def bay(depth=0.6, x0=2.07, x1=3.61):
+        strip = ParkingStrip([(0.0, 0.0), (6.0, 0.0)], 1, depth)
+        ys = np.linspace(0.05, depth - 0.02, 20)
+        xs = np.linspace(x0, x1, 60)
+        pts = [(x0, y) for y in ys] + [(x1, y) for y in ys] + [(x, depth - 0.02) for x in xs]
+        return strip, np.array(pts, float), ((x0 + x1) / 2, depth / 2)
+
+    def test_a_deep_lane_still_parks(self):
+        import adas.park_select as ps
+        car = VehicleParams()
+        strip, pts, click = self.bay()
+        plan = plan_parallel(strip, click, car, points=pts, approach=False)
+        self.assertIsNotNone(plan.planned_path, "no manoeuvre in a 1.54 m bay between walls")
+        self.assertEqual(strip.depth, 0.6)                                       # (the caller's strip is not changed)
+        self.assertGreaterEqual(len(ps.SHALLOW_DEPTHS_M), 1)
+
+    def test_it_keeps_the_drawn_depth_when_that_works(self):
+        from adas.park_select import _depth_fallbacks
+        strip = ParkingStrip([(0.0, 0.0), (6.0, 0.0)], 1, 0.38)
+        self.assertEqual([s.depth for s in _depth_fallbacks(strip, VehicleParams())], [0.38])    # (a normal lane: no shallower tries)
+
+    def test_a_deep_lane_is_planned_shallower_first_then_as_drawn(self):
+        from adas.park_select import LANE_DEPTH_CAP_EXTRA_M, _depth_fallbacks
+        car = VehicleParams()
+        strip = ParkingStrip([(0.0, 0.0), (6.0, 0.0)], 1, 0.6)
+        depths = [round(s.depth, 3) for s in _depth_fallbacks(strip, car)]
+        self.assertEqual(depths[0], round(car.width + LANE_DEPTH_CAP_EXTRA_M, 3))          # 0.42 m for the 0.14 m car
+        self.assertEqual(depths[1], 0.6)                                                   # the drawn depth is still tried
+        self.assertTrue(all(d >= car.width + 0.2 for d in depths))
+
+    def test_the_path_stays_off_the_end_walls(self):
+        car = VehicleParams()
+        strip, pts, click = self.bay()
+        plan = plan_parallel(strip, click, car, points=pts, approach=False)
+        P = np.asarray(plan.planned_path, float)
+        for x, y, th in P[:, :3]:
+            c, s = math.cos(th), math.sin(th)
+            for lx in np.linspace(car.rear_x, car.front_x, 8):
+                for ly in (-car.width / 2, car.width / 2):
+                    px, py = x + c * lx - s * ly, y + s * lx + c * ly
+                    if py > 0.05:                                               # inside the lane (the road side is free)
+                        self.assertGreater(px, 2.07 + 0.02)
+                        self.assertLess(px, 3.61 - 0.02)
+                        self.assertLess(py, 0.6 - 0.02 + 0.001)
 
 
 if __name__ == "__main__":

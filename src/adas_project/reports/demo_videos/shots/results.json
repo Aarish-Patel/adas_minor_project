@@ -1,0 +1,27 @@
+[
+ {
+  "scenario": "pedestrian",
+  "shots": [],
+  "log": []
+ },
+ {
+  "scenario": "bay_park",
+  "marker_tile": "Park at the marker \u00b7 not seen",
+  "path_shown_pct": 0,
+  "msgs": [
+   "the simulator moved the car"
+  ],
+  "crashes": 0,
+  "camera": "front",
+  "pos_err_cm": 12.4,
+  "head_deg": 0.9,
+  "ok": false,
+  "shots": [
+   "reports\\demo_videos\\shots\\bay_park_00_before.png",
+   "reports\\demo_videos\\shots\\bay_park_01_marker_tile.png",
+   "reports\\demo_videos\\shots\\bay_park_02_driving.png",
+   "reports\\demo_videos\\shots\\bay_park_03_end.png"
+  ],
+  "log": []
+ }
+]

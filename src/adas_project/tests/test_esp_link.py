@@ -89,6 +89,20 @@ class EspLinkTest(unittest.TestCase):
         link = self.link(fake)
         fake.boot()
         self.assertTrue(self.wait_for(lambda: link.reboots == 1), link.status())
+        self.assertIsNone(link.status()["last_reset"])                         # old firmware: no reason given
+        link.close()
+
+    def test_reboot_reason_from_the_new_firmware(self):
+        """ESP32_RC.ino of 14 Nov 2026 prints 'ROVER READY reset=BROWNOUT': the relay names the cause instead of guessing."""
+        fake = FakeEsp(alive=True)
+        events = []
+        link = self.link(fake)
+        link.on_event = lambda msg, **kw: events.append((msg, kw))
+        with fake.lock:
+            fake.out += b"ROVER READY reset=BROWNOUT\r\n"
+        self.assertTrue(self.wait_for(lambda: link.reboots == 1), link.status())
+        self.assertEqual(link.status()["last_reset"], "BROWNOUT")
+        self.assertIn("brown-out", events[-1][0])
         link.close()
 
     def test_unplug_drops_writes_then_reopens(self):

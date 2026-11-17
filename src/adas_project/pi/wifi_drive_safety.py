@@ -808,6 +808,7 @@ def main():
         camera_service = CameraService(CAMERA_CFG)             # ... which this relay keeps running (CAMERA_CFG["autostart"], default on)
         camera_service.start()
     assist.marker_source = marker_src
+    assist.candidate_source = getattr(marker_src, "candidates", None)      # marker-like things the camera sees (PARK_AREA's search)
     from pi.path_gate import PathGate
     pgate = PathGate(assist.p, TUNING.speed_model)      # path-predicted emergency braking + obstacle memory
     assist.memory = pgate.memory                        # the planners avoid what the gate remembers
@@ -920,6 +921,7 @@ def main():
                         vest.on_scan(gpts, gseq, now)
                         pgate.memory.correct_pose(vest.pose, stamp=vest.pose_stamp)          # the obstacle memory rides on the scan-matched pose
                     ramp = deadman_pwm(last_physical, age, dt)
+                    pgate.creep_min = assist.gate_creep_min()
                     capped, _ = pgate.decide(dt, ramp, gate_delta, vest.v_gate((ramp > 0) - (ramp < 0)),
                                              ft.speed if ramp > 0 else rt.speed)
                     danger = abs(capped) < abs(ramp) - 0.5 or now - last_seq_t > SCAN_LOST_S
@@ -1005,6 +1007,7 @@ def main():
                     return f"autonomy fault: {type(e).__name__}"
 
             if len(parts) >= 2 and parts[0] == "GOTO":      # click-to-go: "GOTO <x> <y> [heading deg]" (m, vehicle
+                assist.marker_search = None                  # (a new goto / cancel ends 'park at the marker from the area')
                 if parts[1] == "CANCEL":                     # frame; heading 0 = ahead, + = left) / "GOTO CANCEL"
                     assist.nav.cancel("cancelled from the GUI")
                 elif len(parts) in (3, 4):
@@ -1034,6 +1037,29 @@ def main():
                 except (ValueError, KeyError, TypeError) as e:
                     res = f"BAD PARK_TARGET: {e}"
                 dlog.event("park target", result=res, state=assist.nav.state)
+                sock.sendto(res.encode(), addr)
+                continue
+
+            if parts and parts[0] == "PARK_BAY":                          # "PARK_BAY <json>": the bay drawn on the map, car frame now (wall mid, normal, width)
+                try:
+                    import json as _json
+                    d = _json.loads(text.strip()[len("PARK_BAY"):])
+                    gpts, _ = clr.read_points_seq()
+                    assist.marker_search = None
+                    ends = d.get("ends") or [{"wall": d["wall"], "normal": d["normal"]}]
+                    res = autonomy(assist.park_bay, ends, float(d["width"]), float(d.get("depth", 0.6)), gpts)
+                except (ValueError, KeyError, TypeError) as e:
+                    res = f"BAD PARK_BAY: {e}"
+                dlog.event("park bay", result=res, state=assist.nav.state)
+                sock.sendto(res.encode(), addr)
+                continue
+
+            if parts and parts[0] == "PARK_AREA":                         # "PARK_AREA x y [heading_deg]": the general area (car frame now), then find the marker, park
+                try:
+                    res = autonomy(assist.park_area, float(parts[1]), float(parts[2]), float(parts[3]) if len(parts) > 3 else 0.0)
+                except (ValueError, IndexError):
+                    res = "BAD PARK_AREA: expected PARK_AREA x y [heading_deg]"
+                dlog.event("park area", result=res, state=assist.nav.state)
                 sock.sendto(res.encode(), addr)
                 continue
 
@@ -1149,6 +1175,7 @@ def main():
                         closing = 0.0
                         if moving_contact[2] is not None:
                             closing = front_track.speed if physical > 0 else rear_track.speed
+                        pgate.creep_min = assist.gate_creep_min()
                         g_phys, g_brake = pgate.decide(dt_pkt, physical, gate_delta,
                                                        vest.v_gate((physical > 0) - (physical < 0)), closing,
                                                        intent_k_rate=None if adas_override else rintent.gate_k_rate,

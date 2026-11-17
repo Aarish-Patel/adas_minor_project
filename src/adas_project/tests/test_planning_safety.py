@@ -315,7 +315,9 @@ class GateTests(unittest.TestCase):
                                                               # RELEASE_HOLD_S (brake hysteresis, AK3):
             out, _ = g.decide(0.05, 200, 0.0, 0.0)           # the path is clear at a creep
         self.assertGreater(out, 0)
-        self.assertLessEqual(out, g.model.pwm_for_speed(CREEP_V) + 1)
+        from pi.path_gate import MARGIN_LEVELS                 # (a crawl: at most the slowest protective-field level - the 3 cm standoff of
+        self.assertGreaterEqual(out, int(g.model.pwm_for_speed(CREEP_V)) - 1)   # 10 Nov allows a little more than CREEP_V 12 cm from a wall)
+        self.assertLessEqual(out, g.model.pwm_for_speed(MARGIN_LEVELS[0][0]) + 1)
 
 
 class IntentTests(unittest.TestCase):
@@ -388,9 +390,46 @@ class StuckRecoveryTests(unittest.TestCase):
         from sim.world import Box
         w = _world()
         w.add(Box(0.80, 0.0, 0.26, 0.26))                       # 0.4 m ahead of the bumper, full throttle from rest
-        r = run(w, steady(255), 30, ("evasive",), stop_when=lambda t, x, y, th, v: x > 2.3)
+        # with the back-off allowed (the behaviour until 10 Nov, still selectable in the config): backs up, then round it
+        from dataclasses import replace
+
+        def allow_backoff(t, assist, pts, seq):
+            if assist.assists.cfg.backoff_tries == 0:
+                assist.assists.cfg = replace(assist.assists.cfg, backoff_tries=3, evade_reverse_nodes=4000)
+        r = run(w, steady(255), 30, ("evasive",), stop_when=lambda t, x, y, th, v: x > 2.3, hook=allow_backoff)
         self.assertFalse(r["collided"])
         self.assertGreater(r["x"], 2.0)                           # round it, not held in front of it
+
+    def test_forward_only_evasive_stops_when_there_is_no_way_round(self):
+        """User, 10 Nov: the evasive steer never reverses - it drives round the obstacle if it can and stops if it cannot. A box 0.4 m
+        ahead of the bumper from rest cannot be passed without backing up: the car stops in front of it, untouched."""
+        from sim.relay_scenarios import _world, run, steady
+        from sim.world import Box
+        w = _world()
+        w.add(Box(0.80, 0.0, 0.26, 0.26))
+        r = run(w, steady(255), 12, ("evasive",))
+        self.assertFalse(r["collided"])
+        self.assertLess(self.backed_m(r), 0.04, "the car reversed")   # (a brake pulse may roll it back a centimetre or two)
+        self.assertLess(r["x"], 0.45)                             # held in front of the box
+
+    @staticmethod
+    def backed_m(r):
+        """Farthest the car came back from the most forward point it had reached (m)."""
+        best, back = -1e9, 0.0
+        for row in r["trace"]:
+            best = max(best, row[1])
+            back = max(back, best - row[1])
+        return back
+
+    def test_forward_only_evasive_goes_round_a_box_it_sees_in_time(self):
+        from sim.relay_scenarios import _world, run, steady
+        from sim.world import Box
+        w = _world()
+        w.add(Box(2.2, 0.0, 0.26, 0.26))                         # 1.8 m ahead: room to steer round it
+        r = run(w, steady(180), 25, ("evasive",), stop_when=lambda t, x, y, th, v: x > 3.2)
+        self.assertFalse(r["collided"])
+        self.assertLess(self.backed_m(r), 0.04, "the car reversed")
+        self.assertGreater(r["x"], 3.0)                           # past the box
 
     def test_cusp_switches_to_the_next_leg_after_an_overshoot(self):
         from adas.assists import past_cusp

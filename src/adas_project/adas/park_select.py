@@ -32,12 +32,12 @@ import numpy as np
 from . import dubins
 from .hybrid_astar import Grid, HybridAStar
 
-KAPPA_PARK = 1.5          # 1/m, the planner's steering limit (adas/assists.plan_kappa_max)
+KAPPA_PARK = 2.0          # 1/m, the planner's steering limit (was 1.5; 10 Nov: the home bay, a dead-end road, needed the S shorter - the car's own limit is ~3.9 at crawl)
 CLEAR_M = 0.04            # body clearance kept to neighbours, kerb and wall
 COMFORT_CLEAR_M = 0.13    # tried first for the S and the approach; CLEAR_M is the fallback
 END_MARGIN_M = 0.04       # a space must be at least the car's length + 2 x this
 STOP_GAP_M = 0.06         # perpendicular: rear bumper to the wall at the goal
-STOP_GAP_FRONT_M = 0.13   # perpendicular, nose in: front bumper to the wall at the goal (the brake gate holds a car ~10 cm from a wall ahead)
+STOP_GAP_FRONT_M = 0.03   # perpendicular, nose in: front bumper to the wall at the goal (11 Nov, user: 3 cm; the gate's bay crawl limit allows it)
 ALIGN_M = 0.30            # perpendicular: straight reverse on the centre line at the end
 DS = 0.02                 # path sampling
 LANE_DEPTH_M = 0.38       # parking lane: road edge to kerb (1:14 street; the HMI sends the strip's own depth)
@@ -184,6 +184,29 @@ class ParkingStrip:
         out = np.column_stack([ox + c * poses[:, 0] - s * yl, oy + s * poses[:, 0] + c * yl,
                                [_wrap(t + self.side * a) for a in poses[:, 2]]])
         return out
+
+
+LANE_DEPTH_CAP_EXTRA_M = 0.28   # a lane is used only this much deeper than the car is wide (the rest is empty space beyond the car)
+SHALLOW_DEPTHS_M = (0.50, 0.42)   # ... and, if that has no manoeuvre, the drawn depth and then these
+
+
+def _depth_fallbacks(strip, car):
+    """The lane depths to plan with, in order. A lane much deeper than the car (the home bay: 0.6 m for a 0.14 m car) means a lateral move of
+    ~0.4 m to reach its kerb: the reverse S is then long, the steering lag and pose drift add up over it and the car arrives skewed against
+    the kerb (10 Nov, twin: 'stuck - no way through from here' at 1 cm from the kerb wall; on the car: a 3 deg heading drift made the
+    planner find no way in at all). Parking `car.width + LANE_DEPTH_CAP_EXTRA_M` deep (10-20 cm off a far wall) is still inside the lane
+    the user drew and much more forgiving, so that comes first; the drawn depth and shallower ones only when it has no manoeuvre. A normal
+    lane (not deeper than the cap + 5 cm) is planned as drawn, exactly as before."""
+    cap = car.width + LANE_DEPTH_CAP_EXTRA_M
+    floor = car.width + 2 * CLEAR_M + 0.12
+    out = []
+    if strip.depth > cap + 0.05:
+        out.append(ParkingStrip(strip.pts, strip.side, cap))
+    out.append(strip)
+    for d in SHALLOW_DEPTHS_M:
+        if floor <= d < strip.depth - 0.04 and all(abs(d - s.depth) > 0.01 for s in out):
+            out.append(ParkingStrip(strip.pts, strip.side, d))
+    return out
 
 
 def find_gaps(strip, points, min_points=3):
@@ -351,16 +374,32 @@ def _goal_in_space(space, car):
     return space.length / 2 - centre, max(space.depth / 2, y), 0.0
 
 
+APPROACH_CLEAR_M = 0.13   # the pull-up pose keeps this much body clearance: the click-to-go planner that drives the car there needs its
+                          # own margin (6-10 cm) plus its grid's 5 cm steps, or it answers "no safe path to that point"
+
+
+def _approachable(car, pts, pose, clear=APPROACH_CLEAR_M):
+    """Can the route planner bring the car to this pull-up pose? (11-14 Nov, the home bay: a wall across the lane's end reaches the road
+    edge, a pull-up 10 cm off the road edge stood 10 cm from its corner and the approach was refused in most runs. Parked cars stand
+    ~16 cm inside the lane, so on a street every lane gap passes.)"""
+    P = np.asarray(pts, float).reshape(-1, 2)
+    if clear <= 0 or not len(P):
+        return True
+    near = P[(np.abs(P[:, 0] - pose[0]) < 1.0) & (np.abs(P[:, 1] - pose[1]) < 1.0)]
+    return not len(near) or float(_obb_clearance(np.array([pose], float), near, car)[0]) >= clear
+
+
 def _reverse_s(space, car, ha, pts, kappa, lane_gaps=None, margin=CLEAR_M, kerb=None):
     lane_gaps = LANE_GAPS if lane_gaps is None else lane_gaps
-    for k in (S_MARGIN * kappa, kappa):
-        out = _reverse_s_k(space, car, ha, pts, k, lane_gaps, margin, kerb)
-        if out is not None:
-            return out
+    for clear in (APPROACH_CLEAR_M, 0.0):                  # a pull-up pose with room for the approach first; any pose only if none has
+        for k in (S_MARGIN * kappa, kappa):
+            out = _reverse_s_k(space, car, ha, pts, k, lane_gaps, margin, kerb, clear)
+            if out is not None:
+                return out
     return None
 
 
-def _reverse_s_k(space, car, ha, pts, kappa, lane_gaps, margin, kerb=None):
+def _reverse_s_k(space, car, ha, pts, kappa, lane_gaps, margin, kerb=None, approach_clear=0.0):
     """Pull-up pose + two equal reverse arcs (in F). Returns (pre-park pose, poses (N,4)) or None."""
     xg, yg, _ = _goal_in_space(space, car)
     R = 1.0 / kappa
@@ -371,6 +410,8 @@ def _reverse_s_k(space, car, ha, pts, kappa, lane_gaps, margin, kerb=None):
             continue
         th = math.acos(1.0 - dy / (2 * R))
         xs = xg + 2 * R * math.sin(th)
+        if not _approachable(car, pts, (xs, ys, 0.0), approach_clear):
+            continue
         a1 = _arc((xs, ys, 0.0), kappa, -R * th)
         a2 = _arc(tuple(a1[-1]), -kappa, -R * th)
         poses = np.vstack([a1, a2])
@@ -468,11 +509,20 @@ def _tight_gap(space, car, pts, kappa, e=1, clear=STROKE_CLEAR_M, lane_gaps=None
     k = kappa
     xg, yg, _ = _goal_in_space(space, car)
     goal = (xg, yg, 0.0)
+    first = None
     for gap in (LANE_GAPS if lane_gaps is None else lane_gaps):
         y_lane = -(gap + car.width / 2)
         segs = _exit_strokes(goal, car, pts, k, e, y_lane, clear, kerb, max_strokes)
         if segs is None:
             continue
+        if not _approachable(car, pts, tuple(segs[-1][0][-1])):      # no room for the approach at this pull-up: a wider lane gap first
+            first = first or segs
+            continue
+        first = segs
+        break
+    if first is None:
+        return None
+    for segs in (first,):
         ex = segs[-1][0]
         out = []                                          # the exit driven backwards: pieces in reverse order, each reversed, direction flipped
         for idx in range(len(segs) - 1, -1, -1):
@@ -611,11 +661,12 @@ def plan_parallel(strip, click, car, pose=(0.0, 0.0, 0.0), points=None, kappa=KA
     gets the nearest viable slot - never a refusal while one exists. approach=False: the path starts at the slot's pull-up pose
     (ParkingPlan.pull_up, starts_at_car False) and the car gets there with the click-to-go planner. Returns a ParkingPlan (NO_PLAN when
     no viable gap)."""
-    s_click, _ = strip.project(click)
-    for sp in choose_slots(find_gaps(strip, points), s_click, car, strip.depth)[:tries]:
-        plan = _plan_slot(strip, sp, car, pose, points, kappa, click, approach)
-        if plan is not None:
-            return plan
+    for st in _depth_fallbacks(strip, car):
+        s_click, _ = st.project(click)
+        for sp in choose_slots(find_gaps(st, points), s_click, car, st.depth)[:tries]:
+            plan = _plan_slot(st, sp, car, pose, points, kappa, click, approach)
+            if plan is not None:
+                return plan
     return NO_PLAN
 
 
@@ -661,12 +712,13 @@ def refine_parallel(strip, click, slot, car, points=None, kappa=KAPPA_PARK):
     to 7 cm between a far and a near view - worse than the drift). Returns a ParkingPlan."""
     s_corners, _ = strip.to_strip(np.asarray(slot, float).reshape(-1, 2))
     a, b = float(s_corners.min()), float(s_corners.max())
-    s_click, _ = strip.project(click)
-    near = [g for g in find_gaps(strip, points) if g[1] > a - REFINE_REACH_M and g[0] < b + REFINE_REACH_M]   # the close-range scan
-    for sp in choose_slots(near, s_click, car, strip.depth):                                           # same rule as from afar
-        plan = _plan_slot(strip, sp, car, (0.0, 0.0, 0.0), points, kappa, click)
-        if plan is not None:
-            return plan
+    for st in _depth_fallbacks(strip, car):
+        s_click, _ = st.project(click)
+        near = [g for g in find_gaps(st, points) if g[1] > a - REFINE_REACH_M and g[0] < b + REFINE_REACH_M]   # the close-range scan
+        for sp in choose_slots(near, s_click, car, st.depth):                                          # same rule as from afar
+            plan = _plan_slot(st, sp, car, (0.0, 0.0, 0.0), points, kappa, click)
+            if plan is not None:
+                return plan
     return plan_parallel(strip, click, car, points=points, kappa=kappa)     # (the path may then start at a pull-up pose: ParkingPlan.pull_up)
 
 
@@ -756,6 +808,50 @@ def wall_from_lidar(points, m, n, along=0.6, band=0.15, min_points=12, max_turn_
     return mm, nn
 
 
+def bay_from_lidar(points, m, n, car, depth=0.6, reach=0.7, max_turn_deg=20.0):
+    """The bay between two side walls / boxes, as the LiDAR sees them in front of the back wall (m on the wall, n its normal toward the mouth):
+    the inner faces of the nearest returns on each side of the marker's line, from 3 cm to `depth` off the wall. Both sides seen: the bay's
+    axis is parallel to the two faces (the mean of their fitted directions) and centred between them; one side: parallel to it, the place from
+    the marker. Returns (m, n) moved accordingly, or the input when the sides are not seen (11 Nov, user: 'align to the rectangle of the marker
+    and parallel to the 2 walls' - the camera only says which bay, the LiDAR how it lies)."""
+    if points is None or not len(points):
+        return m, n
+    P = np.asarray(points, float).reshape(-1, 2)
+    t = np.array([-n[1], n[0]])
+    d, a = (P - m) @ n, (P - m) @ t
+    inside = (d > 0.03) & (d < depth)
+    hw = car.width / 2 + 0.02
+    sides = []
+    for sgn in (1, -1):
+        sel = inside & (sgn * a > hw) & (sgn * a < reach)
+        if int(sel.sum()) < 6:
+            sides.append(None)
+            continue
+        inner = float(np.min(sgn * a[sel]))
+        face = sel & (sgn * a < inner + 0.04)
+        Q = P[face]
+        if len(Q) < 5 or float(np.ptp(d[face])) < 0.12:              # a face must run some way along the bay
+            sides.append(None)
+            continue
+        c = Q.mean(axis=0)
+        w, v = np.linalg.eigh(np.cov((Q - c).T))
+        u = v[:, 1] * (1.0 if v[:, 1] @ n >= 0 else -1.0)            # the face's direction, pointing out of the bay like n
+        sides.append((sgn * inner, u))
+    got = [s for s in sides if s is not None]
+    if not got:
+        return m, n
+    u = sum(s[1] for s in got)
+    u = u / max(np.linalg.norm(u), 1e-9)
+    if math.degrees(math.acos(float(np.clip(u @ n, -1.0, 1.0)))) > max_turn_deg:
+        return m, n
+    m2 = m
+    if len(got) == 2:
+        (aL, _), (aR, _) = sides
+        if aL - aR >= car.width + 0.06:                              # (wide enough for the car: otherwise not this bay's walls)
+            m2 = m + t * 0.5 * (aL + aR)
+    return m2, u
+
+
 def plan_perpendicular(marker, car, pose=(0.0, 0.0, 0.0), space_id=None, stop_gap=None, kappa=KAPPA_PARK, align_m=ALIGN_M,
                        points=None, nose_in=False):
     """Park in a bay whose back wall carries `marker` (MarkerObs, vehicle frame at observation time; `pose` = the vehicle pose in the
@@ -769,10 +865,15 @@ def plan_perpendicular(marker, car, pose=(0.0, 0.0, 0.0), space_id=None, stop_ga
     m = np.array([pose[0] + c * marker.x - s * marker.y, pose[1] + s * marker.x + c * marker.y])
     f = _wrap(marker.facing + pose[2])
     n = np.array([math.cos(f), math.sin(f)])
-    wall = wall_from_lidar(points, m, n)
+    wall = wall_from_lidar(points, m, n, max_turn_deg=45.0)          # (the marker's facing is only a seed: a blurred marker's PnP is poor)
     if wall is not None:                                  # camera: WHICH bay (the marker's place on the wall); LiDAR: the wall's line
         m, n = wall
         f = math.atan2(n[1], n[0])
+    if points is not None and len(points):                # ... and the side walls: centred between them; parallel to them only when the
+        m, n_side = bay_from_lidar(points, m, n, car)     # back wall was not measured (its long line gives the direction far better than
+        if wall is None:                                  # two short side faces: 11 Nov, the car ended 10 deg skewed between parked cars)
+            n = n_side
+            f = math.atan2(n[1], n[0])
     h = _wrap(f + math.pi) if nose_in else f              # the car's heading at the goal: toward the wall (nose in) / away from it
     reach = abs(car.front_x) if nose_in else abs(car.rear_x)
     goal = np.array([*(m + n * (stop_gap + reach)), h])
@@ -790,10 +891,19 @@ def plan_perpendicular(marker, car, pose=(0.0, 0.0, 0.0), space_id=None, stop_ga
     R = 1.0 / kappa
     one = dubins.sample if nose_in else dubins.sample_reverse
     two = dubins.sample_reverse if nose_in else dubins.sample
-    P = one(tuple(start), tuple(pre), R)                                         # one move on the bay's side of travel
-    if P is not None and turn(P) and ok(P):
-        path = np.vstack([_with_dir(P, d_in), tail])
-    else:                                                                        # the other way to a staging pose, then straight in
+    # head on (11 Nov, user: 'approach the parking zone head on'): the longest straight run along the bay's axis that one curve reaches,
+    # longest first - the car lines up well before the bay instead of swinging in at the end; the shortest is the old ALIGN_M
+    for a_m in ([1.0, 0.8, 0.6, 0.45] if nose_in else []) + [align_m]:
+        pre_k = np.array([*(goal[:2] + n * a_m), h])
+        P = one(tuple(start), tuple(pre_k), R)                                   # one move on the bay's side of travel
+        if P is None or not turn(P) or not ok(P):
+            continue
+        steps = np.arange(DS, a_m + 1e-9, DS)
+        tail_k = _with_dir(np.column_stack([np.array([pre_k[:2] - n * d for d in steps]), np.full(len(steps), h)]), d_in)
+        tail_k[-1, :3] = goal
+        path = np.vstack([_with_dir(P, d_in), tail_k])
+        break
+    if path is None:                                                             # the other way to a staging pose, then straight in
         runs = [align_m + 0.45]                                                  # (staging poses on the axis, nearest first)
         if nose_in:                                                              # nose in: farther out than the car stands, so it can back out
             far = float((start[:2] - goal[:2]) @ n) + 0.2

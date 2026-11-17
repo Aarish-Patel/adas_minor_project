@@ -14,6 +14,8 @@ Modes:
 """
 import time
 
+import numpy as np
+
 
 # Computing-time budgets per search, in seconds ON THE PI (simulations scale them by the Pi's slowness): a swerve
 # that cannot be found this quickly is not wanted - the brake gate handles that case.
@@ -34,7 +36,7 @@ def plan_line_job(params, kappa_max, pts, start, x_goal, max_nodes, reverse_node
     from .hybrid_astar import HybridAStar
     ha = HybridAStar(params, kappa_max=kappa_max)
     path = ha.plan(pts, start, x_goal=x_goal, allow_reverse=False, max_nodes=max_nodes, budget_s=budget_s)
-    if path is None and ha.gave_up != "goal unreachable":
+    if path is None and ha.gave_up != "goal unreachable" and reverse_nodes > 0:        # (reverse_nodes 0: forward only - drive round it or stop)
         path = ha.plan(pts, start, x_goal=x_goal, allow_reverse=True, max_nodes=reverse_nodes,
                        budget_s=reverse_budget_s)
     return path
@@ -47,7 +49,22 @@ COMFORT_MARGIN_M = 0.10       # click-to-go plans keep this clearance when they 
                               # own 6 cm margin only where no path with this much room exists (clearance hierarchy, AK2)
 
 
-def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_heading=None, reverse_first=False):
+LOOP_TURN_DEG = 300.0         # a click-to-go path turning this much in all is a loop round to its goal
+
+
+def _turned(path):
+    """Total heading change along a path (deg)."""
+    P = np.asarray(path, float)
+    if len(P) < 2:
+        return 0.0
+    return float(np.degrees(np.abs(np.diff(np.unwrap(P[:, 2]))).sum()))
+
+
+def _loops(path):
+    return _turned(path) > LOOP_TURN_DEG
+
+
+def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_heading=None, reverse_first=False, strict_escape=False):
     # (budget_s applies to each of the two searches)
     """Click-to-go to a goal position (and heading, if given): forward-only first - also for goals behind the car
     (a forward U-turn when there is room) - and only if no forward path exists, a search that may reverse, where
@@ -55,13 +72,34 @@ def plan_point_job(params, kappa_max, pts, start, goal, budget_s=None, goal_head
     Clearance hierarchy (research, docs/research_lidar_navigation.md section 3): a first search with COMFORT_MARGIN_M, so the path keeps
     the brake gate's protective field plus the follower's tracking error away from obstacles and the gate does not brake on it; only if
     that finds nothing, the planner's normal margin (narrow doorways, a car parked close)."""
-    from .hybrid_astar import HybridAStar
+    from .hybrid_astar import HybridAStar as _HA
+    if strict_escape:
+        # re-planning after the brake gate held the car on its path (AutoNav's stall re-plan): a start inside the margin may then not
+        # go nearer the obstacle than it stands, to within ESCAPE_STRICT_M - the normal slack lets the first moves go 2 cm nearer, and
+        # that is the path the gate has just refused (goal on a box, 17 Nov: the same refused path six times, then 'stuck'). Only when
+        # the strict search finds nothing (a noisy wall alongside: no first move) is the normal slack used.
+        class HybridAStar(_HA):
+            ESCAPE_SLACK_M = _HA.ESCAPE_STRICT_M
+        path = _plan_point(HybridAStar, params, kappa_max, pts, start, goal, budget_s, goal_heading, reverse_first)
+        if path is not None:
+            return path
+    return _plan_point(_HA, params, kappa_max, pts, start, goal, budget_s, goal_heading, reverse_first)
+
+
+def _plan_point(HybridAStar, params, kappa_max, pts, start, goal, budget_s, goal_heading, reverse_first):
+    """The searches of plan_point_job with the given planner class."""
     if not reverse_first:
         ha = HybridAStar(params, kappa_max=kappa_max, margin=COMFORT_MARGIN_M)
         path = ha.plan_to_point(pts, start, goal, max_nodes=2500, budget_s=budget_s, goal_heading=goal_heading,
                                 coarse=goal_heading is not None)
-        if path is not None:
+        if path is not None and not _loops(path):
             return path
+        if path is not None:                   # a forward path that circles round to a goal pose near the car (11 Nov, the parallel park's
+            fwd = path                         # approach drove a full loop): a short back-up and a straight-on approach instead, if one exists
+            ha_r = HybridAStar(params, kappa_max=kappa_max)
+            rev = ha_r.plan_to_point(pts, start, goal, allow_reverse=True, max_nodes=6000, budget_s=budget_s,
+                                     goal_heading=goal_heading, w_reverse=GOTO_W_REVERSE)
+            return rev if rev is not None and _turned(rev) < _turned(fwd) else fwd
     ha = HybridAStar(params, kappa_max=kappa_max)
     if reverse_first:                      # parking: the way in is a reverse S-curve; the forward-only stage would only burn the budget
         return ha.plan_to_point(pts, start, goal, allow_reverse=True, max_nodes=12000,

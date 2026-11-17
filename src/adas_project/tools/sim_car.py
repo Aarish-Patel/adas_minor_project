@@ -7,6 +7,7 @@
 Logs go to RC_Car/logs/sim/. The GUI's RESET button puts the car back at the start.
 """
 import argparse
+import math
 import os
 import sys
 import threading
@@ -36,9 +37,12 @@ def main():
     R.open_lidar = lambda port, *args, **kw: SimLidar(car, R.TUNING.mount.yaw_offset_deg, usb_stalls=a.usb_stalls, dies_after_s=a.lidar_dies_after)
     cur = {"name": a.world, "start": start}
 
-    def switch(name, marker_id=23):
+    def switch(name, marker_id=None):
         """Swap the room under the running relay (the HMI's Parking Simulator switch): the car goes to the new start pose;
         the HMI then sends ORIGIN so the relay's world frame is the new start."""
+        if marker_id is None:                                      # the bay marker the car's camera looks for (pi/camera.json)
+            from adas import camera_config
+            marker_id = int(camera_config.load()["marker_id"])
         new_world, new_start = build(name, marker_id)
         cur.update(name=name, start=new_start)
         car.world = new_world
@@ -50,6 +54,39 @@ def main():
                                                                    # in its control loop's thread at the next tick
 
     R.EXTRA_POST["/api/sim/reset"] = lambda: teleport(cur["start"])
+
+    # demo props (tools/demo_videos.py): placed relative to where the car stands now; /api/sim/clear_props removes them
+    from sim.world import Box, MovingCircle
+    props = []
+
+    def ahead(dx, dy):
+        c, s = math.cos(car.th), math.sin(car.th)
+        return car.x + c * dx - s * dy, car.y + s * dx + c * dy
+
+    def add_prop(obj):
+        car.world.add(obj)
+        props.append(obj)
+
+    def walker():
+        """A pedestrian 1.3 m ahead, 0.35 m to the right, stepping slowly across the car's path (to the left) at 0.12 m/s: in the lane
+        from ~1.5 s to ~4.5 s, when the car gets there."""
+        x, y = ahead(1.1, -0.30)
+        add_prop(MovingCircle(x, y, -0.08 * math.sin(car.th), 0.08 * math.cos(car.th), radius=0.12))
+
+    def box_ahead():
+        """A box in the car's lane 1.6 m ahead (something to steer round)."""
+        x, y = ahead(1.6, 0.0)
+        add_prop(Box(x, y, 0.22, 0.26, car.th, height=0.3, style="box", colour="#b45309"))
+
+    def clear_props():
+        for o in props:
+            if o in car.world.objects:
+                car.world.objects.remove(o)
+        props.clear()
+
+    R.EXTRA_POST["/api/sim/add/walker"] = walker
+    R.EXTRA_POST["/api/sim/add/box"] = box_ahead
+    R.EXTRA_POST["/api/sim/clear_props"] = clear_props
     for nm in ("park_perp", "park_street", "room", "doorway", "open", "corridor", "gap", "lounge", "demo", "demo_dark"):
         R.EXTRA_POST[f"/api/sim/world/{nm}"] = lambda nm=nm: switch(nm)
     for i in range(50):                                            # the ArUco marker id of the perpendicular room

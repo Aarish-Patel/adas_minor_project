@@ -715,7 +715,7 @@ class RelayAssists:
         (nose out) with the rear one."""
         from adas.park_select import fuse_markers
         from adas.plan_service import plan_perpendicular_job
-        obs = [marker] if marker is not None else (list(self.marker_source() or []) if self.marker_source else [])
+        obs = [marker] if marker is not None else self._marker_obs(points if points else self._last_raw)
         obs = [o for o in obs if all(math.isfinite(v) for v in (o.x, o.y, o.facing))]       # (never plan from a NaN pose)
         if not obs:
             return "marker not visible"
@@ -726,6 +726,135 @@ class RelayAssists:
         ok = self.nav.start_parking(plan_perpendicular_job, self.p, fuse_markers(obs), self._planning_points(raw) if raw else None,
                                     self.camera_facing == "front")
         return self.nav.msg if ok else "no way into the bay from here"
+
+    marker_search = None        # adas.marker_search.MarkerSearch while "park at the marker from a general area" runs
+    candidate_source = None     # () -> [dict x, y, dist, bearing, size_px] marker-like things (any id) the camera sees; None without a camera
+
+    def gate_creep_min(self):
+        """The brake gate's crawl limit for this tick: the bay-parking one while a bay manoeuvre drives (the nose goes to ~3 cm off the back
+        wall on purpose), the normal one otherwise."""
+        from pi.path_gate import BAY_CREEP_MIN_M, CREEP_MIN_M, PARK_CREEP_MIN_M
+        req = self.nav.park_request if self.nav.active else None
+        if isinstance(req, dict) and "wall" in req:
+            return BAY_CREEP_MIN_M
+        # parallel parking, inside the gap (the S, its strokes, the shuffle): the planned strokes end 4-7 cm from the neighbours and the
+        # kerb - with the normal crawl limit the gate held the car short of them, the car stood skewed in the gap and gave up "stuck"
+        # (home-bay runs, 14-17 Nov; user, 10 Nov: "go close to a wall slowly during a parking manoeuvre instead of giving up")
+        if isinstance(req, dict) and "strip" in req and self.nav.park_phase == "manoeuvre":
+            return PARK_CREEP_MIN_M
+        return CREEP_MIN_M
+
+    def park_bay(self, ends, width, depth=0.6, points=None):
+        """Park nose in in the bay drawn on the map (11 Nov, user). `ends`: the candidate back walls [{"wall": middle of that end, "normal": into
+        the bay}] (vehicle frame now; the dashboard sends the rectangle's two short ends - the bay runs along its long sides, parallel to the
+        kerb line). The end with the marker in front of it, else the one the LiDAR sees most wall at, is the back wall. The drawing says
+        roughly where; the LiDAR (back wall, side walls: plan_perpendicular -> wall_from_lidar, bay_from_lidar) and the camera (a marker in the
+        bay sets the place along the wall) say exactly. Returns a message."""
+        from adas.markers import MarkerObs
+        from adas.plan_service import plan_perpendicular_job
+        raw = points if points else self._last_raw
+        xy = self.points_vehicle_frame(raw, self.p.lidar_x) if raw else np.empty((0, 2))
+        marks = self._marker_obs(raw) if raw else []
+
+        def score(e):
+            m, n = np.array(e["wall"], float), np.array(e["normal"], float)
+            n = n / max(np.linalg.norm(n), 1e-9)
+            t_ = np.array([-n[1], n[0]])
+            if marks:                                           # the marker is on the back wall: the end nearest to it
+                return 1e6 - min(abs(float((np.array([o.x, o.y]) - m) @ n)) for o in marks)
+            if not len(xy):
+                return 0.0
+            d, a = (xy - m) @ n, (xy - m) @ t_
+            return float(np.sum((d > -0.10) & (d < 0.45) & (np.abs(a) < width / 2 + 0.05)))
+        e = max(ends, key=score)
+        m, n = np.array(e["wall"], float), np.array(e["normal"], float)
+        n = n / max(np.linalg.norm(n), 1e-9)
+        if len(xy):                                             # the real back wall: the first line ACROSS the bay the LiDAR sees from that end
+            t_ = np.array([-n[1], n[0]])
+            d, a = (xy - m) @ n, (xy - m) @ t_
+            inside = (d > -0.15) & (d < depth) & (np.abs(a) < width / 2 + 0.05)
+            for d0 in np.arange(-0.15, depth, 0.03):
+                sel = inside & (d >= d0) & (d < d0 + 0.05)
+                if int(sel.sum()) >= 8 and float(np.ptp(a[sel])) >= 0.25:
+                    m = m + n * float(np.median(d[sel])) + t_ * 0.5 * float(a[sel].min() + a[sel].max())
+                    break
+        t = np.array([-n[1], n[0]])
+        raw = points if points else self._last_raw
+        lat = 0.0
+        for o in self._marker_obs(raw) if raw else []:          # a marker in the drawn bay: its place along the wall
+            a = float((np.array([o.x, o.y]) - m) @ t)
+            if abs(a) <= width / 2 + 0.10 and abs(float((np.array([o.x, o.y]) - m) @ n)) < 0.4:
+                lat = a
+                break
+        mm = m + t * lat
+        obs = MarkerObs(id=self.marker_id, corners=np.zeros((4, 2)), x=float(mm[0]), y=float(mm[1]), z=0.0, facing=math.atan2(n[1], n[0]),
+                        dist=float(np.hypot(*mm)), bearing=math.atan2(mm[1], mm[0]), t=time.time(), size_px=40.0)
+        if self.assists.phase is not None:
+            self.assists._stop_evading("autonomy started")
+        self.marker_search = None
+        self.odo, self.nav_pose, self._odo_origin = None, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
+        ok = self.nav.start_parking(plan_perpendicular_job, self.p, obs, self._planning_points(raw) if raw else None,
+                                    self.camera_facing == "front")
+        where = "at the marker" if lat else "in the drawn bay"
+        return (f"parking {where}: " + self.nav.msg) if ok else "no way into the drawn bay from here"
+
+    CAND_MAX_M, CAND_RANGE_TOL = 2.5, 0.35
+
+    def _marker_obs(self, points):
+        """What the bay parking aims at, vehicle frame: the marker id if the camera reads it, else a marker-like rectangle (any id, undecoded)
+        that the LiDAR confirms - a return at its bearing within CAND_RANGE_TOL of the camera's range (11 Nov, user: 'you don't need to read
+        id 1, just line up with the rectangle'). The facing is seeded towards the car when the marker's own (PnP of a blurred marker) is far
+        off: plan_perpendicular takes the wall's direction from the LiDAR anyway."""
+        from adas.markers import MarkerObs
+        src = list(self.marker_source() or []) if self.marker_source else []
+        obs = [o for o in src if o.id == self.marker_id and all(math.isfinite(v) for v in (o.x, o.y, o.facing))]
+        if not obs and self.candidate_source is not None and points:
+            xy = self.points_vehicle_frame(points, self.p.lidar_x)
+            cam_x = 0.25
+            if len(xy):
+                ang = np.arctan2(xy[:, 1], xy[:, 0] - cam_x)
+                rng = np.hypot(xy[:, 0] - cam_x, xy[:, 1])
+                for c in self.candidate_source() or []:
+                    if c["dist"] > self.CAND_MAX_M:
+                        continue
+                    near = np.abs(np.arctan2(np.sin(ang - c["bearing"]), np.cos(ang - c["bearing"]))) < 0.06
+                    if not near.any() or abs(float(rng[near].min()) - c["dist"]) > self.CAND_RANGE_TOL * max(c["dist"], 0.5):
+                        continue
+                    obs.append(MarkerObs(id=self.marker_id, corners=np.zeros((4, 2)), x=c["x"], y=c["y"], z=0.0, facing=0.0, dist=c["dist"],
+                                         bearing=c["bearing"], t=c["t"], size_px=c.get("size_px", 20.0)))
+        import dataclasses
+        out = []
+        for o in obs:
+            toward = math.atan2(-o.y, -o.x)                     # the marker facing the car
+            off = abs(math.remainder(o.facing - toward, 2 * math.pi))
+            out.append(o if off < math.radians(40) else dataclasses.replace(o, facing=toward))
+        return out
+
+    def park_area(self, x, y, heading_deg=0.0):
+        """Drive to the general parking area (x, y m in the car's frame now, arriving heading_deg), look for the ArUco marker there and park at
+        it nose in (adas/marker_search.py). The operator holds the throttle throughout. Returns a message."""
+        from adas.marker_search import MarkerSearch
+        if self.marker_source is None:
+            return "no marker camera"
+        self.marker_search = MarkerSearch((float(x), float(y), float(heading_deg)), time.time(), self.marker_id)
+        return "driving to the parking area, then looking for the marker"
+
+    def _marker_search_tick(self, points, now):
+        ms = self.marker_search
+        pose = getattr(self.speed, "pose_corrected", self.speed.pose) if self.speed is not None else (0.0, 0.0, 0.0)
+        obs = self._marker_obs(points)
+        cands = list(self.candidate_source() or []) if self.candidate_source else []
+        xy = self.points_vehicle_frame(points, self.p.lidar_x)
+        ahead = xy[(xy[:, 0] > 0.0) & (np.abs(xy[:, 1]) < 0.15)] if len(xy) else xy
+        front_free = float(ahead[:, 0].min() - self.p.front_x) if len(ahead) else None
+        msg = ms.step(now, pose, self.nav.active, obs, cands, front_free,
+                      lambda x, y, h: bool(self.goto(x, y, points=points, heading_deg=h)), lambda: self.park_marker(points), self.nav.msg)
+        self.info["marker_search"] = msg
+        if ms.done:
+            self.marker_search_result = (ms.ok, msg, now)
+            self.marker_search = None
+
+    marker_search_result = None
 
     def _explore_tick(self, points, now):
         ex = self.explorer
@@ -1058,6 +1187,14 @@ class RelayAssists:
             self._last_raw = points
             if self.explorer is not None and seq is not None:
                 self._explore_tick(points, now)
+            if self.marker_search is not None and seq is not None:
+                try:
+                    self._marker_search_tick(points, now)
+                except Exception:                  # (a fault in the search must not take the relay down: drop the search, the car holds)
+                    import traceback
+                    traceback.print_exc()
+                    self.marker_search = None
+                    self.nav.cancel("marker search failed")
         if self.nav.active:
             try:
                 nav = self._navigate(dt, self._planning_points(points), stick, physical, points, seq, now)

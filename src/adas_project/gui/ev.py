@@ -211,6 +211,99 @@ def point_walls(xy, h=0.10, half=0.02, join=0.12):
     return walls_mesh(seg, h) if len(seg) else None
 
 
+def surface_segments(xy, join=0.12, tol=0.03, min_pts=3):
+    """LiDAR points (in scan order) -> straight wall segments ((N, 4) x1, y1, x2, y2) and the lone points left over. Consecutive points
+    closer than `join` form a run; each run is reduced to the polyline that stays within `tol` of its points (iterative end-point fit /
+    split step of split-and-merge: Nguyen, Martinelli, Tomatis & Siegwart, "A comparison of line extraction algorithms using 2D range
+    data for indoor mobile robotics", Autonomous Robots 23, 2007). The display then shows flat, clean walls: the centimetre of range noise
+    stays inside the tolerance instead of making every wall ragged."""
+    P = np.asarray(xy, float).reshape(-1, 2)
+    if len(P) < 2:
+        return np.empty((0, 4)), P
+    brk = np.flatnonzero(np.hypot(*np.diff(P, axis=0).T) >= join) + 1
+    segs, lone = [], []
+    for run in np.split(P, brk):
+        if len(run) < min_pts:
+            lone.extend(run)
+            continue
+        keep = [0, len(run) - 1]
+        stack = [(0, len(run) - 1)]
+        while stack:                                        # split at the farthest point while it is farther than tol from the chord
+            i, j = stack.pop()
+            if j - i < 2:
+                continue
+            a, d = run[i], run[j] - run[i]
+            n = math.hypot(d[0], d[1])
+            off = np.abs(d[0] * (run[i + 1:j, 1] - a[1]) - d[1] * (run[i + 1:j, 0] - a[0])) / max(n, 1e-9)
+            k = int(np.argmax(off))
+            if off[k] > tol:
+                m = i + 1 + k
+                keep.append(m)
+                stack += [(i, m), (m, j)]
+        keep = sorted(set(keep))
+        k = 1
+        while k < len(keep) - 1:                            # merge step: two neighbouring pieces that one line fits are one wall
+            Q = run[keep[k - 1]:keep[k + 1] + 1]
+            c = Q.mean(axis=0)
+            w = np.linalg.eigh(np.cov((Q - c).T))[1][:, 0]  # normal of the least-squares line
+            if float(np.abs((Q - c) @ w).max()) <= tol:
+                del keep[k]
+            else:
+                k += 1
+        for u, v in zip(keep[:-1], keep[1:]):
+            Q = run[u:v + 1]
+            if len(Q) >= 4:                                 # the piece's own least-squares line (not two noisy end points)
+                c = Q.mean(axis=0)
+                w = np.linalg.eigh(np.cov((Q - c).T))[1][:, 1]
+                p0, p1 = c + w * ((Q[0] - c) @ w), c + w * ((Q[-1] - c) @ w)
+            else:
+                p0, p1 = Q[0], Q[-1]
+            segs.append((p0[0], p0[1], p1[0], p1[1]))
+    return np.array(segs, float).reshape(-1, 4), np.array(lone, float).reshape(-1, 2)
+
+
+def slabs_mesh(segments, height=0.10, thickness=0.03):
+    """Wall segments as solid slabs (top and both faces, no floor), vectorised: 8 vertices and 10 triangles per segment."""
+    S = np.asarray(segments, float).reshape(-1, 4)
+    if not len(S):
+        return None
+    d = S[:, 2:] - S[:, :2]
+    L = np.maximum(np.hypot(d[:, 0], d[:, 1]), 1e-9)
+    u = d / L[:, None]
+    nrm = np.column_stack([-u[:, 1], u[:, 0]]) * thickness / 2
+    a, b = S[:, :2] - u * thickness / 2, S[:, 2:] + u * thickness / 2        # (ends overlap a little: corners close)
+    base = np.stack([a - nrm, b - nrm, b + nrm, a + nrm], axis=1)            # (N, 4, 2), counter-clockwise
+    V = np.concatenate([np.concatenate([base, np.zeros((len(S), 4, 1))], axis=2),
+                        np.concatenate([base, np.full((len(S), 4, 1), float(height))], axis=2)], axis=1).reshape(-1, 3)
+    f = np.array([[4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7]])
+    F = (8 * np.arange(len(S))[:, None, None] + f[None]).reshape(-1, 3)
+    return V, F
+
+
+def posts_mesh(points, height=0.10, half=0.018):
+    """Lone LiDAR points (a table leg, a returned edge) as small square posts."""
+    P = np.asarray(points, float).reshape(-1, 2)
+    if not len(P):
+        return None
+    return slabs_mesh(np.column_stack([P[:, 0] - half, P[:, 1], P[:, 0] + half, P[:, 1]]), height, 2 * half)
+
+
+def surface_mesh(xy, height=0.10):
+    """Obstacles for the 3D view: fitted wall slabs + posts, one mesh (None when there is nothing)."""
+    segs, lone = surface_segments(xy)
+    parts = [m for m in (slabs_mesh(segs, height), posts_mesh(lone, height)) if m is not None]
+    return merge(parts) if parts else None
+
+
+def figure_mesh(x, y, heading=0.0, height=0.26):
+    """A walking figure for a moving object (pedestrian pictogram of production displays): legs / body column, shoulders, head."""
+    c, s_ = math.cos(heading), math.sin(heading)
+    body = cyl((x, y, 0.5 * height * 0.62), 0.032, height * 0.62, "z", n=12)
+    head = cyl((x, y, height * 0.62 + 0.035 + 0.01), 0.030, 0.06, "z", n=12)
+    sh = solid_box(x, y, 0.03, 0.10, heading, 0.03, z0=height * 0.62 - 0.045)
+    return merge([body, head, sh])
+
+
 def cyl(centre, radius, length, axis, n=18):
     """A cylinder as (V, F): centre (x, y, z), the axis 'x', 'y' or 'z', capped at both ends."""
     cx, cy, cz = centre
@@ -486,6 +579,20 @@ class DriveScene(Scene):
             xy = np.column_stack([0.10 + r0 * np.cos(t), r0 * np.sin(t)])
             self.mesh(key, ribbon(xy, 0.025 + 0.03 * (1 - min(near, 0.9) / 0.9), 0.012), col)
 
+    def _moving_figures(self, tracks):
+        """Moving objects the tracker reports (pedestrians): a figure on an amber ground ring where each one is, so a walker is seen as a
+        walker and not as three LiDAR dots (the pedestrian demo clip of 11 Nov showed nothing)."""
+        figs, rings = [], []
+        for tr in tracks:
+            if not tr.get("moving"):
+                continue
+            x, y = float(tr["x"]), float(tr["y"])
+            figs.append(figure_mesh(x, y))
+            a = np.linspace(0, 2 * math.pi, 28)
+            rings.append(ribbon(np.column_stack([x + 0.11 * np.cos(a), y + 0.11 * np.sin(a)]), 0.018, 0.008))
+        self.mesh("moving_fig", merge(figs) if figs else None, (*rgb('warn')[:3], 1.0), opts="opaque", lit=True)
+        self.mesh("moving_ring", merge(rings) if rings else None, (*rgb('warn')[:3], 0.9))
+
     def show_parking(self, model, selected=None, hover=None):
         """The Parking Simulator objects (bay pads, parked vehicles, road, sidewalk, marker) as meshes in the WORLD frame
         (`world_group` puts them under the car every frame). Rebuilt only when the layout, the selection or the hover changes,
@@ -514,9 +621,11 @@ class DriveScene(Scene):
         if hit is not None and len(pts):
             red = np.hypot(pts[:, 0] - hit[0], pts[:, 1] - hit[1]) < 0.15
         idle = ~(on_path | red)
-        self.mesh("obstacles", point_walls(pts[idle]), C["obstacle"])
-        self.mesh("obst_path", point_walls(pts[on_path & ~red]), (*rgb('accent')[:3], 0.95))
-        self.mesh("obst_hit", point_walls(pts[red]), (*rgb('bad')[:3], 0.95))
+        # (solid, lit slabs fitted to the points - not a quad per point pair: walls read as walls, 14 Nov)
+        self.mesh("obstacles", surface_mesh(pts[idle]), (*C["obstacle"][:3], 1.0), opts="opaque", lit=True)
+        self.mesh("obst_path", surface_mesh(pts[on_path & ~red]), (*rgb('accent')[:3], 1.0), opts="opaque", lit=True)
+        self.mesh("obst_hit", surface_mesh(pts[red]), (*rgb('bad')[:3], 1.0), opts="opaque", lit=True)
+        self._moving_figures(st.get("tracks") or [])
         self._proximity_arcs(pts)
         state = plan.get("state", "clear")
         col = {"collision": rgb('bad')[:3], "limited": rgb('warn')[:3]}.get(state, (0.93, 0.94, 0.95))
@@ -1389,10 +1498,15 @@ class MapZonesPanel(QtWidgets.QWidget):
         self.park_marker_tile = FeatureTile("\u24c5", "Park at the marker", "parks in the bay whose wall carries the ArUco marker the camera "
                                             "sees: nose in with a front camera, reversing in with a rear one (hold the throttle)",
                                             state=False, momentary=True, compact=True)
-        self.park_marker_tile.clicked.connect(lambda: (self.link.send("PARK_MARKER"), self.on_event("parking at the marker requested")))
+        self.park_marker_tile.clicked.connect(self._park_marker_or_area)
         g3.addWidget(self.explore_tile, 0, 0)
         g3.addWidget(park, 0, 1)
         g3.addWidget(self.park_marker_tile, 1, 0)
+        self.bay_tile = FeatureTile("▭", "Park in the drawn bay", "nose in, into the rectangle drawn with the Parking lane tool: the LiDAR "
+                                    "(back and side walls) and the camera (the marker) find exactly where; stops ~3 cm off the wall (hold the "
+                                    "throttle)", state=False, momentary=True, compact=True)
+        self.bay_tile.clicked.connect(self._park_drawn_bay)
+        g3.addWidget(self.bay_tile, 1, 1)
         lay.addLayout(g3)
         lay.addWidget(section_label("Map and zones"))
         g2 = QtWidgets.QGridLayout()
@@ -1662,6 +1776,7 @@ class MapZonesPanel(QtWidgets.QWidget):
             txt += f", arriving facing {hd:+.0f} deg"
         self.link.send(cmd)
         self.on_event(txt)
+        self.last_goto = (tuple(gw), heading_world)          # the general parking area for the marker tile (PARK_AREA)
 
     def _delete_zone(self, i):
         if 0 <= i < len(self.zones):
@@ -1883,6 +1998,53 @@ class MapZonesPanel(QtWidgets.QWidget):
                                     "occupancy": {s["id"]: s["occupied"] for s in self.parking.spaces} if self.parking else {}})
         self.parking_changed.emit()
 
+    last_goto = None
+    _camera_state = None
+
+    def _park_drawn_bay(self):
+        """PARK_BAY for the rectangle drawn with the Parking lane tool (gui/parking_lane.json, world frame): its side farthest from the car is
+        the back wall, the bay opens towards the car. Sent in the car's frame now."""
+        try:
+            lane = json.load(open(LANE_FILE))
+            x0, x1 = sorted((float(lane["x0"]), float(lane["x1"])))
+            y0, y1 = sorted((float(lane["y0"]), float(lane["y1"])))
+        except (OSError, ValueError, KeyError, TypeError):
+            self.on_event("no bay drawn: draw a rectangle round the parking spot with the Parking lane tool first")
+            return
+        # the bay's axis runs along the rectangle's LONG sides (parallel to the kerb line, 11 Nov user); the back wall is one of the two SHORT
+        # ends - the relay picks the one the LiDAR sees walls at (or the marker is at)
+        if x1 - x0 >= y1 - y0:
+            ends = [((x0, (y0 + y1) / 2), (1.0, 0.0)), ((x1, (y0 + y1) / 2), (-1.0, 0.0))]
+            width, depth = y1 - y0, x1 - x0
+        else:
+            ends = [(((x0 + x1) / 2, y0), (0.0, 1.0)), (((x0 + x1) / 2, y1), (0.0, -1.0))]
+            width, depth = x1 - x0, y1 - y0
+        out = []
+        for m, nw in ends:
+            v = world_to_vehicle(np.array([m, (m[0] + nw[0], m[1] + nw[1])]), self.pose)
+            nv = v[1] - v[0]
+            out.append({"wall": [round(float(v[0][0]), 3), round(float(v[0][1]), 3)], "normal": [round(float(nv[0]), 4), round(float(nv[1]), 4)]})
+        cmd = {"ends": out, "width": round(width, 3), "depth": round(depth, 3)}
+        self.link.send("PARK_BAY " + json.dumps(cmd, separators=(",", ":")))
+        self.on_event(f"parking in the drawn bay ({depth * 100:.0f} x {width * 100:.0f} cm, along its long side) - hold the throttle")
+
+    def _park_marker_or_area(self):
+        """The marker tile: the marker in view -> park at it now (PARK_MARKER); not in view -> drive to the general area last clicked with Go to,
+        look for the marker there and park (PARK_AREA, adas/marker_search.py)."""
+        cam = self._camera_state or {}
+        if cam.get("seen"):
+            self.link.send("PARK_MARKER")
+            self.on_event("parking at the marker requested")
+        elif self.last_goto is not None:
+            gw, hw = self.last_goto
+            v = world_to_vehicle(np.array([gw]), self.pose)[0]
+            hd = 0.0 if hw is None else math.degrees(math.remainder(hw - self.pose[2], 2 * math.pi))
+            self.link.send(f"PARK_AREA {v[0]:.3f} {v[1]:.3f} {hd:.1f}")
+            self.last_goto = None                                  # (used once: a later press must not send the car to an old area)
+            self.on_event(f"parking area: {v[0]:.2f} m ahead, {v[1]:+.2f} m left - then looking for the marker (hold the throttle)")
+        else:
+            self.on_event("marker not in view: click the general parking area with the Go to tool first, then this tile")
+
     def _marker_tile_label(self, cam):
         """The marker tile says whether the parking camera sees the bay marker right now (the presenter checks before pressing)."""
         if not cam:
@@ -1891,6 +2053,8 @@ class MapZonesPanel(QtWidgets.QWidget):
             text = "Park at the marker \u00b7 camera off"
         elif cam.get("seen"):
             text = f"Park at the marker \u00b7 seen {cam.get('dist', 0):.1f} m"
+        elif self.last_goto is not None:
+            text = "Find the marker and park (area set)"
         else:
             text = "Park at the marker \u00b7 not seen"
         if self.park_marker_tile.name.text() != text:
@@ -1904,6 +2068,7 @@ class MapZonesPanel(QtWidgets.QWidget):
             self.send_zones()
         if not self.isVisible():
             return
+        self._camera_state = st.get("camera")
         self._marker_tile_label(st.get("camera"))
         if self._map_version != self.store.version:                  # the map cells only change now and then
             self._map_version = self.store.version
@@ -2622,6 +2787,8 @@ class EVWindow(QtWidgets.QMainWindow):
             b.setCheckable(True)
             b.clicked.connect(lambda checked, k=key: self.toggle(k, checked))
             b.setProperty("full", text.replace("&&", "&"))
+            b.setProperty("short", text.split("  ", 1)[0] + "  " + {"map": "Map", "assists": "Assists", "setup": "Setup", "rear": "Camera",
+                                                                   "diag": "Diag", "events": "Events"}[key])
             b.setToolTip(text.split("  ", 1)[-1].replace("&&", "&"))
             lay.addWidget(b)
             self.app_btns[key] = b
@@ -2631,6 +2798,7 @@ class EVWindow(QtWidgets.QMainWindow):
             b.setObjectName("app")
             b.clicked.connect(lambda _=False, k=key: self.open_lab(k))
             b.setProperty("full", text)
+            b.setProperty("short", text.split("  ", 1)[0] + "  " + {"mc": "Monte Carlo", "train": "Training"}[key])
             b.setToolTip(text.split("  ", 1)[-1])
             lay.addWidget(b)
             self.app_btns[key + "_lab"] = b
@@ -2646,17 +2814,30 @@ class EVWindow(QtWidgets.QMainWindow):
         self.reset_btn.hide()
         lay.addWidget(self.reset_btn)
         f.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)   # never widen the window
+        self._bar = f
+        f.resizeEvent = lambda ev: QtCore.QTimer.singleShot(0, self._fit_appbar)     # (a drawer opening narrows the bar without a window resize)
         return f
 
+    def _fit_appbar(self):
+        """The bottom bar never shows a cut-off label (it did whenever a drawer narrowed the main area: 'AAP & ZOI', 'DIAGNOSTI'): the
+        longest wording that fits is used - full names, short names, icons only (tooltips carry the names)."""
+        bar = getattr(self, "_bar", None)
+        if bar is None:
+            return
+        for mode in ("full", "short", "icon"):
+            for b in self.app_btns.values():
+                full, short = b.property("full"), b.property("short")
+                if full:
+                    b.setText({"full": full, "short": short or full, "icon": full.split("  ", 1)[0]}[mode].replace("&", "&&"))
+            bar.layout().invalidate()
+            if bar.layout().minimumSize().width() <= bar.width() or mode == "icon":
+                break
+
     def resizeEvent(self, ev):
-        """Narrow windows: the bottom bar shows icons only (tooltips carry the names) instead of forcing the window wider."""
+        """Narrow windows: the bottom bar shortens its labels (then icons only) instead of forcing the window wider or clipping them."""
         super().resizeEvent(ev)
         QtCore.QTimer.singleShot(0, self._place)
-        compact = self.centralWidget().width() < 1420 if self.centralWidget() is not None else self.width() < 1500
-        for b in self.app_btns.values():
-            full = b.property("full")
-            if full:
-                b.setText(full.split("  ", 1)[0] if compact else full.replace("&", "&&"))
+        QtCore.QTimer.singleShot(0, self._fit_appbar)
 
     def toggle_theme(self):
         """Dark <-> light: switch the palette and rebuild the window (every widget's colours are set at construction)."""

@@ -417,7 +417,7 @@ def bay_park(test):
     msgs, crashes = box["out"]
     test.shot("end")
     x, y, th = test.state()["sim"]["pose"]
-    gx, gy = (marker["x"] + 0.13 + CAR["front_x"], marker["y"]) if front else (marker["x"] + 0.06 + 0.05, marker["y"])
+    gx, gy = (marker["x"] + 0.03 + CAR["front_x"], marker["y"]) if front else (marker["x"] + 0.06 + 0.05, marker["y"])
     err, head = math.hypot(x - gx, y - gy), abs(math.remainder(math.radians(th) - (math.pi if front else 0.0), 2 * math.pi))
     test.result.update(msgs=msgs, crashes=crashes, camera="front" if front else "rear", pos_err_cm=round(err * 100, 1), head_deg=round(math.degrees(head), 1),
                        ok=bool(crashes == 0 and err <= 0.05 and math.degrees(head) <= 5 and msgs and msgs[-1].startswith("arrived")))
@@ -425,6 +425,7 @@ def bay_park(test):
 
 def goto_and_home(test, goal_sim=(4.2, -0.05)):
     """ROOM: Go to through the doorway, then 'Return to start'; truth: arrive within 10 cm, back at the start within 10 cm, no contact."""
+    box = {}
     yield from _switch_room(test, "room")
     mp = test.mp
     from gui.parking import align_from_poses, sim_to_relay

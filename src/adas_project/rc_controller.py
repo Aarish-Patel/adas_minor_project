@@ -156,6 +156,42 @@ def trigger_to_unit(raw):
     return clamp((raw + 1.0) / 2.0, 0.0, 1.0)
 
 
+TRIGGER_REST = -0.9         # a trigger that has reported less than this (-1 = released) is known to work
+
+
+class PadGuard:
+    """What the pad is allowed to command (the car drove off at half throttle with nobody on the pad, 11 Nov 2026).
+
+    Two facts about game pads under SDL: a trigger axis reads 0.0 - HALF pressed once scaled to 0..1 - until it is moved for the
+    first time, and a pad that drops off (battery, Bluetooth, USB) keeps returning its last / zero axis values. So:
+      - a trigger counts only after it has been seen at rest (raw <= TRIGGER_REST) since the pad (re)connected: `trigger()`;
+      - while the pad is gone every command is zero and the steering centred: `lost()` / `found()`; after it is back the
+        triggers have to be seen at rest again.
+    The same rule as a dead-man switch on a machine: an input is trusted only after it has been seen in its safe state."""
+
+    def __init__(self):
+        self.connected, self.armed = True, set()
+
+    def trigger(self, axis, raw):
+        """The trigger's 0..1 value, 0 until this axis is armed."""
+        if not self.connected:
+            return 0.0
+        if raw <= TRIGGER_REST:
+            self.armed.add(axis)
+        return trigger_to_unit(raw) if axis in self.armed else 0.0
+
+    def stick(self, raw):
+        return raw if self.connected else 0.0
+
+    def lost(self):
+        self.connected = False
+        self.armed.clear()
+
+    def found(self):
+        self.connected = True
+        self.armed.clear()
+
+
 def slew_toward(current, target, max_delta):
     if target > current:
         return min(current + max_delta, target)
@@ -320,17 +356,33 @@ def drive():
     last_send = 0.0
     last_tick = 0.0
 
-    print("Driving. Ctrl+C to stop.")
+    guard = PadGuard()
+    print("Driving. Ctrl+C to stop. Pull each trigger once and let go: a trigger counts only after it was seen released.")
 
     try:
         while True:
-            pygame.event.pump()
+            for event in pygame.event.get():                      # (also pumps the queue)
+                if event.type == pygame.JOYDEVICEREMOVED:
+                    guard.lost()
+                    steering = motor = 0.0                        # no slewing down: stop now
+                    print("\nController disconnected: motor off, steering centred. Reconnect it to go on.")
+                elif event.type == pygame.JOYDEVICEADDED and not guard.connected:
+                    joystick = pygame.joystick.Joystick(event.device_index)
+                    joystick.init()
+                    guard.found()
+                    print(f"\nController back: {joystick.get_name()}. Pull each trigger once and let go.")
+            try:
+                axes = [joystick.get_axis(a) for a in (AXIS_LEFT_X, AXIS_RIGHT_TRIGGER, AXIS_LEFT_TRIGGER)] if guard.connected else [0.0, -1.0, -1.0]
+            except pygame.error:                                  # the pad went away between the event and the read
+                guard.lost()
+                steering = motor = 0.0
+                axes = [0.0, -1.0, -1.0]
 
-            steer_in = apply_deadzone(joystick.get_axis(AXIS_LEFT_X), STEERING_DEADZONE)
+            steer_in = apply_deadzone(guard.stick(axes[0]), STEERING_DEADZONE)
             target_steering = STEERING_SIGN * steer_in * 100.0
 
-            rt = apply_deadzone(trigger_to_unit(joystick.get_axis(AXIS_RIGHT_TRIGGER)), TRIGGER_DEADZONE)
-            lt = apply_deadzone(trigger_to_unit(joystick.get_axis(AXIS_LEFT_TRIGGER)), TRIGGER_DEADZONE)
+            rt = apply_deadzone(guard.trigger(AXIS_RIGHT_TRIGGER, axes[1]), TRIGGER_DEADZONE)
+            lt = apply_deadzone(guard.trigger(AXIS_LEFT_TRIGGER, axes[2]), TRIGGER_DEADZONE)
             target_motor = clamp((rt - lt) * MAX_MOTOR_SPEED, -MAX_MOTOR_SPEED, MAX_MOTOR_SPEED)
 
             now = time.time()

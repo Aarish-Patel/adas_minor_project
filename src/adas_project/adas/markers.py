@@ -113,7 +113,42 @@ def pose_from_corners(corners_px, marker_id, size, cam, t=0.0):
                      t=t, size_px=float(side))
 
 
-def aruco_detector(dictionary_name="DICT_4X4_50", subpixel=False):
+BLUR_TOLERANT = dict(polygonalApproxAccuracyRate=0.08, minMarkerPerimeterRate=0.02, maxErroneousBitsInBorderRate=0.7,
+                     errorCorrectionRate=1.0, adaptiveThreshWinSizeMin=5, adaptiveThreshWinSizeMax=65, adaptiveThreshWinSizeStep=15)
+# (10 Nov: the fixed-focus webcam blurs a marker 0.5 m away so that the default detector rejects it; with these settings on a 2x upscaled
+# frame the same blurred view decodes. Error correction at 1.0 also decodes wrong ids from clutter: use it for ONE known id only and check
+# the quad is square - `square_enough`.)
+
+
+def square_enough(quad, tol=0.40):
+    """A decoded quad (4, 2) is a plausible marker: its four sides within +-tol of their mean (a marker seen at an angle foreshortens
+    one pair of sides, never by more than this at the angles the car sees it)."""
+    q = np.asarray(quad, float).reshape(4, 2)
+    s = np.hypot(*(q - np.roll(q, -1, axis=0)).T)
+    return bool(s.min() > 4.0 and abs(s.max() - s.mean()) <= tol * s.mean() and abs(s.min() - s.mean()) <= tol * s.mean())
+
+
+def marker_like(gray, quad, cells=6):
+    """Is this quad (4, 2) an ArUco-style marker, whatever its id? The quad is warped to a cells x cells grid (the black border + the inner bits)
+    and checked: the border ring mostly dark, the inner bits a mix of dark and light. A blurred far marker is rejected by the decoder (its
+    bits are smeared) but still has this structure; a picture frame, a door or a dark box does not (no border/inner contrast). Used by the
+    camera service to report 'there is a marker over there' before the id can be read."""
+    import cv2
+    q = np.asarray(quad, np.float32).reshape(4, 2)
+    n = cells * 10
+    M = cv2.getPerspectiveTransform(q, np.array([[0, 0], [n - 1, 0], [n - 1, n - 1], [0, n - 1]], np.float32))
+    w = cv2.warpPerspective(gray, M, (n, n), flags=cv2.INTER_AREA)
+    thr = float(cv2.threshold(w, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0])
+    dark = w < thr
+    ring = np.ones((n, n), bool)
+    ring[10:-10, 10:-10] = False
+    inner = dark[10:-10, 10:-10]
+    if float(w[~ring].mean() - w[ring].mean()) < 25.0 and float(w.max() - w.min()) < 40:            # no contrast at all
+        return False
+    return bool(dark[ring].mean() >= 0.80 and 0.15 <= 1.0 - inner.mean() <= 0.85)
+
+
+def aruco_detector(dictionary_name="DICT_4X4_50", subpixel=False, tolerant=False, with_rejected=False):
     """A function gray image -> (corners, ids) for ArUco markers, for OpenCV 4.7+ (the ArucoDetector class, the laptop) and for the 4.6 of the
     Pi (the module functions). `subpixel`: sub-pixel corner refinement (the PnP of a small marker wants corners better than a pixel)."""
     import cv2
@@ -123,12 +158,17 @@ def aruco_detector(dictionary_name="DICT_4X4_50", subpixel=False):
         params = aruco.DetectorParameters()
         if subpixel:
             params.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
+        for k, v in (BLUR_TOLERANT.items() if tolerant else ()):
+            setattr(params, k, v)
         detector = aruco.ArucoDetector(dictionary, params)
-        return lambda gray: detector.detectMarkers(gray)[:2]
+        return (lambda gray: detector.detectMarkers(gray)) if with_rejected else (lambda gray: detector.detectMarkers(gray)[:2])
     params = aruco.DetectorParameters_create()
     if subpixel:
         params.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
-    return lambda gray: aruco.detectMarkers(gray, dictionary, parameters=params)[:2]
+    for k, v in (BLUR_TOLERANT.items() if tolerant else ()):
+        setattr(params, k, v)
+    return ((lambda gray: aruco.detectMarkers(gray, dictionary, parameters=params)) if with_rejected
+            else (lambda gray: aruco.detectMarkers(gray, dictionary, parameters=params)[:2]))
 
 
 def detect_image(frame_bgr, cam, sizes, default_size=0.10, dictionary_name="DICT_4X4_50"):

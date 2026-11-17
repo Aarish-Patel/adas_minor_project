@@ -16,7 +16,7 @@ import os
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 CONFIG_PATH = os.path.join(ROOT, "pi", "camera.json")
-DEFAULTS = {"facing": "front", "marker_id": 23, "marker_size_m": 0.08, "index": 0, "width": 640, "height": 480, "fps": 15, "rotate_deg": 0}
+DEFAULTS = {"facing": "front", "marker_id": 23, "marker_size_m": 0.08, "index": 0, "width": 640, "height": 480, "fps": 15, "rotate_deg": 0, "focus": None}
 MOUNT_KEYS = ("x", "y", "z", "pitch_deg", "yaw_deg", "hfov_deg")
 
 

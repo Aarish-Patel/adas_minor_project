@@ -37,9 +37,9 @@ BODY_MARGIN_M = 0.03       # extra clearance around the whole body (at speed)
 # speed the body margin is smaller, so the car can slow down and fit through a tight gap it would be refused at
 # speed. (speed limit m/s, margin m); above the last level BODY_MARGIN_M applies.
 MARGIN_LEVELS = ((0.15, 0.012), (0.40, 0.02))
-BASE_M = 0.05              # standoff kept at walking pace (bumper to obstacle)
-REACTION_S = 0.20          # LiDAR scan + relay + motor delay (fitted command delay 0.12 s + scan period)
-DECEL = 4.0                # m/s^2 the car stops at when the throttle is cut, after the delay in REACTION_S: relay
+BASE_M = 0.03              # standoff kept at walking pace (bumper to obstacle)
+REACTION_S = 0.30          # LiDAR scan + relay + motor delay (fitted command delay 0.12 s + scan period)
+DECEL = 2.0                # m/s^2 the car stops at when the throttle is cut, after the delay in REACTION_S: relay
                            # drive log 28 Sep - ~6 cm roll-out from 0.7 m/s on a cut, 1-3 cm with an active brake
                            # pulse (user: "brakes almost instantly"). Was 1.2 (too pessimistic: early interventions)
 KAPPA_SLOP = 0.35          # 1/m: the old fixed band (kept for comparison: GATE_BAND = "fixed")
@@ -51,8 +51,11 @@ KAPPA_ERR_ABS = 0.08
 KAPPA_ERR_REL = 0.15
 GATE_BAND = "transition"
 HORIZON_M = 1.6
+CAP_LEAD_S = 0.25          # s: the throttle cap uses the speed limit this far ahead of the car (scan age + command delay + motor)
 CREEP_V = 0.10             # m/s allowed while there is still more than CREEP_MIN_M free (parking, nosing up)
-CREEP_MIN_M = 0.06
+BAY_CREEP_MIN_M = 0.018     # ... in the last leg of a bay parking (nose to the back wall): ~3 cm off it (11 Nov, user: 5 cm is too far)
+PARK_CREEP_MIN_M = 0.025    # ... and inside a parallel-parking gap: the strokes may end ~4 cm from a neighbour or the kerb
+CREEP_MIN_M = 0.045         # (final stop ~5 cm from an obstacle at any speed: the speed rule brakes early, the crawl ends here - 10 Nov, user)
 BRAKE_OVER_V = 0.15        # brake actively only when this much faster than allowed
 BRAKE_GAIN = 300.0         # PWM per m/s over
 BRAKE_PWM_MAX = 80         # peak reverse pulse (was 140: the car stops within 1-2 cm on a throttle cut alone, and
@@ -115,6 +118,7 @@ def sector_cover(pts_vehicle, lidar_x, half_deg=BLIND_HALF_DEG, bin_deg=BLIND_BI
 class PathGate:
     def __init__(self, params, speed_model):
         self.p, self.model = params, speed_model
+        self.creep_min = CREEP_MIN_M     # the relay lowers it to BAY_CREEP_MIN_M while a bay parking drives its last leg
         self.uncertainty_source = None   # an object with .sigma_v (m/s, the speed estimate's standard deviation): margins follow it
         self.delay_source = None        # an object with .excess (s): extra scan latency measured online (adas/latency.py)
         self.memory = ObstacleMemory(params, blind_radius=0.27, keep_radius=1.2, max_age=60.0, max_points=700,
@@ -435,7 +439,7 @@ class PathGate:
                 if v_l > v_ok:
                     v_ok, free = v_l, f_creep
                     v_phys = max(v_phys, min(v_lvl, self.allowed_speed(f_creep, 1.0)))
-        if f_creep > CREEP_MIN_M:
+        if f_creep > self.creep_min:
             v_ok = max(v_ok, CREEP_V)
             free = max(free, f_creep)
         else:
@@ -509,8 +513,17 @@ class PathGate:
             self.info["blind"] = "LiDAR blind ahead - creeping"
         else:
             self.blind_t = 0.0
-        cap = self.model.pwm_for_speed(v_ok) if v_ok > 0 else 0.0
+        # the throttle cap leads the limit (TODO AR-gate, 14 Nov). The cap used to be the throttle for v_ok at the car's place NOW; the
+        # command reaches the motor a scan and a command delay later, so on a fast approach the car ran ~0.3 m/s above the falling limit,
+        # the brake pulse stopped it dead 30 cm short, the hold let go, it accelerated and was braked again (twin, 27 approaches with the
+        # throttle held: 1.1 brake pulses and 2.5 stops each). The limit is now taken where the car will be CAP_LEAD_S later (speed-limit
+        # preview, as in ISA / ACC set-speed control): 0 brake pulses, 1 stop, same final gap. The brake above is unchanged - it is
+        # the safety layer, this is only the comfort layer in front of it.
+        v_cap = v_ok
+        if v_ok > CREEP_V:
+            v_cap = max(min(v_ok, self.allowed_speed(max(free - v * CAP_LEAD_S, 0.0), fos)), CREEP_V)
+        cap = self.model.pwm_for_speed(v_cap) if v_ok > 0 else 0.0
         if abs(physical) > cap:
-            self.info["action"] = "limited" if cap > 0 else "stopped"
+            self.info["action"] = "limited" if v_ok > 0 else "stopped"
             return direction * int(cap), False
         return physical, False

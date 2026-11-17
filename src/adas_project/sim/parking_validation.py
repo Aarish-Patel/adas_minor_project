@@ -48,7 +48,7 @@ KERB_MIN_CM, KERB_MAX_CM = 1.0, 8.0            # a parallel-parked body: clear o
 T_OBSERVE = (0.3, 1.5)                 # s: the still car watches the marker
 T_MAX = 70.0
 STOP_GAP = 0.06                        # m rear bumper to the wall (adas.park_select.STOP_GAP_M; ground truth uses the spec value)
-STOP_GAP_FRONT = 0.13                  # m front bumper to the wall when parking nose in with the front camera (STOP_GAP_FRONT_M)
+STOP_GAP_FRONT = 0.03                  # m front bumper to the wall when parking nose in with the front camera (STOP_GAP_FRONT_M: 3 cm since 11 Nov, user)
 WALL_X = -3.0                          # sim.parking_worlds.perpendicular
 BAY_W = 0.46
 Y_EDGE, Y_ROAD0, Y_FACE, CAR_W = 0.55, -0.85, 1.45, 0.20     # street geometry (as sim.parking_worlds.parallel_street)
@@ -169,6 +169,20 @@ def parallel_cases(n_streets=24):
     return [(n, "parallel", p) for n, p in out]
 
 
+def home_cases():
+    """The home bay and the confined spaces like it (10 Nov, TODO AQ): a lane 0.5-0.6 m deep for the 0.14 m car, a block across each end,
+    the kerb a wall, a 0.75 m road, the road ending 0.3 m after the bay or running on. `python -m sim.parking_validation home [runs]`."""
+    out = []
+    for depth in (0.6, 0.5, 0.4):
+        for gap_len in (1.54, 1.0, 0.8, 0.7):
+            for end, road_end in (("open", 1.5), ("dead", 0.3)):
+                segs = [("block", 0.3), ("target", gap_len), ("block", 0.3)]
+                out.append((f"home_d{int(depth * 100)}_g{int(gap_len * 100)}_{end}", dict(
+                    street=None, click="target", segs=segs, start_y=-0.15, depth=depth, kerb_wall=True, road_y0=-0.30, road_end=road_end,
+                    expect="park", drift_deg_s=0.0, kerb_max_cm=depth * 100 - 0.20 * 100 - 0.01)))   # (anywhere in the lane that clears the walls)
+    return [(n, "parallel", p) for n, p in out]
+
+
 def all_cases():
     return perpendicular_cases() + parallel_cases()
 
@@ -213,15 +227,21 @@ def build_parallel(p, seed=0):
             c, sn = abs(math.cos(yaw)), abs(math.sin(yaw))
             half = 0.5 * (ln * c + CAR_W * sn)                                 # the footprint's extent along the strip
             cars.append((cx - half - xs, cx + half - xs))
+        elif kind == "block":                                                  # a wall / box across the whole lane (the home bay's ends)
+            w.add(Box(x + ln / 2, y_edge + depth / 2, ln, depth, 0.0, height=0.2, style="box", colour="#8fa3bf"))
+            cars.append((x - xs, x + ln - xs))
         elif kind == "target":
             target = (x - xs, x + ln - xs)
         x += ln
     xe = x
-    x0w, x1w = -1.2, (xe + 0.02 if p.get("dead_end") else xe + 1.5)           # the road runs on past the lane unless a dead end
-    w.add(Wall(x0w, Y_ROAD0, x1w, Y_ROAD0))
+    y_road0 = p.get("road_y0", Y_ROAD0)                                        # (the home road is 0.75 m wide, the street's 1.4 m)
+    x0w, x1w = -1.2, (xe + 0.02 if p.get("dead_end") else xe + p.get("road_end", 1.5))   # the road runs on past the lane unless a dead end
+    w.add(Wall(x0w, y_road0, x1w, y_road0))
     w.add(Wall(x0w, Y_FACE, x1w, Y_FACE))
-    w.add(Wall(x0w, Y_ROAD0, x0w, Y_FACE))
-    w.add(Wall(x1w, Y_ROAD0, x1w, Y_FACE))
+    w.add(Wall(x0w, y_road0, x0w, Y_FACE))
+    w.add(Wall(x1w, y_road0, x1w, Y_FACE))
+    if p.get("kerb_wall"):                                                     # the kerb is a wall the LiDAR sees (the home bay)
+        w.add(Wall(xs, y_kerb, xe, y_kerb))
     w.add(FloorLine([[xs, y_edge], [xe, y_edge]], width=0.02))
     strip = ParkingStrip([[xs, y_edge], [xe, y_edge]], 1, depth)
     w.layout = {"x0": xs, "target": target}
@@ -385,7 +405,7 @@ def _why(row, r, st):
         k = row.get("kerb_gap_cm")
         if k is not None and k < KERB_MIN_CM:
             return f"on the kerb ({k} cm)"
-        if k is not None and k > KERB_MAX_CM:
+        if k is not None and k > row.get("kerb_max_cm", KERB_MAX_CM):
             return f"too far from the kerb ({k} cm)"
         return "ended outside the space"
     err_cm = row.get("score_err_cm", row.get("pos_err_cm"))
@@ -569,7 +589,8 @@ def _run_parallel(name, p, seed, mc, rng):
         kerb_gap = Y_EDGE + strip.depth - max(q[1] for q in cs)
         err["kerb_gap_cm"] = round(kerb_gap * 100, 1)
         err["inside"] = int(all(x0s - 0.01 <= q[0] <= x1s + 0.01 and Y_EDGE <= q[1] for q in cs)
-                            and KERB_MIN_CM <= kerb_gap * 100 <= KERB_MAX_CM)
+                            and KERB_MIN_CM <= kerb_gap * 100 <= p.get("kerb_max_cm", KERB_MAX_CM))
+        err["kerb_max_cm"] = p.get("kerb_max_cm", KERB_MAX_CM)    # (a deep lane: parking in it, off the far wall, is the aim - home_cases)
         # scored on what the user asks for: centred along the gap (the along error), straight, inside the lane close to the kerb - the
         # lateral target itself follows the neighbours (in line with them, ADR-042), so it is not a fixed number to be scored against
         err["score_err_cm"] = err["long_err_cm"]
@@ -674,6 +695,20 @@ def main(argv):
     elif mode == "suite":
         rows = run_all([(n, g, p, 0, False) for n, g, p in all_cases()], 8, "suite")
         print_summary(save(rows, "suite"))
+    elif mode == "home":
+        seeds = int(argv[2]) if len(argv) > 2 else 3                  # seeds change the scan noise and the sim's own randomness
+        cases = home_cases()
+        jobs = [(n, g, p, s, False) for n, g, p in cases for s in range(seeds)]
+        print(f"{len(jobs)} home-bay runs ({len(cases)} cases x {seeds} seeds)")
+        rows = run_all(jobs, 4, "home")      # (planning has a wall-clock budget: fewer workers than cores)
+        by = {}
+        for r in rows:
+            by.setdefault(r["name"], []).append(r)
+        for n, rs in sorted(by.items()):
+            why = sorted({str(r["failure"])[:44] for r in rs if not r["success"]})
+            print(f"{n:22s} {sum(r['success'] for r in rs)}/{len(rs)}  coll {sum(int(r['collisions'] or 0) for r in rs)}  {why}")
+        print(f"home bay total: {sum(r['success'] for r in rows)}/{len(rows)}, collisions {sum(int(r['collisions'] or 0) for r in rows)}")
+        save(rows, "home")
     elif mode == "mc":
         runs = int(argv[2]) if len(argv) > 2 else 10
         workers = int(argv[3]) if len(argv) > 3 else 8

@@ -84,6 +84,9 @@ class NodeBudget(float):
 
 
 class HybridAStar:
+    ESCAPE_SLACK_M = 0.02     # ... less this: a wall's returns scatter by about a centimetre and the grid has 5 cm cells - with 5 mm of slack
+                              # a start beside a wall had no first move on some scans ("no way through" after one node: the home-bay runs, 14 Nov)
+    ESCAPE_STRICT_M = 0.005   # ... and the slack of a re-plan after the brake gate refused the path (plan_service.plan_point_job, strict_escape)
     ESCAPE_M = 0.5            # a start closer than the margin: within this of it moves may keep the start's clearance (_search)
 
     def __init__(self, params, kappa_max=1.5, margin=0.06, step=0.15, clear_wish=0.15,
@@ -261,7 +264,7 @@ class HybridAStar:
         # - and the circle cover is ~6 cm fatter than the car at the bumpers): moves near the start may keep the clearance the car already
         # has, never less - it can leave, it cannot get closer (before 30 Sep: no move at all, "no way to the pull-up point"). The
         # evasive planner (plan) keeps the strict rule: its start is close to the obstacle by definition.
-        self._escape = (start[0], start[1], min(m, c_start - 0.005)) if escape and c_start < m else None
+        self._escape = (start[0], start[1], min(m, c_start - self.ESCAPE_SLACK_M)) if escape and c_start < m else None
         if c_start < 0.0 and self._escape is None:
             return None                                   # already touching: nothing to plan
         # obstacle-aware 2D heuristic: Dijkstra from the goal region over free cells (inflated by half the width)

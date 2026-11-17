@@ -91,7 +91,8 @@ class AssistConfig:
     backoff_m: float = 0.30          # m to back off before searching again
     backoff_max_s: float = 2.5       # s a back-off may take
     backoff_rear_clear: float = 0.12 # m that must stay free behind the car while backing off
-    backoff_tries: int = 3           # back-offs per obstacle before handing back
+    backoff_tries: int = 0           # back-offs per obstacle before handing back (10 Nov: 0 = the evasive steer never reverses: round it or stop)
+    evade_reverse_nodes: int = 0     # search nodes for a path that may reverse (0: forward-only evasive paths)
     stall_replan_s: float = 0.6      # s stopped on a planned path with the throttle held before searching again
     stall_replans: int = 3           # such searches before backing off
     retry_pause_s: float = 1.5       # s without a new trigger after handing back (no on/off flicker)
@@ -261,7 +262,10 @@ class DrivingAssists:
         """Reverse straight back at a creep until backoff_m is gained (or the space behind runs out), then search
         for a way round again from there, standing still."""
         c = self.cfg
-        rear = travel_distance_to_contact(pts, 0.0, -1, self.p, horizon=0.6, margin=0.03) if len(pts) else math.inf
+        # only what is BEHIND the car counts for the room behind it: the sweep's circle cover is ~6 cm fatter than the body at the bumpers,
+        # so standing 8 cm from the obstacle ahead (the 3 cm standoff of 10 Nov) read as "already touching" and ended every back-off at once
+        behind = pts[pts[:, 0] < self.p.rear_x + 0.05] if len(pts) else pts
+        rear = travel_distance_to_contact(behind, 0.0, -1, self.p, horizon=0.6, margin=0.03) if len(behind) else math.inf
         moved = self._backoff_from - self.ex
         if moved >= c.backoff_m or rear < c.backoff_rear_clear or self.phase_t > c.backoff_max_s:
             self._submit_plan(self._to_start_frame(pts), 0.0, 0.0)
@@ -327,7 +331,7 @@ class DrivingAssists:
         svc = self.plan_service
         start = self._predicted_start(near, v, kappa)
         self._job = svc.submit(plan_line_job, self.p, kmax, near, start, self._x_goal_v,
-                               self.cfg.plan_max_nodes, 4000, svc.budget(EVASIVE_BUDGET_S), svc.budget(BACKOFF_BUDGET_S))
+                               self.cfg.plan_max_nodes, self.cfg.evade_reverse_nodes, svc.budget(EVASIVE_BUDGET_S), svc.budget(BACKOFF_BUDGET_S))
 
     def _mppi_step(self, pts_s, v):
         """One MPPI control step toward the original line past the obstacle (adas/mppi.py)."""

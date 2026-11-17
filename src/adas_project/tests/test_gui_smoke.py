@@ -542,8 +542,20 @@ class GuiSmoke(unittest.TestCase):
                             ({"service": True, "seen": True, "dist": 1.23}, "seen 1.2 m")):
             mp._marker_tile_label(cam)
             self.assertIn(expect, t.name.text())
+        # the tile's three cases (11 Nov): nothing to aim at -> a hint, nothing sent; an area clicked with Go to -> PARK_AREA (drive there,
+        # find the marker, park), used once; the marker in view -> PARK_MARKER
+        mp._camera_state = {"service": True, "seen": False}
         t.clicked.emit()
-        self.assertIn("PARK_MARKER", sent)
+        self.assertEqual(sent, [])
+        mp.last_goto = ((1.0, 0.2), None)
+        mp._marker_tile_label(mp._camera_state)
+        self.assertIn("Find the marker", t.name.text())
+        t.clicked.emit()
+        self.assertTrue(sent and sent[-1].startswith("PARK_AREA 1.000 0.200"), sent)
+        self.assertIsNone(mp.last_goto)
+        mp._camera_state = {"service": True, "seen": True, "dist": 0.9}
+        t.clicked.emit()
+        self.assertEqual(sent[-1], "PARK_MARKER")
         rear = w.panels["rear"][1]
         rear._on_state({"ok": True, "facing": "front", "marker_id": 23, "markers": [{"dist": 0.9, "bearing": 0.05}], "fps": 10, "pipeline_ms": 3})
         self.assertTrue(rear.guides.isHidden() and rear.ghost.isHidden())

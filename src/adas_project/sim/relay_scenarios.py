@@ -123,6 +123,7 @@ def run(world, driver, seconds, assists=(), start=(0.0, 0.0, 0.0), seed=0, stop_
             elif q[0] == "M":
                 phys = -float(q[1])
         delta = math.atan(-assist.k * (servo_out - assist.centre) * p.wheelbase)
+        gate.creep_min = assist.gate_creep_min()        # as the relay: the crawl limit of a bay / parallel-gap manoeuvre (was missing here until 17 Nov)
         g_phys, g_brake = gate.decide(DT, phys, delta, vest.v_gate((phys > 0) - (phys < 0)), 0.0,
                                       intent_k_rate=rint.gate_k_rate, trusted=rint.gate_trust,
                                       leg=assist.planned_leg())

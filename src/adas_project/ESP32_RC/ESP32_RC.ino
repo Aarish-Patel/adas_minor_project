@@ -15,6 +15,13 @@
 
   Failsafe: if no A/M/STOP arrives for 500 ms the motor is switched off.
 
+  Boot banner: "ROVER READY reset=<reason>" (POWERON, BROWNOUT, WDT, PANIC, SW, EXT, OTHER) - the Pi's
+  relay shows why the board restarted (a BROWNOUT means the supply dipped under the motor / servos).
+
+  Radio: when the Pi drives the board over USB serial and nothing ever arrived over UDP, WiFi is switched
+  off after RADIO_OFF_AFTER_SERIAL serial commands (the radio's transmit peaks are a load the car's weak
+  supply does not need). A reset brings WiFi back. Set RADIO_OFF_WHEN_SERIAL to false to keep it on.
+
   WiFi: joins the network below; if that fails within 15 s it also starts
   its own "RC_CAR" access point. Board: "ESP32 Dev Module", core 3.x.
 */
@@ -22,6 +29,7 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <ESPmDNS.h>
+#include "esp_system.h"   // esp_reset_reason()
 
 // ============================================================
 // WIFI
@@ -60,6 +68,10 @@ const float SERVO_MAX_US = 2400.0;
 
 const unsigned long COMMAND_TIMEOUT_MS = 500;
 
+const bool RADIO_OFF_WHEN_SERIAL = true;
+const unsigned long RADIO_OFF_AFTER_SERIAL = 250;   // serial commands (5 s at 50 Hz) with no UDP command ever seen
+const unsigned int DIR_CHANGE_DEAD_MS = 2;          // motor PWM held at zero for this long around a direction change
+
 
 // ============================================================
 // STATE
@@ -83,6 +95,11 @@ int current1 = -1, current2 = -1;
 
 char lineBuffer[64];
 int lineLength = 0;
+
+unsigned long serialCommands = 0;   // drive commands received over USB serial
+unsigned long udpCommands = 0;      // ... and over UDP
+bool radioOff = false;
+int motorDir = 0;                   // direction the driver is switched to: +1 / -1, 0 = not set yet
 
 enum Source { FROM_SERIAL, FROM_UDP };
 
@@ -111,7 +128,23 @@ void setup() {
   bootMs = millis();
   lastCommandTime = millis();
 
-  Serial.println("ROVER READY");
+  Serial.print("ROVER READY reset=");
+  Serial.println(resetReason());
+}
+
+
+const char* resetReason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  return "POWERON";
+    case ESP_RST_BROWNOUT: return "BROWNOUT";
+    case ESP_RST_SW:       return "SW";
+    case ESP_RST_PANIC:    return "PANIC";
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:      return "WDT";
+    case ESP_RST_EXT:      return "EXT";
+    default:               return "OTHER";
+  }
 }
 
 
@@ -197,6 +230,19 @@ void readUdp() {
 
 void manageWifi() {
 
+  if (radioOff) return;
+
+  // the Pi drives over USB and nobody uses the radio: switch it off (see the header)
+  if (RADIO_OFF_WHEN_SERIAL && udpCommands == 0 && serialCommands >= RADIO_OFF_AFTER_SERIAL) {
+    if (udpUp) udp.stop();
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    udpUp = false;
+    radioOff = true;
+    Serial.println("WIFI OFF (serial control)");
+    return;
+  }
+
   if (!udpUp && WiFi.status() == WL_CONNECTED) {
 
     udp.begin(UDP_PORT);
@@ -239,24 +285,29 @@ void handleCommand(String command, Source source) {
     int split = command.indexOf(' ', 2);
     if (split < 0) return;
 
-    float a1 = constrain(command.substring(2, split).toFloat(), 0.0, 180.0);
-    float a2 = constrain(command.substring(split + 1).toFloat(), 0.0, 180.0);
+    // a line damaged on the way (a supply dip, a half-received packet) must not move the wheels: String.toFloat()
+    // turns garbage into 0.0, i.e. full lock - so both angles have to be clean numbers or the line is ignored
+    float a1, a2;
+    if (!parseNumber(command.substring(2, split), a1) || !parseNumber(command.substring(split + 1), a2)) return;
 
-    target1 = (int)round(a1 * 10.0);
-    target2 = (int)round(a2 * 10.0);
-    lastCommandTime = millis();
+    target1 = (int)round(constrain(a1, 0.0, 180.0) * 10.0);
+    target2 = (int)round(constrain(a2, 0.0, 180.0) * 10.0);
+    countCommand(source);
   }
 
   else if (command.startsWith("M ")) {
 
-    targetMotor = constrain(command.substring(2).toInt(), -255, 255);
-    lastCommandTime = millis();
+    float pwm;
+    if (!parseNumber(command.substring(2), pwm)) return;
+
+    targetMotor = constrain((int)pwm, -255, 255);
+    countCommand(source);
   }
 
   else if (command == "STOP") {
 
     targetMotor = 0;
-    lastCommandTime = millis();
+    countCommand(source);
   }
 
   else if (command == "PING") {
@@ -269,6 +320,23 @@ void handleCommand(String command, Source source) {
       udp.endPacket();
     }
   }
+}
+
+
+// A drive command arrived: feed the failsafe, remember which channel is in use.
+void countCommand(Source source) {
+  lastCommandTime = millis();
+  if (source == FROM_SERIAL) serialCommands++; else udpCommands++;
+}
+
+
+// The whole text must be one number ("87", "-120", "76.5"); false for anything else.
+bool parseNumber(String text, float &value) {
+  text.trim();
+  if (text.length() == 0) return false;
+  char* end = NULL;
+  value = strtof(text.c_str(), &end);
+  return end != text.c_str() && *end == 0 && !isnan(value) && !isinf(value);
 }
 
 
@@ -293,20 +361,19 @@ void setMotor(int speed) {
 
   currentMotor = speed;
 
-  if (speed > 0) {
-
-    digitalWrite(MOTOR_DIR_PIN, HIGH);
-    ledcWrite(MOTOR_PWM_PIN, speed);
-  }
-
-  else if (speed < 0) {
-
-    digitalWrite(MOTOR_DIR_PIN, LOW);
-    ledcWrite(MOTOR_PWM_PIN, -speed);
-  }
-
-  else {
-
+  if (speed == 0) {
     ledcWrite(MOTOR_PWM_PIN, 0);
+    return;
   }
+
+  // Direction change: PWM to zero first, switch the direction pin, wait, then drive - the driver's bridge is
+  // never asked to reverse under full duty (the Pi's brake pulse does reverse the motor at speed).
+  int dir = speed > 0 ? 1 : -1;
+  if (dir != motorDir) {
+    ledcWrite(MOTOR_PWM_PIN, 0);
+    digitalWrite(MOTOR_DIR_PIN, dir > 0 ? HIGH : LOW);
+    delay(DIR_CHANGE_DEAD_MS);
+    motorDir = dir;
+  }
+  ledcWrite(MOTOR_PWM_PIN, abs(speed));
 }

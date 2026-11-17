@@ -16,6 +16,10 @@ import os
 import threading
 import time
 
+# why the ESP32 restarted, from its boot banner ("ROVER READY reset=BROWNOUT": esp_reset_reason in ESP32_RC.ino, firmware of 14 Nov 2026 on)
+RESET_TEXT = {"BROWNOUT": "supply brown-out: the motor / servo supply dipped", "POWERON": "power-on or USB reset",
+              "EXT": "reset pin", "SW": "software restart", "WDT": "watchdog: the firmware hung", "PANIC": "firmware crash"}
+
 
 class EspLink:
     PING_EVERY = 1.0
@@ -72,7 +76,8 @@ class EspLink:
         now = time.time()
         return {"state": self.state, "detail": self.detail, "port": self.port,
                 "pong_age_s": round(now - self.last_pong, 1) if self.last_pong else None,
-                "reboots": self.reboots, "reconnects": self.reconnects, "dropped_writes": self.dropped}
+                "reboots": self.reboots, "reconnects": self.reconnects, "dropped_writes": self.dropped,
+                "last_reset": getattr(self, "last_reset", None)}
 
     # ---------------------------------------------------------------- internals
     @staticmethod
@@ -146,8 +151,11 @@ class EspLink:
                     self.last_line = text
                     if "ROVER READY" in text:
                         self.reboots += 1
-                        self.on_event("ESP32 rebooted (boot banner) - brown-out?", count=self.reboots)
-                        print(f"\nESP32 REBOOTED (#{self.reboots}) - power dip? check the motor/servo supply", flush=True)
+                        # (older firmware gives no reason: then it is only a guess)
+                        self.last_reset = text.split("reset=", 1)[1].split()[0].upper() if "reset=" in text else None
+                        why = "brown-out?" if self.last_reset is None else RESET_TEXT.get(self.last_reset, self.last_reset.lower())
+                        self.on_event(f"ESP32 rebooted (boot banner) - {why}", count=self.reboots, reset=self.last_reset)
+                        print(f"\nESP32 REBOOTED (#{self.reboots}) - {why}", flush=True)
             if len(buf) > 512:
                 buf = b""
 

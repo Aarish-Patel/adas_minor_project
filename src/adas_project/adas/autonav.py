@@ -18,7 +18,7 @@ from .plan_service import GOTO_BUDGET_S, PlanService, plan_point_job
 
 
 class AutoNav:
-    def __init__(self, params, speed_model, kappa_max=1.5, cruise=0.30, look=0.30, arrive=0.08, service=None):
+    def __init__(self, params, speed_model, kappa_max=2.0, cruise=0.30, look=0.30, arrive=0.08, service=None):
         self.p, self.model = params, speed_model
         self.kappa_max, self.cruise, self.look, self.arrive = kappa_max, cruise, look, arrive
         self.service = service or PlanService("inline")
@@ -43,6 +43,7 @@ class AutoNav:
         self.reanchor = False                       # parking re-planned at the slot: the relay restarts its scan matcher's reference
         self._term_replans, self._creeps = 0, 0
         self._creep_dir, self._creep_flips = 0, 0
+        self._creep_ref, self._creep_still_s = None, 0.0
         self._stall_refine, self._refine_pts = False, None
         self._stall_replans, self._keep_stalls = 0, False
         self.park_request, self._refined = None, False   # parallel: strip + click (start frame) to measure the gap again alongside it
@@ -92,7 +93,8 @@ class AutoNav:
         self.state = "planning"
         self._job_t = time.perf_counter()
         self._job = self.service.submit(plan_point_job, self.p, self.kappa_max, pts_start, start, self.goal,
-                                        self.service.budget(GOTO_BUDGET_S), self.goal_heading, self.reverse_first)
+                                        self.service.budget(GOTO_BUDGET_S), self.goal_heading, self.reverse_first,
+                                        getattr(self, "_strict_escape", False))
         if self._job.ready(0.0):
             self._collect()
 
@@ -284,6 +286,7 @@ class AutoNav:
         self.goal = self.goal_clicked = (float(goal[0]), float(goal[1]))
         self.goal_heading = None if heading is None else float(heading)
         self.reverse_first = bool(reverse_first)          # parking: search with reversing allowed from the start
+        self._strict_escape = False
         self.goal_moved = False
         self.arrive, self.fixed, self.park_request = self._arrive0, False, None
         self.park_phase, self._tail, self._approach_pending = None, None, False
@@ -340,6 +343,7 @@ class AutoNav:
         self.park_request, self._refined = None, False
         self._wall_shift = 0.0
         self._creep_dir, self._creep_flips = 0, 0
+        self._creep_ref, self._creep_still_s = None, 0.0
         self._refines, self._shifts = 0, 0
         self._stall_replans = getattr(self, "_stall_replans", 0) if self._keep_stalls else 0
         self._shuffled = getattr(self, "_shuffled", False) if self._keep_stalls else False
@@ -435,7 +439,7 @@ class AutoNav:
 
     REFINE_NEAR_M = 0.9       # parallel: the gap is measured again when the car is this close to the reversing point
     REFINE_FAR_M, REFINE_MAX = 2.0, 3
-    PARK_STALL_S, PARK_STALL_REPLANS = 2.0, 3   # held still this long on a parking path -> plan again from here, at most this often   # ... and once more if that re-selection moved the slot further than this away (at most 3 times)
+    PARK_STALL_S, PARK_STALL_REPLANS = 3.0, 6   # held still this long on a parking path -> plan again from here, at most this often   # ... and once more if that re-selection moved the slot further than this away (at most 3 times)
 
     def _cusp_index(self):
         """Index of the first reverse pose after the forward approach, or None when the path reverses from the start / never reverses."""
@@ -586,7 +590,12 @@ class AutoNav:
                 el = -s * (gx - self.x) + c * (gy - self.y) if meas[1] is None else meas[1]
                 self.goal = gx, gy = (self.x + c * ea - s * el, self.y + s * ea + c * el)
                 dist_goal = math.hypot(gx - self.x, gy - self.y)
-        if dist_goal < self.arrive and head_err < self.heading_tol:
+        # a bay's end (nose or tail to the back wall) is decided by the end-of-parking logic below - straighten, then creep to the
+        # stop along the bay - not by the arrival radius: that ended a nose-in run up to 3 cm short of the 3 cm stop, and once in the
+        # middle of a straightening stroke with the car rolling back (twin, 17 Nov: 6-8 cm from the wall instead of 3)
+        bay_end = self.fixed and self.goal_heading is not None and self.path is not None and self.i >= len(self.path) - 3 \
+            and isinstance(self.park_request, dict) and "wall" in self.park_request
+        if dist_goal < self.arrive and head_err < self.heading_tol and not bay_end and self._close_enough(gx, gy, dist_goal):
             self.cancel("arrived as near as the car fits (the point is on an obstacle)" if self.goal_moved else "arrived")
             return None
         in_line = False
@@ -613,7 +622,8 @@ class AutoNav:
                     self.path, self.i, self._creeps, self._creep_flips, self._creep_dir = P, 0, 0, 0, 0
                     self.msg = f"correcting the side offset ({abs(e_lat) * 100:.0f} cm)"
                     return 0.0, 0.0
-            if abs(e_along) > self.PARK_ALONG_TOL_M and abs(e_lat) <= self.CREEP_LATERAL_M and self._creeps < self.CREEP_MAX                     and self._creep_flips < self.CREEP_FLIPS:
+            if abs(e_along) > self.PARK_ALONG_TOL_M and abs(e_lat) <= self.CREEP_LATERAL_M and self._creeps < self.CREEP_MAX \
+                    and self._creep_flips < self.CREEP_FLIPS and not self._creep_stalled(dt, held):
                 self._creeps += 1
                 return self._creep_to_goal(head_err)
             self.cancel("arrived" if head_err < self.heading_tol else f"arrived ({math.degrees(head_err):.0f} deg off the chosen heading)")
@@ -716,14 +726,15 @@ class AutoNav:
         if self.stall_s > 0.8 and len(pts_vehicle) and not self.fixed:
             self.stall_s = 0.0
             self.stalls += 1
-            if self.stalls > 3:
+            if self.stalls > 6:
                 self.cancel("stuck - no way through from here")
                 return None
             self.replans += 1
-            self.msg = f"stopped on the path - re-planning from here ({self.stalls}/3)"
+            self.msg = f"stopped on the path - re-planning from here ({self.stalls}/6)"
             # stopped close in front of something with a path that cannot clear it (twin ROOM, 14 Oct: 9 cm from a wall, the same full-lock
             # forward turn planned three times, then 'stuck'): plan the way a driver would - backing up is allowed first
             self.reverse_first = True
+            self._strict_escape = True          # ... and not nearer to what it stands at than it is (plan_point_job)
             self._launch(self.to_start(pts_vehicle), (self.x, self.y, self.th))
             if self.state != "driving":
                 return (0.0, 0.0) if self.state == "planning" else None
@@ -750,12 +761,32 @@ class AutoNav:
         xl, yl = self.to_vehicle(tgt)[0]
         dd = xl * xl + yl * yl
         kappa = max(-self.kappa_max, min(self.kappa_max, 2.0 * yl / dd if dd > 1e-4 else 0.0))
+        if not self.fixed and dist_goal < self.STEER_HOLD_M:
+            # the last centimetres to a click-to-go goal: pure pursuit at a point this near swings the wheels from lock to lock (the
+            # curvature is 2 y / d^2) - the steering is held where it was when the car came this close and eased straight
+            kappa = self._k_hold = 0.8 * getattr(self, "_k_hold", kappa)
+        else:
+            self._k_hold = kappa
         # slow for tight curves (lateral acceleration ~0.12 g) and approaching the goal / a change of direction
         to_stop = dist_goal if k == len(P) - 1 else math.hypot(P[k, 0] - self.x, P[k, 1] - self.y)
         speed = min(self.PARK_REVERSE_V if creep else self.cruise, math.sqrt(1.2 / max(abs(kappa), 1e-3)), 0.12 + 0.6 * to_stop)
         if self._invalid_n and not self.fixed:
             speed = min(speed, self.PENDING_V)          # a blockage ahead is being confirmed: slow, do not stop
         return kappa, direction * speed
+
+    STEER_HOLD_M = 0.12                        # click-to-go: within this of the goal the steering is held and eased straight
+    STOP_LEAD_M = 0.025                        # click-to-go: the throttle is cut this far before the goal (the car rolls on a centimetre or two)
+
+    def _close_enough(self, gx, gy, dist_goal):
+        """Inside the arrival radius: is this the place to stop? A click-to-go used to end as soon as the car was within `arrive` (8 cm)
+        of the goal, i.e. 4-6 cm short of it every time (click-to-go suite, 14 Nov). It now drives on until the goal is STOP_LEAD_M
+        ahead along its heading (or behind it: it has passed) - the lateral miss is what the arrival radius still allows. Parking paths
+        (`fixed`) and a goal that was moved off an obstacle keep the old rule: they have their own end-of-path logic."""
+        if self.fixed or self.goal_moved or self.path is None:
+            return True
+        d = 1.0 if self.i >= len(self.path) or self.path[min(self.i, len(self.path) - 1), 3] >= 0 else -1.0
+        along = d * (math.cos(self.th) * (gx - self.x) + math.sin(self.th) * (gy - self.y))
+        return along < self.STOP_LEAD_M or dist_goal < self.STOP_LEAD_M
 
     VALID_EVERY_S, VALID_N = 0.25, 2           # path validity: checked this often, invalid after this many blocked checks in a row
     VALID_FROM_M, VALID_TO_M = 0.30, 2.5       # ... on this stretch ahead of the car
@@ -819,6 +850,18 @@ class AutoNav:
         kappa = -direction * 3.0 * e                                               # turn the nose toward the goal heading
         self.msg = f"centring in the slot ({abs(e_along) * 100:.0f} cm)"
         return max(-self.kappa_max, min(self.kappa_max, kappa)), direction * self.CREEP_V
+
+    CREEP_STALL_S, CREEP_STALL_MOVE_M = 1.2, 0.008   # creeping to the stop, throttle held, but not moving for this long: as near as it goes
+
+    def _creep_stalled(self, dt, held):
+        """The final creep is being held by the brake gate (it keeps its crawl limit to the wall / the neighbour): the car is as near as
+        it may go - arrived, instead of 'centring in the slot' for the 30 s of CREEP_MAX (twin, 17 Nov). A released throttle pauses it."""
+        ref = self._creep_ref
+        if ref is None or math.hypot(self.x - ref[0], self.y - ref[1]) > self.CREEP_STALL_MOVE_M:
+            self._creep_ref, self._creep_still_s = (self.x, self.y), 0.0
+        elif held:
+            self._creep_still_s += dt
+        return self._creep_still_s > self.CREEP_STALL_S
 
     NEIGHBOUR_REACH_M = 1.0   # parking: neighbours within this of the bumpers are measured for the final position (_neighbours_here)
 

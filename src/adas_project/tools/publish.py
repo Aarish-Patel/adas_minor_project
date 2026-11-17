@@ -23,10 +23,12 @@ REPO = "https://github.com/Aarish-Patel/adas_minor_project.git"
 BRANCH = "real-car-adas"
 DEST = "src/adas_project"
 CACHE = os.path.join(os.path.expanduser("~"), ".cache", "adas_publish")
-EXCLUDE = ("data/", "logs/", "gui/zones.json")
+# local-only: the user's data, and what holds personal details (the submitted reports with names / phone numbers, frames of the
+# home in their figures, the internal handover notes) - published only if the user says so
+EXCLUDE = ("data/", "logs/", "gui/zones.json", "docs/reports/", "docs/HANDOVER.md")
 BIG_FILE_MB = 20.0
 SECRET = re.compile(r"(password|passwd|token|api[_-]?key|secret)\s*[:=]\s*[\"'][^\"']{4,}[\"']", re.I)
-TRAILER = "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+TRAILER = "Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>"
 
 
 def run(args, cwd=None, check=True):

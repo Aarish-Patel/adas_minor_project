@@ -10,14 +10,15 @@ import numpy as np
 
 from adas.markers import MarkerObs
 
-KEEP_S = 1.5            # observations older than this are dropped (the car is standing when the parking command is given)
+KEEP_S = 3.0            # observations older than this are dropped (the car is standing when the parking command is given)
+CAND_KEEP_S = 2.5       # marker-like candidates come every ~0.6 s (the tolerant pass runs every third frame): keep them a few seconds
 STALE_S = 0.6           # a service state older than this (its own clock) is not a live camera
 
 
 class MarkerClient:
     def __init__(self, url="http://127.0.0.1:8091/state", period_s=0.1, marker_id=None, start=True):
         self.url, self.period, self.marker_id = url, period_s, marker_id
-        self._obs, self._lock = [], threading.Lock()
+        self._obs, self._cands, self._lock = [], [], threading.Lock()
         self.last_ok, self.service_ok = 0.0, False
         if start:
             threading.Thread(target=self._run, daemon=True).start()
@@ -45,8 +46,16 @@ class MarkerClient:
                 continue
             new.append((float(m["t"]), MarkerObs(id=int(m["id"]), corners=np.zeros((4, 2)), x=m["x"], y=m["y"], z=m["z"], facing=m["facing"],
                                                  dist=m["dist"], bearing=m["bearing"], t=float(m["t"]), size_px=m["size_px"])))
+        cands = [(float(c["t"]), c) for c in st.get("candidates", []) if all(k in c for k in ("t", "dist", "bearing"))]
         with self._lock:
             self._obs = [(t, o) for t, o in self._obs + new if now - t < KEEP_S]
+            self._cands = [(t, c) for t, c in self._cands + cands if now - t < CAND_KEEP_S]
+
+    def candidates(self, now=None):
+        """Marker-like things of the last CAND_KEEP_S seconds (dicts: id (-1 = not decoded), x, y, dist, bearing, size_px, t), vehicle frame."""
+        now = time.time() if now is None else now
+        with self._lock:
+            return [c for t, c in self._cands if now - t < CAND_KEEP_S]
 
     def __call__(self, now=None):
         """The observations of the last KEEP_S seconds (MarkerObs, vehicle frame), oldest first."""

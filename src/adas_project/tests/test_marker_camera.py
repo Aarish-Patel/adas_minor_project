@@ -52,7 +52,7 @@ class CameraConfigTest(unittest.TestCase):
         os.environ.pop("RC_CAMERA_CONFIG", None)
         cfg = camera_config.load()
         self.assertEqual(cfg["facing"], "front")
-        self.assertLessEqual(cfg["marker_size_m"], 0.10)                        # a small marker
+        self.assertEqual((cfg["marker_id"], cfg["marker_size_m"]), (1, 0.15))      # the demo marker: 4x4 id 1, 15 cm (10 Nov)
 
     def test_bay_world_follows_the_facing(self):
         from sim.parking_worlds import perpendicular
@@ -145,6 +145,19 @@ class MarkerServiceTest(unittest.TestCase):
 
 
 class NoseInThroughTheRelayTest(unittest.TestCase):
+    def setUp(self):
+        """These runs are tuned on the 8 cm marker the cases and the 3.0 m refusal were measured with: pinned, whatever pi/camera.json says."""
+        self._dir = tempfile.TemporaryDirectory()
+        self._old = os.environ.get("RC_CAMERA_CONFIG")
+        os.environ["RC_CAMERA_CONFIG"] = write_config(self._dir.name, facing="front", marker_id=23, marker_size_m=0.08)
+
+    def tearDown(self):
+        if self._old is None:
+            os.environ.pop("RC_CAMERA_CONFIG", None)
+        else:
+            os.environ["RC_CAMERA_CONFIG"] = self._old
+        self._dir.cleanup()
+
     def test_front_camera_bay_run_in_the_twin(self):
         """The whole chain (twin camera -> RelayAssists.park_marker -> plan service -> AutoNav -> brake gate) parks nose in."""
         import sim.parking_validation as V

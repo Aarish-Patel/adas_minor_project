@@ -2,32 +2,32 @@
  {
   "name": "Evasive steer around a block",
   "pass": true,
-  "detail": "with evasive: around the box (x 5.1 m), closest 6 cm, handed back; without: braked to a stop at x 1.74 m"
+  "detail": "with evasive: around the box (x 4.9 m), closest 9 cm, handed back; without: braked to a stop at x 1.74 m"
  },
  {
   "name": "Evasive: back to the driver's line, no zig-zag",
   "pass": true,
-  "detail": "round the block and back: 4 cm off the driver's line 1.5 m past it, 1 steering reversals during the manoeuvre, closest 6 cm"
+  "detail": "round the block and back: 8 cm off the driver's line 1.5 m past it, 2 steering reversals during the manoeuvre, closest 9 cm"
  },
  {
   "name": "Evasive: a second obstacle in the swerve path",
   "pass": true,
-  "detail": "two obstacles in the way: through, re-plans 0, closest 6 cm"
+  "detail": "two obstacles in the way: through, re-plans 1, closest 14 cm"
  },
  {
   "name": "Evasive: a walker steps into the swerve path",
   "pass": true,
-  "detail": "walker steps into the swerve path: no contact, reached x 4.00 m, closest 14 cm"
+  "detail": "walker steps into the swerve path: no contact, reached x 4.02 m, closest 14 cm"
  },
  {
   "name": "Steering correction instead of braking (nudge)",
   "pass": true,
-  "detail": "with the nudge: steering corrected, passed (x 3.3 m), closest 5 cm, throttle reduced on 0 ticks; without: throttle reduced on 92 ticks, stopped at x 2.04"
+  "detail": "with the nudge: steering corrected, passed (x 3.3 m), closest 6 cm, throttle reduced on 0 ticks; without: throttle reduced on 100 ticks, stopped at x 2.01"
  },
  {
   "name": "Doorway at full throttle: no throttle cut mid-manoeuvre (B4)",
   "pass": true,
-  "detail": "full throttle at the box in front of the doorway: through the door, closest 11 cm, throttle cut mid-manoeuvre on 0 ticks"
+  "detail": "full throttle at the box in front of the doorway: through the door, closest 13 cm, throttle cut mid-manoeuvre on 0 ticks"
  },
  {
   "name": "Evasive stays out when the driver is already avoiding",
@@ -37,27 +37,27 @@
  {
   "name": "Full speed at a wall: stops close, not early (B11)",
   "pass": true,
-  "detail": "full throttle at a wall 4 m ahead: stopped with 7 cm to spare"
+  "detail": "full throttle at a wall 4 m ahead: stopped with 6 cm to spare"
  },
  {
   "name": "Corridor centring",
   "pass": true,
-  "detail": "steering drifts left in a 72 cm corridor: with centring within 2 cm of the centre for 5.0 m; without: stopped at x 1.3 m"
+  "detail": "steering drifts left in a 72 cm corridor: with centring within 1 cm of the centre for 5.0 m; without: stopped at x 1.3 m"
  },
  {
   "name": "Centring yields to a deliberate turn",
   "pass": true,
-  "detail": "driver turns left out of the corridor's end on purpose: centring lets go (reaches 0.60 m to the left)"
+  "detail": "driver turns left out of the corridor's end on purpose: centring lets go (reaches 0.61 m to the left)"
  },
  {
   "name": "Speed-vs-steering limiter",
   "pass": true,
-  "detail": "full throttle at full lock: lateral acceleration 1.20 m/s^2 with the limiter, 2.53 without; 0.46 with the realistic steering envelope alone"
+  "detail": "full throttle at full lock: lateral acceleration 1.24 m/s^2 with the limiter, 2.62 without; 0.39 with the realistic steering envelope alone"
  },
  {
   "name": "Narrow gap: won't fit",
   "pass": true,
-  "detail": "19 cm gap for a 20 cm car: stopped before it (x 1.91 m), no contact, warning level 2"
+  "detail": "19 cm gap for a 20 cm car: stopped before it (x 1.92 m), no contact, warning level 2"
  },
  {
   "name": "Narrow gap: tight but fits",
@@ -77,46 +77,46 @@
  {
   "name": "Moving obstacle: yield to a crossing person",
   "pass": true,
-  "detail": "person crossing at 0.35 m/s: with the assist no contact (closest 21 cm), went on to x 2.6 m; without: closest 13 cm"
+  "detail": "person crossing at 0.35 m/s: with the assist no contact (closest 24 cm), went on to x 2.6 m; without: closest 17 cm"
  },
  {
   "name": "Moving obstacle: no needless waiting for a late crosser",
   "pass": true,
-  "detail": "person 3.2 m to the side, walking in at 0.5 m/s: through in 6.5 s, closest 57 cm"
+  "detail": "person 3.2 m to the side, walking in at 0.5 m/s: through in 6.6 s, closest 49 cm"
  },
  {
   "name": "Moving obstacle: head-on, stop or back away",
-  "pass": true,
-  "detail": "person walking straight at the car: no contact (closest 5 cm), car ended at x 1.73 m"
+  "pass": false,
+  "detail": "person walking straight at the car: no contact (closest -3 cm), car ended at x 0.80 m"
  },
  {
   "name": "Fault: LiDAR dropout burst",
   "pass": true,
-  "detail": "LiDAR dropout 0.6 s at full throttle: closest 7 cm, stopped at x 3.04 m (wall at 3.4 m)"
+  "detail": "LiDAR dropout 0.6 s at full throttle: closest 6 cm, stopped at x 3.06 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: frozen (stale) scan",
   "pass": true,
-  "detail": "frozen scan 0.6 s at full throttle: closest 6 cm, stopped at x 3.05 m (wall at 3.4 m)"
+  "detail": "frozen scan 0.6 s at full throttle: closest 95 cm, stopped at x 0.96 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: scans arrive 0.1 s late (design envelope)",
   "pass": true,
-  "detail": "scans 0.1 s late at full throttle: closest 5 cm, stopped at x 3.07 m (wall at 3.4 m)"
+  "detail": "scans 0.1 s late at full throttle: closest 4 cm, stopped at x 3.07 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: scans 0.25 s late, latency measured online",
   "pass": true,
-  "detail": "scans 0.25 s late at full throttle (estimated delay 0.42 s, margin +0.26 s): closest 3 cm, stopped at x 3.09 m (wall at 3.4 m)"
+  "detail": "scans 0.25 s late at full throttle (estimated delay 0.47 s, margin +0.31 s): closest 27 cm, stopped at x 2.85 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: 30 % of ESP32 commands lost",
   "pass": true,
-  "detail": "30 % of ESP32 commands lost: closest 6 cm, stopped at x 3.06 m (wall at 3.4 m)"
+  "detail": "30 % of ESP32 commands lost: closest 5 cm, stopped at x 3.06 m (wall at 3.4 m)"
  },
  {
   "name": "Fault: spurious LiDAR points",
   "pass": true,
-  "detail": "12 random spurious points per scan: closest 38 cm, stopped at x 2.75 m (wall at 3.4 m)"
+  "detail": "12 random spurious points per scan: closest 95 cm, stopped at x 1.83 m (wall at 3.4 m)"
  }
 ]
